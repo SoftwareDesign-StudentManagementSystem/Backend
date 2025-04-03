@@ -4,7 +4,30 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="8330398f-21bc-4fc1-b2a7-3478c50fec6a" name="변경" comment="" />
+    <list default="true" id="8330398f-21bc-4fc1-b2a7-3478c50fec6a" name="변경" comment="">
+      <change beforePath="$PROJECT_DIR$/.idea/modules.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/modules/1223381847/iEdu.iml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/modules/1223381847/iEdu.main.iml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/modules/1223381847/iEdu.test.iml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/out/production/classes/com/iEdu/domain/account/auth/loginUser/LoginUserDto.class" beforeDir="false" afterPath="$PROJECT_DIR$/out/production/classes/com/iEdu/domain/account/auth/loginUser/LoginUserDto.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/out/production/classes/com/iEdu/domain/account/member/dto/req/MemberForm$MemberFormBuilder.class" beforeDir="false" afterPath="$PROJECT_DIR$/out/production/classes/com/iEdu/domain/account/member/dto/req/MemberForm$MemberFormBuilder.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/out/production/classes/com/iEdu/domain/account/member/dto/req/MemberForm.class" beforeDir="false" afterPath="$PROJECT_DIR$/out/production/classes/com/iEdu/domain/account/member/dto/req/MemberForm.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/out/production/classes/com/iEdu/domain/account/member/dto/res/DetailMemberInfo$DetailMemberInfoBuilder.class" beforeDir="false" afterPath="$PROJECT_DIR$/out/production/classes/com/iEdu/domain/account/member/dto/res/DetailMemberInfo$DetailMemberInfoBuilder.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/out/production/classes/com/iEdu/domain/account/member/dto/res/DetailMemberInfo.class" beforeDir="false" afterPath="$PROJECT_DIR$/out/production/classes/com/iEdu/domain/account/member/dto/res/DetailMemberInfo.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/out/production/classes/com/iEdu/domain/account/member/dto/res/MemberInfo$MemberInfoBuilder.class" beforeDir="false" afterPath="$PROJECT_DIR$/out/production/classes/com/iEdu/domain/account/member/dto/res/MemberInfo$MemberInfoBuilder.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/out/production/classes/com/iEdu/domain/account/member/dto/res/MemberInfo.class" beforeDir="false" afterPath="$PROJECT_DIR$/out/production/classes/com/iEdu/domain/account/member/dto/res/MemberInfo.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/out/production/classes/com/iEdu/domain/account/member/entity/Member$Gender.class" beforeDir="false" afterPath="$PROJECT_DIR$/out/production/classes/com/iEdu/domain/account/member/entity/Member$Gender.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/out/production/classes/com/iEdu/domain/account/member/entity/Member$MemberBuilder.class" beforeDir="false" afterPath="$PROJECT_DIR$/out/production/classes/com/iEdu/domain/account/member/entity/Member$MemberBuilder.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/out/production/classes/com/iEdu/domain/account/member/entity/Member$MemberBuilderImpl.class" beforeDir="false" afterPath="$PROJECT_DIR$/out/production/classes/com/iEdu/domain/account/member/entity/Member$MemberBuilderImpl.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/out/production/classes/com/iEdu/domain/account/member/entity/Member$MemberRole.class" beforeDir="false" afterPath="$PROJECT_DIR$/out/production/classes/com/iEdu/domain/account/member/entity/Member$MemberRole.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/out/production/classes/com/iEdu/domain/account/member/entity/Member$State.class" beforeDir="false" afterPath="$PROJECT_DIR$/out/production/classes/com/iEdu/domain/account/member/entity/Member$State.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/out/production/classes/com/iEdu/domain/account/member/entity/Member.class" beforeDir="false" afterPath="$PROJECT_DIR$/out/production/classes/com/iEdu/domain/account/member/entity/Member.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/out/production/classes/com/iEdu/domain/account/member/serviceImpl/MemberServiceImpl.class" beforeDir="false" afterPath="$PROJECT_DIR$/out/production/classes/com/iEdu/domain/account/member/serviceImpl/MemberServiceImpl.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/out/production/classes/com/iEdu/global/jpa/MemberBaseEntity.class" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/iEdu/domain/account/member/repository/MemberRepository.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/iEdu/domain/account/member/repository/MemberRepository.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/iEdu/domain/studentRecord/grade/entity/Grade.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/iEdu/domain/studentRecord/grade/entity/Grade.java" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -59,26 +82,28 @@
   <component name="ProjectViewState">
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "RequestMappingsPanelOrder0": "0",
-    "RequestMappingsPanelOrder1": "1",
-    "RequestMappingsPanelWidth0": "75",
-    "RequestMappingsPanelWidth1": "75",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "RunOnceActivity.git.unshallow": "true",
-    "Spring Boot.SoftwaredesignApplication.executor": "Run",
-    "kotlin-language-version-configured": "true",
-    "last_opened_file_path": "/Users/gujunhwi/Desktop/4학년/1학기/소프트웨어설계/프로젝트/StudentManagementSystem/Backend/src/main/java/com/iEdu/domain/studentRecord/specialty",
-    "node.js.detected.package.eslint": "true",
-    "node.js.detected.package.tslint": "true",
-    "node.js.selected.package.eslint": "(autodetect)",
-    "node.js.selected.package.tslint": "(autodetect)",
-    "nodejs_package_manager_path": "npm",
-    "settings.editor.selected.configurable": "spring",
-    "vue.rearranger.settings.migration": "true"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;RequestMappingsPanelOrder0&quot;: &quot;0&quot;,
+    &quot;RequestMappingsPanelOrder1&quot;: &quot;1&quot;,
+    &quot;RequestMappingsPanelWidth0&quot;: &quot;75&quot;,
+    &quot;RequestMappingsPanelWidth1&quot;: &quot;75&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;Spring Boot.IEduApplication.executor&quot;: &quot;Run&quot;,
+    &quot;Spring Boot.SoftwaredesignApplication.executor&quot;: &quot;Run&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;koojunhui&quot;,
+    &quot;kotlin-language-version-configured&quot;: &quot;true&quot;,
+    &quot;last_opened_file_path&quot;: &quot;/Users/gujunhwi/Desktop/4학년/1학기/소프트웨어설계/프로젝트/StudentManagementSystem/Backend/src/main/java/com/iEdu/domain/studentRecord/specialty&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;spring&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   }
-}]]></component>
+}</component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
       <recent name="$PROJECT_DIR$/src/main/java/com/iEdu/domain/studentRecord/specialty" />
@@ -93,7 +118,7 @@
       <recent name="com.softwaredesign.global.redis.config" />
     </key>
   </component>
-  <component name="RunManager" selected="Spring Boot.SoftwaredesignApplication">
+  <component name="RunManager" selected="Spring Boot.IEduApplication">
     <configuration default="true" type="JetRunConfigurationType">
       <method v="2">
         <option name="Make" enabled="true" />
@@ -144,24 +169,6 @@
       <option name="FRAME_DEACTIVATION_UPDATE_POLICY" value="UpdateClassesAndResources" />
       <module name="iEdu.main" />
       <option name="SPRING_BOOT_MAIN_CLASS" value="com.iEdu.IEduApplication" />
-      <method v="2">
-        <option name="Make" enabled="true" />
-      </method>
-    </configuration>
-    <configuration name="SoftwaredesignApplication" type="SpringBootApplicationConfigurationType" factoryName="Spring Boot" nameIsGenerated="true">
-      <option name="FRAME_DEACTIVATION_UPDATE_POLICY" value="UpdateClassesAndResources" />
-      <module name="iEdu.main" />
-      <option name="SPRING_BOOT_MAIN_CLASS" value="com.iEdu.IEduApplication" />
-      <extension name="net.ashald.envfile">
-        <option name="IS_ENABLED" value="false" />
-        <option name="IS_SUBST" value="false" />
-        <option name="IS_PATH_MACRO_SUPPORTED" value="false" />
-        <option name="IS_IGNORE_MISSING_FILES" value="false" />
-        <option name="IS_ENABLE_EXPERIMENTAL_INTEGRATIONS" value="false" />
-        <ENTRIES>
-          <ENTRY IS_ENABLED="true" PARSER="runconfig" IS_EXECUTABLE="false" />
-        </ENTRIES>
-      </extension>
       <method v="2">
         <option name="Make" enabled="true" />
       </method>
@@ -223,6 +230,8 @@
       <workItem from="1743674658344" duration="357000" />
       <workItem from="1743675023908" duration="153000" />
       <workItem from="1743675184400" duration="6935000" />
+      <workItem from="1743686688451" duration="675000" />
+      <workItem from="1743687376446" duration="461000" />
     </task>
     <servers />
   </component>
