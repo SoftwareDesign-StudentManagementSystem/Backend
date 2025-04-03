@@ -1,0 +1,10 @@
+<component name="libraryTable">
+  <library name="Gradle: com.vladmihalcea:hibernate-types-60:2.21.1" type="java-imported" external-system-id="GRADLE">
+    <properties groupId="com.vladmihalcea" artifactId="hibernate-types-60" version="2.21.1" baseVersion="2.21.1" />
+    <CLASSES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.vladmihalcea/hibernate-types-60/2.21.1/28c37c89e0dac045737247499dc2ce85ba6c776a/hibernate-types-60-2.21.1.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>
