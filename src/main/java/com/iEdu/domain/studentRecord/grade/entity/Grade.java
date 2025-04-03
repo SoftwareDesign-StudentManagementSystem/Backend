@@ -15,5 +15,5 @@ import lombok.experimental.SuperBuilder;
 @NoArgsConstructor
 @SuperBuilder
 public class Grade extends BaseEntity {
-
+    private Double score;
 }

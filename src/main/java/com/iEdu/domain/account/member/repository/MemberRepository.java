@@ -21,6 +21,6 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
     Optional<Member> findByEmail(String email);
 
     // 회원 검색하기
-    @Query("SELECT m FROM Member m WHERE m.name LIKE %:keyword% OR m.nickname LIKE %:keyword%")
+    @Query("SELECT m FROM Member m WHERE m.name LIKE %:keyword%")
     Page<Member> findByKeyword(Pageable pageable, @Param("keyword") String keyword);
 }
