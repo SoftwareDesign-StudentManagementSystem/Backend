@@ -1,1 +1,1 @@
-rootProject.name = "softwaredesign"
+rootProject.name = "iEdu"
