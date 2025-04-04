@@ -5,28 +5,30 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="8330398f-21bc-4fc1-b2a7-3478c50fec6a" name="변경" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/modules.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/modules/1223381847/iEdu.iml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/modules/1223381847/iEdu.main.iml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/modules/1223381847/iEdu.test.iml" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/out/production/classes/com/iEdu/domain/account/auth/loginUser/LoginUserDto.class" beforeDir="false" afterPath="$PROJECT_DIR$/out/production/classes/com/iEdu/domain/account/auth/loginUser/LoginUserDto.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/out/production/classes/com/iEdu/domain/account/member/dto/req/MemberForm$MemberFormBuilder.class" beforeDir="false" afterPath="$PROJECT_DIR$/out/production/classes/com/iEdu/domain/account/member/dto/req/MemberForm$MemberFormBuilder.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/out/production/classes/com/iEdu/domain/account/member/dto/req/MemberForm.class" beforeDir="false" afterPath="$PROJECT_DIR$/out/production/classes/com/iEdu/domain/account/member/dto/req/MemberForm.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/out/production/classes/com/iEdu/domain/account/member/dto/res/DetailMemberInfo$DetailMemberInfoBuilder.class" beforeDir="false" afterPath="$PROJECT_DIR$/out/production/classes/com/iEdu/domain/account/member/dto/res/DetailMemberInfo$DetailMemberInfoBuilder.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/out/production/classes/com/iEdu/domain/account/member/dto/res/DetailMemberInfo.class" beforeDir="false" afterPath="$PROJECT_DIR$/out/production/classes/com/iEdu/domain/account/member/dto/res/DetailMemberInfo.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/out/production/classes/com/iEdu/domain/account/member/dto/res/MemberInfo$MemberInfoBuilder.class" beforeDir="false" afterPath="$PROJECT_DIR$/out/production/classes/com/iEdu/domain/account/member/dto/res/MemberInfo$MemberInfoBuilder.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/out/production/classes/com/iEdu/domain/account/member/dto/res/MemberInfo.class" beforeDir="false" afterPath="$PROJECT_DIR$/out/production/classes/com/iEdu/domain/account/member/dto/res/MemberInfo.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/out/production/classes/com/iEdu/domain/account/member/controller/ApiV1MemberController.class" beforeDir="false" afterPath="$PROJECT_DIR$/out/production/classes/com/iEdu/domain/account/member/controller/ApiV1MemberController.class" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/out/production/classes/com/iEdu/domain/account/member/entity/Member$Gender.class" beforeDir="false" afterPath="$PROJECT_DIR$/out/production/classes/com/iEdu/domain/account/member/entity/Member$Gender.class" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/out/production/classes/com/iEdu/domain/account/member/entity/Member$MemberBuilder.class" beforeDir="false" afterPath="$PROJECT_DIR$/out/production/classes/com/iEdu/domain/account/member/entity/Member$MemberBuilder.class" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/out/production/classes/com/iEdu/domain/account/member/entity/Member$MemberBuilderImpl.class" beforeDir="false" afterPath="$PROJECT_DIR$/out/production/classes/com/iEdu/domain/account/member/entity/Member$MemberBuilderImpl.class" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/out/production/classes/com/iEdu/domain/account/member/entity/Member$MemberRole.class" beforeDir="false" afterPath="$PROJECT_DIR$/out/production/classes/com/iEdu/domain/account/member/entity/Member$MemberRole.class" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/out/production/classes/com/iEdu/domain/account/member/entity/Member$State.class" beforeDir="false" afterPath="$PROJECT_DIR$/out/production/classes/com/iEdu/domain/account/member/entity/Member$State.class" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/out/production/classes/com/iEdu/domain/account/member/entity/Member.class" beforeDir="false" afterPath="$PROJECT_DIR$/out/production/classes/com/iEdu/domain/account/member/entity/Member.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/out/production/classes/com/iEdu/domain/account/member/service/MemberService.class" beforeDir="false" afterPath="$PROJECT_DIR$/out/production/classes/com/iEdu/domain/account/member/service/MemberService.class" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/out/production/classes/com/iEdu/domain/account/member/serviceImpl/MemberServiceImpl.class" beforeDir="false" afterPath="$PROJECT_DIR$/out/production/classes/com/iEdu/domain/account/member/serviceImpl/MemberServiceImpl.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/out/production/classes/com/iEdu/global/jpa/MemberBaseEntity.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/iEdu/domain/account/member/repository/MemberRepository.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/iEdu/domain/account/member/repository/MemberRepository.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/out/production/classes/com/iEdu/global/common/response/ApiResponse.class" beforeDir="false" afterPath="$PROJECT_DIR$/out/production/classes/com/iEdu/global/common/response/ApiResponse.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/out/production/classes/com/iEdu/global/common/response/SwDesignPage.class" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/iEdu/domain/account/member/controller/ApiV1MemberController.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/iEdu/domain/account/member/controller/ApiV1MemberController.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/iEdu/domain/account/member/entity/Member.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/iEdu/domain/account/member/entity/Member.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/iEdu/domain/account/member/service/MemberService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/iEdu/domain/account/member/service/MemberService.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/iEdu/domain/account/member/serviceImpl/MemberServiceImpl.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/iEdu/domain/account/member/serviceImpl/MemberServiceImpl.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/iEdu/domain/studentRecord/grade/controller/ApiV1GradeController.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/iEdu/domain/studentRecord/grade/controller/ApiV1GradeController.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/iEdu/domain/studentRecord/grade/dto/req/GradeForm.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/iEdu/domain/studentRecord/grade/dto/req/GradeForm.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/com/iEdu/domain/studentRecord/grade/entity/Grade.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/iEdu/domain/studentRecord/grade/entity/Grade.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/iEdu/domain/studentRecord/grade/repository/GradeRepository.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/iEdu/domain/studentRecord/grade/repository/GradeRepository.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/iEdu/domain/studentRecord/grade/service/GradeService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/iEdu/domain/studentRecord/grade/service/GradeService.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/iEdu/domain/studentRecord/grade/serviceImpl/GradeServiceImpl.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/iEdu/domain/studentRecord/grade/serviceImpl/GradeServiceImpl.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/iEdu/global/common/response/ApiResponse.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/iEdu/global/common/response/ApiResponse.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/iEdu/global/common/response/SwDesignPage.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/iEdu/global/common/response/IEduPage.java" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -94,7 +96,7 @@
     &quot;Spring Boot.SoftwaredesignApplication.executor&quot;: &quot;Run&quot;,
     &quot;git-widget-placeholder&quot;: &quot;koojunhui&quot;,
     &quot;kotlin-language-version-configured&quot;: &quot;true&quot;,
-    &quot;last_opened_file_path&quot;: &quot;/Users/gujunhwi/Desktop/4학년/1학기/소프트웨어설계/프로젝트/StudentManagementSystem/Backend/src/main/java/com/iEdu/domain/studentRecord/specialty&quot;,
+    &quot;last_opened_file_path&quot;: &quot;/Users/gujunhwi/Desktop/4학년/1학기/소프트웨어설계/프로젝트/StudentManagementSystem/Backend/src/main/java/com/iEdu/domain/account/member/repository&quot;,
     &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
     &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
     &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
@@ -106,11 +108,11 @@
 }</component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/src/main/java/com/iEdu/domain/account/member/repository" />
+      <recent name="$PROJECT_DIR$/src/main/java/com/iEdu/domain/account/member/entity" />
       <recent name="$PROJECT_DIR$/src/main/java/com/iEdu/domain/studentRecord/specialty" />
       <recent name="$PROJECT_DIR$/src/main/java/com/iEdu/domain/studentRecord/grade" />
       <recent name="$PROJECT_DIR$/src/main/java/com/softwareDesign/domain/account" />
-      <recent name="$PROJECT_DIR$/src/main/java/com/softwaredesign/global/common/response" />
-      <recent name="$PROJECT_DIR$/src/main/java/com/softwaredesign/global/config" />
     </key>
     <key name="CopyClassDialog.RECENTS_KEY">
       <recent name="com.softwaredesign.global.initData" />
@@ -231,7 +233,10 @@
       <workItem from="1743675023908" duration="153000" />
       <workItem from="1743675184400" duration="6935000" />
       <workItem from="1743686688451" duration="675000" />
-      <workItem from="1743687376446" duration="461000" />
+      <workItem from="1743687376446" duration="11851000" />
+      <workItem from="1743762475670" duration="1233000" />
+      <workItem from="1743763721516" duration="145000" />
+      <workItem from="1743763874076" duration="10000" />
     </task>
     <servers />
   </component>

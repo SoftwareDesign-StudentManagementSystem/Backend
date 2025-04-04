@@ -7,6 +7,8 @@ import lombok.experimental.SuperBuilder;
 import org.hibernate.annotations.DynamicInsert;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Setter
@@ -35,19 +37,22 @@ public class Member extends BaseEntity {
     @Column(length = 300)
     private String profileImageUrl = "";  // 프로필 사진 경로
 
-    private Long grade;
+    @Column(length = 50)
+    private String schoolName;
 
-    private Long classId;
+    private Integer year;
 
-    private Long number;
+    private Integer classId;
+
+    private Integer number;
 
     @Enumerated(EnumType.STRING)
     @Column(length = 20)
     private Subject subject;  // 담당과목(선생님만 해당)
     public enum Subject{
         KOREAN_LANGUAGE, MATHEMATICS, ENGLISH, SOCIAL_STUDIES, HISTORY, ETHICS, ECONOMICS, PHYSICS, CHEMISTRY, BIOLOGY,
-        EARTH_SCIENCE, MUSIC, ART, PHYSICAL_EDUCATION, TECHNOLOGY, HOME_ECONOMICS, COMPUTER_SCIENCE
-    }
+        EARTH_SCIENCE, MUSIC, ART, PHYSICAL_EDUCATION, TECHNOLOGY_AND_HOME_ECONOMICS, COMPUTER_SCIENCE, SECOND_FOREIGN_LANGUAGE
+        }
 
     @Enumerated(EnumType.STRING)
     @Column(length = 6)
@@ -70,4 +75,16 @@ public class Member extends BaseEntity {
     public enum State {
         NORMAL, BANNED
     }
+
+    @OneToMany(mappedBy = "follow", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<MemberFollow> followList = new ArrayList<>();  // 자녀 리스트
+
+    @OneToMany(mappedBy = "followed", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<MemberFollow> followedList = new ArrayList<>();  // 학부모 리스트
+
+    @OneToMany(mappedBy = "followReq", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<MemberFollowReq> followReqList = new ArrayList<>();  // 자녀에게 요청한 리스트
+
+    @OneToMany(mappedBy = "followRec", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<MemberFollowReq> followRecList = new ArrayList<>();  // 자녀가 요청 받은 리스트
 }
