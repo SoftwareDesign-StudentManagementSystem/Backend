@@ -8,7 +8,7 @@ import com.iEdu.domain.account.member.dto.res.MemberInfo;
 import com.iEdu.domain.account.member.entity.MemberPage;
 import com.iEdu.domain.account.member.service.MemberService;
 import com.iEdu.global.common.response.ApiResponse;
-import com.iEdu.global.common.response.SwDesignPage;
+import com.iEdu.global.common.response.IEduPage;
 import com.iEdu.global.exception.ReturnCode;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -71,6 +71,48 @@ public class ApiV1MemberController {
     @GetMapping("/search")
     public ApiResponse<MemberInfo> searchMemberInfo(@ModelAttribute MemberPage request, @RequestParam(value = "keyword") String keyword) {
         Pageable pageable = PageRequest.of(request.getPage(), request.getSize());
-        return ApiResponse.of(SwDesignPage.of(memberService.searchMemberInfo(pageable, keyword)));
+        return ApiResponse.of(IEduPage.of(memberService.searchMemberInfo(pageable, keyword)));
+    }
+
+    // 팔로우 요청하기
+    @PostMapping("/follow/{memberId}")
+    public ApiResponse<String> followReq(@PathVariable("memberId") Long memberId, @LoginUser LoginUserDto loginUser) {
+        memberService.followReq(memberId, loginUser);
+        return ApiResponse.of(ReturnCode.SUCCESS);
+    }
+
+    // 팔로우 요청 취소하기
+    @DeleteMapping("/follow/{memberId}")
+    public ApiResponse<String> cancelFollowReq(@PathVariable("memberId") Long memberId, @LoginUser LoginUserDto loginUser) {
+        memberService.cancelFollowReq(memberId, loginUser);
+        return ApiResponse.of(ReturnCode.SUCCESS);
+    }
+
+    // 팔로우 요청 수락하기
+    @PostMapping("/followReq/{memberId}")
+    public ApiResponse<String> acceptFollowReq(@PathVariable("memberId") Long memberId, @LoginUser LoginUserDto loginUser) {
+        memberService.acceptFollowReq(memberId, loginUser);
+        return ApiResponse.of(ReturnCode.SUCCESS);
+    }
+
+    // 팔로우 요청 거절하기
+    @DeleteMapping("/followReq/{memberId}")
+    public ApiResponse<String> refuseFollowReq(@PathVariable("memberId") Long memberId, @LoginUser LoginUserDto loginUser) {
+        memberService.refuseFollowReq(memberId, loginUser);
+        return ApiResponse.of(ReturnCode.SUCCESS);
+    }
+
+    // 팔로우 취소하기
+    @DeleteMapping("/followMember/{memberId}")
+    public ApiResponse<String> cancelFollow(@PathVariable("memberId") Long memberId, @LoginUser LoginUserDto loginUser) {
+        memberService.cancelFollow(memberId, loginUser);
+        return ApiResponse.of(ReturnCode.SUCCESS);
+    }
+
+    // 팔로워 목록에서 해당 유저 삭제하기
+    @DeleteMapping("/followed/{memberId}")
+    public ApiResponse<String> removeFollowed(@PathVariable("memberId") Long memberId, @LoginUser LoginUserDto loginUser) {
+        memberService.removeFollowed(memberId, loginUser);
+        return ApiResponse.of(ReturnCode.SUCCESS);
     }
 }

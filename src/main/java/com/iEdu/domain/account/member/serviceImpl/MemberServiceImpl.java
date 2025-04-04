@@ -6,7 +6,11 @@ import com.iEdu.domain.account.member.dto.req.MemberForm;
 import com.iEdu.domain.account.member.dto.res.DetailMemberInfo;
 import com.iEdu.domain.account.member.dto.res.MemberInfo;
 import com.iEdu.domain.account.member.entity.Member;
+import com.iEdu.domain.account.member.entity.MemberFollow;
+import com.iEdu.domain.account.member.entity.MemberFollowReq;
 import com.iEdu.domain.account.member.entity.MemberPage;
+import com.iEdu.domain.account.member.repository.MemberFollowRepository;
+import com.iEdu.domain.account.member.repository.MemberFollowReqRepository;
 import com.iEdu.domain.account.member.repository.MemberRepository;
 import com.iEdu.domain.account.member.service.MemberService;
 import com.iEdu.global.exception.ReturnCode;
@@ -25,6 +29,8 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class MemberServiceImpl implements MemberService {
     private final MemberRepository memberRepository;
+    private final MemberFollowRepository memberFollowRepository;
+    private final MemberFollowReqRepository memberFollowReqRepository;
     private final PasswordEncoder passwordEncoder;
     private final AuthService authService;
 
@@ -130,6 +136,103 @@ public class MemberServiceImpl implements MemberService {
         checkPageSize(pageable.getPageSize());
         Page<Member> members = memberRepository.findByKeyword(pageable, keyword);
         return members.map(this::memberConvertToMemberInfo);
+    }
+
+    // 팔로우 요청하기
+    @Override
+    @Transactional
+    public void followReq(Long memberId, LoginUserDto loginUser){
+        Member followReq = loginUser.ConvertToMember();
+        Member followRec = memberRepository.findById(memberId)
+                .orElseThrow(() -> new ServiceException(ReturnCode.USER_NOT_FOUND));
+        // 기존 팔로우 여부 확인
+        boolean already_follow = memberFollowRepository.existsByFollowAndFollowed(followReq, followRec);
+        if (already_follow) {
+            throw new ServiceException(ReturnCode.ALREADY_FOLLOW);
+        }
+        // 중복 요청 방지
+        boolean already_requested = memberFollowReqRepository.existsByFollowReqAndFollowRec(followReq, followRec);
+        if (already_requested) {
+            throw new ServiceException(ReturnCode.ALREADY_REQUESTED);
+        }
+        MemberFollowReq followRequest = MemberFollowReq.builder()
+                .followReq(followReq)
+                .followRec(followRec)
+                .build();
+        memberFollowReqRepository.save(followRequest);
+    }
+
+    // 팔로우 요청 취소하기
+    @Override
+    @Transactional
+    public void cancelFollowReq(Long memberId, LoginUserDto loginUser){
+        Member followReq = loginUser.ConvertToMember();
+        Member followRec = memberRepository.findById(memberId)
+                .orElseThrow(() -> new ServiceException(ReturnCode.USER_NOT_FOUND));
+        MemberFollowReq followRequest = memberFollowReqRepository.findByFollowReqAndFollowRec(followReq, followRec)
+                .orElseThrow(() -> new ServiceException(ReturnCode.REQUEST_NOT_FOUND));
+        memberFollowReqRepository.delete(followRequest);
+    }
+
+    // 팔로우 요청 수락하기
+    @Override
+    @Transactional
+    public void acceptFollowReq(Long memberId, LoginUserDto loginUser){
+        Member requester = memberRepository.findById(memberId)
+                .orElseThrow(() -> new ServiceException(ReturnCode.USER_NOT_FOUND));
+        Member receiver = loginUser.ConvertToMember();
+
+        // 요청받은 사용자의 followRecList에서 요청자 제거 및 followedList에 추가
+        if (receiver.getFollowRecList().removeIf(req -> req.getFollowReq().getId().equals(memberId))) {
+            receiver.getFollowList().add(new MemberFollow(requester, receiver));
+        } else {
+            throw new ServiceException(ReturnCode.REQUEST_NOT_FOUND);
+        }
+        memberRepository.save(receiver);
+    }
+
+    // 팔로우 요청 거절하기
+    @Override
+    @Transactional
+    public void refuseFollowReq(Long memberId, LoginUserDto loginUser){
+        Member requester = memberRepository.findById(memberId)
+                .orElseThrow(() -> new ServiceException(ReturnCode.USER_NOT_FOUND));
+        Member receiver = loginUser.ConvertToMember();
+
+        // 요청받은 사용자의 followRecList에서 요청자 제거
+        if (receiver.getFollowRecList().removeIf(req -> req.getFollowReq().getId().equals(memberId))) {
+        } else {
+            throw new ServiceException(ReturnCode.REQUEST_NOT_FOUND);
+        }
+        memberRepository.save(receiver);
+    }
+
+    // 팔로우 취소하기
+    @Override
+    @Transactional
+    public void cancelFollow(Long memberId, LoginUserDto loginUser){
+        Member follow = loginUser.ConvertToMember();
+        Member followed = memberRepository.findById(memberId)
+                .orElseThrow(() -> new ServiceException(ReturnCode.USER_NOT_FOUND));
+        MemberFollow memberFollow = memberFollowRepository.findByFollowAndFollowed(follow, followed)
+                .orElseThrow(() -> new ServiceException(ReturnCode.FOLLOWER_NOT_FOUND));
+        memberFollowRepository.delete(memberFollow);
+    }
+
+    // 팔로워 목록에서 해당 유저 삭제하기
+    @Override
+    @Transactional
+    public void removeFollowed(Long memberId, LoginUserDto loginUser){
+        Member follow = memberRepository.findById(memberId)
+                .orElseThrow(() -> new ServiceException(ReturnCode.USER_NOT_FOUND));
+        Member followed = loginUser.ConvertToMember();
+
+        // 요청받은 사용자의 followedList에서 요청자 제거
+        if (followed.getFollowedList().removeIf(req -> req.getFollow().getId().equals(memberId))) {
+        } else {
+            throw new ServiceException(ReturnCode.FOLLOWER_NOT_FOUND);
+        }
+        memberRepository.save(followed);
     }
 
     // 요청 페이지 수 제한
