@@ -12,8 +12,7 @@ import java.time.LocalDate;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class MemberForm {
-    private Long accountId;
+public class BasicUpdateForm {
     private String password;
     private String name;
     private String phone;
@@ -21,11 +20,5 @@ public class MemberForm {
     private LocalDate birthday;
     private String profileImageUrl;
     private String schoolName;
-    private Integer year;
-    private Integer classId;
-    private Integer number;
-    private Member.Subject subject;
     private Member.Gender gender;
-    private Member.MemberRole role;
-    private Member.State state;
 }
