@@ -1,20 +1,19 @@
-package com.iEdu.domain.account.member.dto.req;
+package com.iEdu.domain.account.member.dto.res;
 
 import com.iEdu.domain.account.member.entity.Member;
-import lombok.AllArgsConstructor;
+import com.iEdu.domain.account.member.entity.MemberFollow;
+import com.iEdu.domain.account.member.entity.MemberFollowReq;
 import lombok.Builder;
 import lombok.Data;
-import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
+import java.util.List;
 
 @Data
 @Builder
-@NoArgsConstructor
-@AllArgsConstructor
-public class MemberForm {
+public class DetailMemberDto {
+    private Long id;
     private Long accountId;
-    private String password;
     private String name;
     private String phone;
     private String email;
@@ -27,5 +26,8 @@ public class MemberForm {
     private Member.Subject subject;
     private Member.Gender gender;
     private Member.MemberRole role;
-    private Member.State state;
+    private List<SimpleMember> childrenList;
+    private List<SimpleMember> parentList;
+    private List<SimpleMember> followReqList;
+    private List<SimpleMember> followRecList;
 }

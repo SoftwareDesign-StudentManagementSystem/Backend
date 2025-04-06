@@ -10,6 +10,7 @@ public class GradeDto {
     private Long id;
     private Long studentId;
     private String profileImageUrl;
+    private Integer year;
     private Grade.Semester semester;
     private SubjectScore koreanLanguage;
     private SubjectScore mathematics;

@@ -24,6 +24,9 @@ public enum ReturnCode {
     EMAIL_NOT_VERIFIED(400, "AUTH_012", "이메일 인증을 완료 후 회원가입 진행해주세요."),
     SOCIAL_ACCOUNT_ALREADY_IN_USE(400, "AUTH_013", "이미 사용중인 소셜 계정입니다."),
 
+    // Member 관련 에러
+    MEMBER_ALREADY_EXISTS(404, "MEMBER_001", "이미 존재하는 사용자입니다."),
+
     // User 관련 에러
     USER_NOT_FOUND(404, "USER_001", "사용자를 찾을 수 없습니다."),
     DUPLICATE_EMAIL(409, "USER_002", "이미 사용중인 이메일입니다."),
@@ -69,7 +72,7 @@ public enum ReturnCode {
     CHATROOM_NOT_FOUND(404, "CHATROOM_001", "채팅방을 찾을 수 없습니다."),
     CHATROOM_ALREADY_EXISTS(404, "CHATROOM_002", "이미 존재하는 채팅방입니다."),
     CHATROOM_LIMIT_EXCEEDED(404, "CHATROOM_003", "채팅방 참여자 수가 초과했습니다."),
-    MEMBER_ALREADY_EXISTS(404, "CHATROOM_004", "이미 채팅방에 존재하는 사용자입니다."),
+    CHATROOM_MEMBER_ALREADY_EXISTS(404, "CHATROOM_004", "이미 채팅방에 존재하는 사용자입니다."),
     INVALID_KICK_MEMBER(404, "CHATROOM_005", "강퇴할 수 없는 사용자입니다."),
     INVALID_DELEGATE_MEMBER(404, "CHATROOM_006", "위임할 수 없는 사용자입니다."),
 
@@ -84,6 +87,10 @@ public enum ReturnCode {
     // Comment 관련 에러
     COMMENT_NOT_FOUND(404, "COMMENT_001", "댓글을 찾을 수 없습니다."),
     COMMENT_ALREADY_LIKED(404, "COMMENT_002", "이미 좋아요를 누른 댓글입니다."),
+
+    // Gade 관련 에러
+    GRADE_NOT_FOUND(404, "GRADE_001", "성적을 찾을 수 없습니다."),
+    INVALID_SUBJECT(404, "GRADE_002", "존재하지 않는 과목입니다."),
 
     // Friend 관련 에러
     FRIEND_LIMIT_EXCEEDED(400, "FRIEND_002", "친구 수가 초과되었습니다."),

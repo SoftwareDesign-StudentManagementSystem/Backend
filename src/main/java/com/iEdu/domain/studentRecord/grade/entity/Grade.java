@@ -20,6 +20,8 @@ public class Grade extends BaseEntity {
     @JoinColumn(name = "student_id", nullable = false)
     private Member member;
 
+    private Integer year;
+
     @Enumerated(EnumType.STRING)
     @Column(length = 15)
     private Semester semester;

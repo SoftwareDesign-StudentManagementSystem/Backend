@@ -63,9 +63,10 @@ public class Member extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(length = 12, nullable = false)
-    private MemberRole role;  // 역할
+    @Builder.Default
+    private MemberRole role = MemberRole.ROLE_PARENT;  // 역할
     public enum MemberRole {
-        ROLE_STUDENT, ROLE_TEACHER, ROLE_ADMIN
+        ROLE_STUDENT, ROLE_TEACHER, ROLE_ADMIN, ROLE_PARENT
     }
 
     @Enumerated(EnumType.STRING)
@@ -83,8 +84,8 @@ public class Member extends BaseEntity {
     private List<MemberFollow> followedList = new ArrayList<>();  // 학부모 리스트
 
     @OneToMany(mappedBy = "followReq", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<MemberFollowReq> followReqList = new ArrayList<>();  // 자녀에게 요청한 리스트
+    private List<MemberFollowReq> followReqList = new ArrayList<>();  // 팔로우 요청한 자녀 리스트
 
     @OneToMany(mappedBy = "followRec", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<MemberFollowReq> followRecList = new ArrayList<>();  // 자녀가 요청 받은 리스트
+    private List<MemberFollowReq> followRecList = new ArrayList<>();  // 팔로우 요청 받은 학부모 리스트
 }
