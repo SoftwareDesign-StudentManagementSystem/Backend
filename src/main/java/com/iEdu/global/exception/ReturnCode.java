@@ -9,6 +9,7 @@ public enum ReturnCode {
     // Page 관련 에러
     PAGE_REQUEST_FAIL(401, "PAGE_001", "적절하지 않은 페이지 요청입니다."),
 
+
     // Auth 관련 에러 (400번대)
     INVALID_AUTH_TOKEN(401, "AUTH_001", "유효하지 않은 토큰입니다."),
     TOKEN_EXPIRED(401, "AUTH_002", "만료된 토큰입니다."),
