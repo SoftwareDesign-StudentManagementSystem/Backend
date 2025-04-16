@@ -10,7 +10,6 @@ public enum ReturnCode {
     // Page 관련 에러
     PAGE_REQUEST_FAIL(401, "PAGE_001", "적절하지 않은 페이지 요청입니다."),
 
-
     // Auth 관련 에러 (400번대)
     INVALID_AUTH_TOKEN(401, "AUTH_001", "유효하지 않은 토큰입니다."),
     TOKEN_EXPIRED(401, "AUTH_002", "만료된 토큰입니다."),
@@ -94,6 +93,9 @@ public enum ReturnCode {
     // Gade 관련 에러
     GRADE_NOT_FOUND(404, "GRADE_001", "성적을 찾을 수 없습니다."),
     INVALID_SUBJECT(404, "GRADE_002", "존재하지 않는 과목입니다."),
+
+    // ClassId 관련 에러
+    CLASSID_NOT_FOUND(404, "CLASSID_001", "배정 받은 반이 존재하지 않습니다."),
 
     // Friend 관련 에러
     FRIEND_LIMIT_EXCEEDED(400, "FRIEND_002", "친구 수가 초과되었습니다."),

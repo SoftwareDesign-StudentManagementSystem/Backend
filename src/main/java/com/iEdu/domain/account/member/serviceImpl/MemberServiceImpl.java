@@ -117,6 +117,9 @@ public class MemberServiceImpl implements MemberService {
         }
         Integer year = loginUser.getYear();
         Integer classId = loginUser.getClassId();
+        if (classId == null) {
+            throw new ServiceException(ReturnCode.CLASSID_NOT_FOUND);
+        }
         Page<Member> students = memberRepository.findAllByYearAndClassIdAndRole(
                 year, classId, Member.MemberRole.ROLE_STUDENT, pageable
         );
