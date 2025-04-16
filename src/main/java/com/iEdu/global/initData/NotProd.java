@@ -42,11 +42,14 @@ public class NotProd {
     @Bean
     public ApplicationRunner applicationRunner(MemberService memberService){
         return args -> {
+            List<Long> studentIds = new ArrayList<>();
+            List<String> studentPasswords = new ArrayList<>();
+            List<Long> parentIds = new ArrayList<>();
+            List<Long> teacherIds = new ArrayList<>();
+            List<String> teacherPasswords = new ArrayList<>();
+
             // 학생 가데이터 생성 로직
             int emailCounter = 1;
-
-            Long firstStudentAccountId = null;
-            String firstStudentPassword = null;
             Map<Integer, Set<Long>> gradeUsedSuffixMap = new HashMap<>();
 
             for (int grade = 1; grade <= 3; grade++) {
@@ -80,14 +83,15 @@ public class NotProd {
                         Long accountId = Long.parseLong(gradePrefix + randomSuffix);
 
                         String phone = String.format("010-%04d-%04d", random.nextInt(10000), random.nextInt(10000));
-                        String email = "student" + (emailCounter++) + "@shcool.com";
+                        String email = "student" + (emailCounter++) + "@school.com";
 
-                        // 1학년 1반 1번 학생의 정보 저장
-                        if (grade == 1 && classId == 1 && number == 1) {
-                            firstStudentAccountId = accountId;
-                            firstStudentPassword = password;
+                        // 1~3학년 1반 1번 학생의 정보 저장
+                        for (int i = 0; i < 3; i ++) {
+                            if (grade == i + 1 && classId == 1 && number == 1) {
+                                studentIds.add(accountId);
+                                studentPasswords.add(password);
+                            }
                         }
-
                         MemberForm student = MemberForm.builder()
                                 .accountId(accountId)
                                 .password(password)
@@ -110,21 +114,32 @@ public class NotProd {
             System.out.println("-- 테스트용 학생 525명 생성 완료! --");
 
             // 학부모 가데이터 생성 로직
-            int randomTwoDigits = random.nextInt(90) + 10; // 10~99
-            Long parentAccountId = Long.parseLong(firstStudentAccountId + String.valueOf(randomTwoDigits));
+            String[] oldFirstNames = {
+                    "영희", "철수", "말자", "순자", "명자", "춘자", "옥자", "영자", "숙자", "정자",
+                    "갑순", "기순", "옥순", "순희", "순복", "용자", "형철", "병수", "춘호", "길동"
+            };
+            for (int i = 0; i < 3; i++) {
+                String surname = SURNAMES[random.nextInt(SURNAMES.length)];
+                String firstName = oldFirstNames[random.nextInt(oldFirstNames.length)];
+                String fullName = surname + firstName;
 
-            ParentForm parentForm = ParentForm.builder()
-                    .accountId(parentAccountId)
-                    .password(firstStudentPassword)
-                    .name("이선영")
-                    .phone(String.format("010-%04d-%04d", random.nextInt(10000), random.nextInt(10000)))
-                    .email("parent@school.com")
-                    .birthday(generateRandomBirthday(1970, 1995))
-                    .schoolName("송도고등학교")
-                    .gender(Member.Gender.FEMALE)
-                    .build();
-            memberService.signup(parentForm);
-            System.out.println("-- 학부모 1명 회원가입 완료! --");
+                int randomTwoDigits = random.nextInt(90) + 10;
+                Long parentAccountId = Long.parseLong(studentIds.get(i) + String.valueOf(randomTwoDigits));
+
+                ParentForm parentForm = ParentForm.builder()
+                        .accountId(parentAccountId)
+                        .password(studentPasswords.get(i))
+                        .name(fullName)
+                        .phone(String.format("010-%04d-%04d", random.nextInt(10000), random.nextInt(10000)))
+                        .email("parent" + (i + 1) + "@school.com")
+                        .birthday(generateRandomBirthday(1970, 1995))
+                        .schoolName("송도고등학교")
+                        .gender(random.nextBoolean() ? Member.Gender.MALE : Member.Gender.FEMALE)
+                        .build();
+                memberService.signup(parentForm);
+                parentIds.add(parentAccountId);
+            }
+            System.out.println("-- 학부모 3명 회원가입 완료! --");
 
             // 선생님 가데이터 생성 로직
             List<Member.Subject> subjectList = List.of(
@@ -136,13 +151,7 @@ public class NotProd {
                     Member.Subject.SECOND_FOREIGN_LANGUAGE
             );
 
-            String[] oldFirstNames = {
-                    "영희", "철수", "말자", "순자", "명자", "춘자", "옥자", "영자", "숙자", "정자",
-                    "갑순", "기순", "옥순", "순희", "순복", "용자", "형철", "병수", "춘호", "길동"
-            };
-
             int teacherEmailCount = 1;
-
             for (int year = 1; year <= 3; year++) {
                 List<Integer> classIds = getRandomUniqueNumbers(1, 7, 7); // 7개 반 배정용
                 List<Member.Subject> shuffleSubjectList = new ArrayList<>(subjectList);
@@ -183,17 +192,28 @@ public class NotProd {
                     if (i < 7) {
                         teacher.setClassId(classIds.get(i)); // 7명만 반 담당 배정
                     }
+
+                    // 1~3학년 1반 선생님의 정보 저장
+                    for (int j = 1; j < 4; j++){
+                        if (year == j && i < 7 && classIds.get(i) == 1) {
+                            teacherIds.add(accountId);
+                            teacherPasswords.add(password);
+                            break;
+                        }
+                    }
                     adminService.sudoSignup(teacher);
                 }
             }
             System.out.println("-- 테스트용 교사 51명 생성 완료! --");
 
             // 관리자 가데이터 생성 로직
+            Long adminAccountId = Long.parseLong(String.format("%09d", ThreadLocalRandom.current().nextLong(1_000_000_000L)));
+            String adminPassword = "iEdu77";
             String phone = String.format("010-%04d-%04d", random.nextInt(10000), random.nextInt(10000));
 
             MemberForm adminForm = MemberForm.builder()
-                    .accountId(Long.parseLong(String.format("%09d", ThreadLocalRandom.current().nextLong(1_000_000_000L))))
-                    .password("iEdu77")
+                    .accountId(adminAccountId)
+                    .password(adminPassword)
                     .name("김송도")
                     .phone(phone) // 아래 함수 참고
                     .email("admin1@school.com")
@@ -210,7 +230,6 @@ public class NotProd {
             List<Member> teacherList = memberRepository.findAll().stream()
                     .filter(m -> m.getRole() == Member.MemberRole.ROLE_TEACHER)
                     .toList();
-            Random random = new Random();
             for (int studentGrade = 1; studentGrade <= 3; studentGrade++) {
                 int startId = (studentGrade - 1) * 175 + 1;
                 int endId = studentGrade * 175;
@@ -222,7 +241,6 @@ public class NotProd {
                                 .filter(t -> t.getYear() == finalGrade)
                                 .collect(Collectors.toList());
                         for (int subjectIdx = 0; subjectIdx < subjectList.size(); subjectIdx++) {
-                            Member.Subject subject = subjectList.get(subjectIdx);
                             Member teacher = teachersForGrade.get(subjectIdx);
                             LoginUserDto loginUser = LoginUserDto.ConvertToLoginUserDto(teacher);
                             double rawScore = 60 + random.nextDouble() * 40;
@@ -233,23 +251,29 @@ public class NotProd {
                                         .semester(semester)
                                         .score(roundedScore) // 60~100
                                         .build();
-                                try {
-                                    gradeService.createGrade((long) studentId, gradeForm, loginUser);
-                                } catch (Exception e) {
-                                    System.out.println("⚠️ 성적 생성 실패: studentId=" + studentId +
-                                            ", subject=" + subject + ", year=" + targetGrade +
-                                            ", semester=" + semester + ", reason=" + e.getMessage());
-                                }
+                                gradeService.createGrade((long) studentId, gradeForm, loginUser);
                             }
                         }
                     }
                 }
             }
             System.out.println("-- 총 2,100개의 성적 데이터 생성 완료! --");
-            System.out.println("-- 1학년 1반 1번 학생 --");
-            System.out.println("accountId: " + firstStudentAccountId);
-            System.out.println("parentId: " + parentAccountId);
-            System.out.println("password: " + firstStudentPassword);
+            System.out.println("\n\n--- 학생/학부모 계정 정보 (1~3학년 1반 1번 학생/학부모) ---");
+            for (int i = 0; i < studentIds.size(); i++) {
+                System.out.println("\n--- " + (i + 1) + "학년 1반 1번 학생 ---");
+                System.out.println("계정 ID: " + studentIds.get(i));
+                System.out.println("학부모 계정 ID: " + parentIds.get(i));
+                System.out.println("비밀번호: " + studentPasswords.get(i));
+            }
+            System.out.println("\n\n--- 선생님 계정 정보 (1~3학년 1반 선생님) ---");
+            for (int i = 0; i < teacherIds.size(); i++) {
+                System.out.println("\n--- " + (i + 1) + "학년 1반 선생님 ---");
+                System.out.println("계정 ID: " + teacherIds.get(i));
+                System.out.println("비밀번호: " + teacherPasswords.get(i));
+            }
+            System.out.println("\n\n--- 관리자 계정 정보 ---");
+            System.out.println("계정 ID: " + adminAccountId);
+            System.out.println("비밀번호: " + adminPassword);
         };
     }
 
