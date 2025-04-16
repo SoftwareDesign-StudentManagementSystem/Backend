@@ -19,8 +19,10 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
     // 계정ID&역할로 회원 존재여부 확인
     boolean existsByAccountIdAndRole(Long accountId, Member.MemberRole role);
 
+    // 이메일&역할로 회원 존재여부 확인
+    boolean existsByEmailAndRole(String email, Member.MemberRole role);
+
     // 이메일로 회원 조회
-    @EntityGraph(value = "Member.withAllRelations", type = EntityGraph.EntityGraphType.LOAD)
     Optional<Member> findByEmail(String email);
 
     // 계정ID로 회원 조회

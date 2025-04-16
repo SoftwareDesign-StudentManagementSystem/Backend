@@ -2,11 +2,11 @@ spring:
   datasource:
     url: jdbc:postgresql://NEED_TO_INPUT:5432/meta_db
     username: admin
-    password: ${spring.datasource.password}
+    password: ${POSTGRES_PASSWORD}
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: create
     properties:
       hibernate:
         show-sql: false      # 운영 환경에서는 보통 false로 설정
@@ -14,7 +14,7 @@ spring:
     database-platform: org.hibernate.dialect.PostgreSQLDialect
   data:
     redis:
-      host: letzgo-redis
+      host: redis_container
       port: 6379
 
 logging:

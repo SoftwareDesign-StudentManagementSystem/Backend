@@ -2,6 +2,7 @@ package com.iEdu.domain.studentRecord.grade.serviceImpl;
 
 import com.iEdu.domain.account.auth.loginUser.LoginUserDto;
 import com.iEdu.domain.account.member.entity.Member;
+import com.iEdu.domain.account.member.entity.MemberFollow;
 import com.iEdu.domain.account.member.entity.MemberPage;
 import com.iEdu.domain.account.member.repository.MemberRepository;
 import com.iEdu.domain.studentRecord.grade.dto.req.GradeForm;
@@ -71,9 +72,11 @@ public class GradeServiceImpl implements GradeService {
 
         } else if (role == Member.MemberRole.ROLE_PARENT) {
             // 학부모: 본인의 followList에 있는 학생(자녀)만 조회 가능
-            boolean isFollowed = loginUser.getFollowList().stream()
-                    .anyMatch(follow -> follow.getFollow().getId().equals(studentId));
-            if (!isFollowed) {
+            Member parent = loginUser.ConvertToMember();
+            boolean isMyChild = parent.getFollowList().stream()
+                    .map(MemberFollow::getFollowed)
+                    .anyMatch(child -> child != null && child.getId().equals(studentId));
+            if (!isMyChild) {
                 throw new ServiceException(ReturnCode.NOT_AUTHORIZED);
             }
             Page<Grade> gradePage = gradeRepository.findAllByMemberId(studentId, sortedPageable);
@@ -106,14 +109,15 @@ public class GradeServiceImpl implements GradeService {
         if (role == Member.MemberRole.ROLE_TEACHER) {
             // 선생님: 학생만 조회 가능
             Grade grade = gradeRepository.findByMemberIdAndYearAndSemester(studentId, year, semesterEnum)
-                    .orElseThrow(() -> new ServiceException(ReturnCode.USER_NOT_FOUND));
+                    .orElseThrow(() -> new ServiceException(ReturnCode.GRADE_NOT_FOUND));
             return convertToGradeDto(grade);
-
         } else if (role == Member.MemberRole.ROLE_PARENT) {
             // 학부모: 본인의 followList에 있는 학생(자녀)만 조회 가능
-            boolean isFollowed = loginUser.getFollowList().stream()
-                    .anyMatch(follow -> follow.getFollow().getId().equals(studentId));
-            if (!isFollowed) {
+            Member parent = loginUser.ConvertToMember();
+            boolean isMyChild = parent.getFollowList().stream()
+                    .map(MemberFollow::getFollowed)
+                    .anyMatch(child -> child != null && child.getId().equals(studentId));
+            if (!isMyChild) {
                 throw new ServiceException(ReturnCode.NOT_AUTHORIZED);
             }
             Grade grade = gradeRepository.findByMemberIdAndYearAndSemester(studentId, year, semesterEnum)
@@ -238,6 +242,8 @@ public class GradeServiceImpl implements GradeService {
     }
 
     // 학생 성적 삭제 [선생님 권한]
+    @Override
+    @Transactional
     public void deleteGrade(Long gradeId, LoginUserDto loginUser){
         // ROLE_TEACHER 아닌 경우 예외 처리
         if (loginUser.getRole() != Member.MemberRole.ROLE_TEACHER) {

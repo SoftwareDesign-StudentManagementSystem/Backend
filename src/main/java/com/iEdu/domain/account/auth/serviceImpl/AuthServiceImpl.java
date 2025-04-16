@@ -36,14 +36,14 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public Auth login(LoginForm loginForm, boolean isSocialLogin) {
-        Member member = memberRepository.findByEmail(loginForm.getEmail())
+        Member member = memberRepository.findByAccountId(loginForm.getAccountId())
                 .orElseThrow(() -> new ServiceException(ReturnCode.USER_NOT_FOUND));
         // 소셜 로그인이라면 비밀번호 검증을 생략
         if (!isSocialLogin && !passwordEncoder.matches(loginForm.getPassword(), member.getPassword())) {
             throw new RuntimeException("비밀번호가 올바르지 않습니다.");
         }
-        String accessToken = jwtTokenProvider.generateToken(member.getEmail(), accessTokenExpiration);
-        String refreshToken = jwtTokenProvider.generateToken(member.getEmail(), refreshTokenExpiration);
+        String accessToken = jwtTokenProvider.generateToken(member.getAccountId(), accessTokenExpiration);
+        String refreshToken = jwtTokenProvider.generateToken(member.getAccountId(), refreshTokenExpiration);
         // Refresh Token을 Redis에 저장
         refreshTokenService.saveRefreshToken(member.getId().toString(), refreshToken, refreshTokenExpiration);
         return new Auth(accessToken, refreshToken);
@@ -73,8 +73,8 @@ public class AuthServiceImpl implements AuthService {
         if (!jwtTokenProvider.validateToken(storedRefreshToken)) {
             throw new RuntimeException("리프레시 토큰이 만료되었습니다.");
         }
-        String email = jwtTokenProvider.getEmailFromToken(storedRefreshToken);
-        String newAccessToken = jwtTokenProvider.generateToken(email, accessTokenExpiration);
+        Long accountId = jwtTokenProvider.getAccountIdFromToken(storedRefreshToken);
+        String newAccessToken = jwtTokenProvider.generateToken(accountId, accessTokenExpiration);
 
         return new Auth(newAccessToken, storedRefreshToken);
     }

@@ -58,6 +58,9 @@ dependencies {
 	implementation("software.amazon.awssdk:s3")
 	implementation("com.vladmihalcea:hibernate-types-60:2.21.1")
 	implementation("io.github.cdimascio:dotenv-java:2.2.0")
+
+	// swagger
+	implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.6")
 }
 
 tasks.withType<Test> {

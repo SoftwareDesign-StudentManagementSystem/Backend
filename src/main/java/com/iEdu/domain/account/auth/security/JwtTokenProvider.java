@@ -31,9 +31,9 @@ public class JwtTokenProvider {
     }
 
     // JWT 생성
-    public String generateToken(String email, long expiration) {
+    public String generateToken(Long accountId, long expiration) {
         return Jwts.builder()
-                .subject(email)
+                .subject(String.valueOf(accountId))
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + expiration))
                 .signWith(key, Jwts.SIG.HS256)  // 필드 key 사용
@@ -63,13 +63,14 @@ public class JwtTokenProvider {
     }
 
     // 이메일 추출
-    public String getEmailFromToken(String token) {
-        return Jwts.parser()
+    public Long getAccountIdFromToken(String token) {
+        String subject = Jwts.parser()
                 .verifyWith(key)
                 .build()
                 .parseSignedClaims(token)
                 .getPayload()
                 .getSubject();
+        return Long.parseLong(subject);
     }
 
     // 요청 헤더에서 JWT 추출

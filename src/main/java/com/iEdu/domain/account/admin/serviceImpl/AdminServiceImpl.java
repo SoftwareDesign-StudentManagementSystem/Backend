@@ -7,10 +7,15 @@ import com.iEdu.domain.account.member.dto.res.DetailMemberDto;
 import com.iEdu.domain.account.member.dto.res.MemberDto;
 import com.iEdu.domain.account.member.dto.res.SimpleMember;
 import com.iEdu.domain.account.member.entity.Member;
+import com.iEdu.domain.account.member.entity.MemberFollow;
+import com.iEdu.domain.account.member.entity.MemberFollowReq;
 import com.iEdu.domain.account.member.entity.MemberPage;
+import com.iEdu.domain.account.member.repository.MemberFollowRepository;
 import com.iEdu.domain.account.member.repository.MemberRepository;
+import com.iEdu.domain.account.member.service.MemberService;
 import com.iEdu.global.exception.ReturnCode;
 import com.iEdu.global.exception.ServiceException;
+import com.iEdu.global.s3.S3Service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -28,6 +33,9 @@ import java.util.stream.Collectors;
 public class AdminServiceImpl implements AdminService {
     private final MemberRepository memberRepository;
     private final PasswordEncoder passwordEncoder;
+    private final S3Service s3Service;
+    private final MemberService memberService;
+    private final MemberFollowRepository memberFollowRepository;
 
     // 회원가입 [가데이터/초기관리자 생성]
     @Override
@@ -45,7 +53,6 @@ public class AdminServiceImpl implements AdminService {
                 .phone(memberForm.getPhone())
                 .email(memberForm.getEmail())
                 .birthday(memberForm.getBirthday())
-                .profileImageUrl(memberForm.getProfileImageUrl())
                 .schoolName(memberForm.getSchoolName())
                 .year(memberForm.getYear())
                 .classId(memberForm.getClassId())
@@ -79,7 +86,6 @@ public class AdminServiceImpl implements AdminService {
                 .phone(memberForm.getPhone())
                 .email(memberForm.getEmail())
                 .birthday(memberForm.getBirthday())
-                .profileImageUrl(memberForm.getProfileImageUrl())
                 .schoolName(memberForm.getSchoolName())
                 .year(memberForm.getYear())
                 .classId(memberForm.getClassId())
@@ -122,59 +128,56 @@ public class AdminServiceImpl implements AdminService {
     // 회원정보 수정 [관리자 권한]
     @Override
     @Transactional
-    public void adminUpdateMemberInfo(MemberForm memberForm, LoginUserDto loginUser) {
+    public void adminUpdateMemberInfo(MemberForm memberForm, Long memberId, LoginUserDto loginUser) {
         // ROLE_ADMIN이 아닌 경우 예외 처리
         if (loginUser.getRole() != Member.MemberRole.ROLE_ADMIN) {
             throw new ServiceException(ReturnCode.NOT_AUTHORIZED);
         }
+        Member member = memberRepository.findById(memberId)
+                .orElseThrow(() -> new ServiceException(ReturnCode.USER_NOT_FOUND));
         if (memberForm.getAccountId() != null) {
-            loginUser.setAccountId(memberForm.getAccountId());
+            member.setAccountId(memberForm.getAccountId());
         }
         if (memberForm.getPassword() != null) {
-            loginUser.setPassword(BCrypt.hashpw(memberForm.getPassword(), BCrypt.gensalt()));
+            member.setPassword(BCrypt.hashpw(memberForm.getPassword(), BCrypt.gensalt()));
         }
         if (memberForm.getName() != null) {
-            loginUser.setName(memberForm.getName());
+            member.setName(memberForm.getName());
         }
         if (memberForm.getPhone() != null) {
-            loginUser.setPhone(memberForm.getPhone());
+            member.setPhone(memberForm.getPhone());
         }
         if (memberForm.getEmail() != null) {
-            loginUser.setEmail(memberForm.getEmail());
+            member.setEmail(memberForm.getEmail());
         }
         if (memberForm.getBirthday() != null) {
-            loginUser.setBirthday(memberForm.getBirthday());
-        }
-        if (memberForm.getProfileImageUrl() != null) {
-            loginUser.setProfileImageUrl(memberForm.getProfileImageUrl());
+            member.setBirthday(memberForm.getBirthday());
         }
         if (memberForm.getSchoolName() != null) {
-            loginUser.setSchoolName(memberForm.getSchoolName());
+            member.setSchoolName(memberForm.getSchoolName());
         }
         if (memberForm.getYear() != null) {
-            loginUser.setYear(memberForm.getYear());
+            member.setYear(memberForm.getYear());
         }
         if (memberForm.getClassId() != null) {
-            loginUser.setClassId(memberForm.getClassId());
+            member.setClassId(memberForm.getClassId());
         }
         if (memberForm.getNumber() != null) {
-            loginUser.setNumber(memberForm.getNumber());
+            member.setNumber(memberForm.getNumber());
         }
         if (memberForm.getSubject() != null) {
-            loginUser.setSubject(memberForm.getSubject());
+            member.setSubject(memberForm.getSubject());
         }
         if (memberForm.getGender() != null) {
-            loginUser.setGender(memberForm.getGender());
+            member.setGender(memberForm.getGender());
         }
         if (memberForm.getRole() != null) {
-            loginUser.setRole(memberForm.getRole());
+            member.setRole(memberForm.getRole());
         }
         if (memberForm.getState() != null) {
-            loginUser.setState(memberForm.getState());
+            member.setState(memberForm.getState());
         }
-        // LoginUserDto를 Member 엔티티로 변환
-        Member memberEntity = loginUser.ConvertToMember();
-        memberRepository.save(memberEntity);
+        memberRepository.save(member);
     }
 
     // 계정ID&이름으로 회원 검색하기 [관리자 권한]
@@ -190,24 +193,48 @@ public class AdminServiceImpl implements AdminService {
         return members.map(this::memberConvertToMemberInfo);
     }
 
-    // 학생의 팔로워 목록에서 학부모 삭제하기 [관리자 권한]
+    // 유저의 프로필 사진 삭제하기 [관리자 권한]
     @Override
     @Transactional
-    public void removeFollowed(Long memberId, LoginUserDto loginUser){
+    public void deleteUserProfileImage(Long memberId, LoginUserDto loginUser){
         // ROLE_ADMIN이 아닌 경우 예외 처리
         if (loginUser.getRole() != Member.MemberRole.ROLE_ADMIN) {
             throw new ServiceException(ReturnCode.NOT_AUTHORIZED);
         }
-        Member follow = memberRepository.findById(memberId)
+        Member member = memberRepository.findById(memberId)
                 .orElseThrow(() -> new ServiceException(ReturnCode.USER_NOT_FOUND));
-        Member followed = loginUser.ConvertToMember();
-
-        // 요청받은 사용자의 followedList에서 요청자 제거
-        if (followed.getFollowedList().removeIf(req -> req.getFollow().getId().equals(memberId))) {
-        } else {
-            throw new ServiceException(ReturnCode.FOLLOWER_NOT_FOUND);
+        if(member.getProfileImageUrl() != null){
+            s3Service.deleteFile(member.getProfileImageUrl());
         }
-        memberRepository.save(followed);
+        member.setProfileImageUrl(null);
+    }
+
+    // 학생의 팔로워 목록에서 학부모 삭제하기 [관리자 권한]
+    @Override
+    @Transactional
+    public void removeFollowed(Long studentId, Long parentId, LoginUserDto loginUser){
+        // ROLE_ADMIN이 아닌 경우 예외 처리
+        if (loginUser.getRole() != Member.MemberRole.ROLE_ADMIN) {
+            throw new ServiceException(ReturnCode.NOT_AUTHORIZED);
+        }
+        Member followed = memberRepository.findById(studentId)
+                .orElseThrow(() -> new ServiceException(ReturnCode.USER_NOT_FOUND));
+        Member follow = memberRepository.findById(parentId)
+                .orElseThrow(() -> new ServiceException(ReturnCode.USER_NOT_FOUND));
+        MemberFollow memberFollow = memberFollowRepository.findByFollowAndFollowed(follow, followed)
+                .orElseThrow(() -> new ServiceException(ReturnCode.FOLLOWER_NOT_FOUND));
+        memberFollowRepository.delete(memberFollow);
+    }
+
+    // 회원 삭제하기 [관리자 권한]
+    public void removeMember(Long memberId, LoginUserDto loginUser){
+        // ROLE_ADMIN이 아닌 경우 예외 처리
+        if (loginUser.getRole() != Member.MemberRole.ROLE_ADMIN) {
+            throw new ServiceException(ReturnCode.NOT_AUTHORIZED);
+        }
+        Member member = memberRepository.findById(memberId)
+                .orElseThrow(() -> new ServiceException(ReturnCode.USER_NOT_FOUND));
+        memberService.deleteMember(LoginUserDto.ConvertToLoginUserDto(member));
     }
 
     // 요청 페이지 수 제한
@@ -218,7 +245,7 @@ public class AdminServiceImpl implements AdminService {
         }
     }
 
-    // Member를 MemberInfo로 변환
+    // Member를 MemberDto로 변환
     private MemberDto memberConvertToMemberInfo(Member member) {
         return MemberDto.builder()
                 .id(member.getId())
@@ -228,11 +255,12 @@ public class AdminServiceImpl implements AdminService {
                 .year(member.getYear())
                 .classId(member.getClassId())
                 .number(member.getNumber())
+                .subject(member.getSubject())
                 .role(member.getRole())
                 .build();
     }
 
-    // Member를 DetailMemberInfo로 변환
+    // Member를 DetailMemberDto로 변환
     private DetailMemberDto memberConvertToDetailMemberInfo(Member member) {
         return DetailMemberDto.builder()
                 .id(member.getId())

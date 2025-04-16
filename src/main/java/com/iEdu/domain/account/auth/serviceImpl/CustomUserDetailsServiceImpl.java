@@ -18,11 +18,17 @@ public class CustomUserDetailsServiceImpl implements UserDetailsService {
 
     @Override
     @Transactional
-    public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
-        Member member = memberRepository.findByEmail(email)
-                .orElseThrow(() -> new UsernameNotFoundException("사용자를 찾을 수 없습니다: " + email));
+    public UserDetails loadUserByUsername(String accountIdStr) throws UsernameNotFoundException {
+        Long accountId;
+        try {
+            accountId = Long.parseLong(accountIdStr);
+        } catch (NumberFormatException e) {
+            throw new UsernameNotFoundException("올바르지 않은 accountId입니다: " + accountIdStr);
+        }
+        Member member = memberRepository.findByAccountId(accountId)
+                .orElseThrow(() -> new UsernameNotFoundException("사용자를 찾을 수 없습니다: " + accountId));
         return org.springframework.security.core.userdetails.User.builder()
-                .username(member.getEmail())
+                .username(String.valueOf(member.getAccountId()))
                 .password(member.getPassword()) // 패스워드는 보통 사용 안 함 (JWT 기반 인증)
                 .authorities("ROLE_USER") // 권한 설정 (추후 DB에서 가져올 수 있음)
                 .build();
