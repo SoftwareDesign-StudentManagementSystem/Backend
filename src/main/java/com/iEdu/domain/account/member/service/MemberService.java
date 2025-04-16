@@ -2,6 +2,7 @@ package com.iEdu.domain.account.member.service;
 
 import com.iEdu.domain.account.auth.loginUser.LoginUserDto;
 import com.iEdu.domain.account.member.dto.req.BasicUpdateForm;
+import com.iEdu.domain.account.member.dto.req.FollowForm;
 import com.iEdu.domain.account.member.dto.req.ParentForm;
 import com.iEdu.domain.account.member.dto.req.TeacherUpdateForm;
 import com.iEdu.domain.account.member.dto.res.DetailMemberDto;
@@ -47,7 +48,7 @@ public interface MemberService {
     Page<MemberDto> searchMemberInfo(Pageable pageable, String keyword, LoginUserDto loginUser);
 
     // 팔로우 요청하기 [학부모 권한]
-    void followReq(Long memberId, LoginUserDto loginUser);
+    void followReq(FollowForm followForm, LoginUserDto loginUser);
 
     // 팔로우 요청 취소하기 [학부모 권한]
     void cancelFollowReq(Long memberId, LoginUserDto loginUser);

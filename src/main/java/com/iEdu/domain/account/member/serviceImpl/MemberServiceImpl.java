@@ -3,6 +3,7 @@ package com.iEdu.domain.account.member.serviceImpl;
 import com.iEdu.domain.account.auth.loginUser.LoginUserDto;
 import com.iEdu.domain.account.auth.service.AuthService;
 import com.iEdu.domain.account.member.dto.req.BasicUpdateForm;
+import com.iEdu.domain.account.member.dto.req.FollowForm;
 import com.iEdu.domain.account.member.dto.req.ParentForm;
 import com.iEdu.domain.account.member.dto.req.TeacherUpdateForm;
 import com.iEdu.domain.account.member.dto.res.DetailMemberDto;
@@ -329,14 +330,19 @@ public class MemberServiceImpl implements MemberService {
     // 팔로우 요청하기 [학부모 권한]
     @Override
     @Transactional
-    public void followReq(Long memberId, LoginUserDto loginUser){
+    public void followReq(FollowForm followForm, LoginUserDto loginUser){
         // ROLE_PARENT 아닌 경우 예외 처리
         if (loginUser.getRole() != Member.MemberRole.ROLE_PARENT) {
             throw new ServiceException(ReturnCode.NOT_AUTHORIZED);
         }
         Member followReq = loginUser.ConvertToMember();
-        Member followRec = memberRepository.findById(memberId)
-                .orElseThrow(() -> new ServiceException(ReturnCode.USER_NOT_FOUND));
+        Member followRec = memberRepository.findByNameAndYearAndClassIdAndNumberAndBirthday(
+                followForm.getName(),
+                followForm.getYear(),
+                followForm.getClassId(),
+                followForm.getNumber(),
+                followForm.getBirthday()
+        ).orElseThrow(() -> new ServiceException(ReturnCode.USER_NOT_FOUND));
         // 기존 팔로우 여부 확인
         boolean already_follow = memberFollowRepository.existsByFollowAndFollowed(followReq, followRec);
         if (already_follow) {
