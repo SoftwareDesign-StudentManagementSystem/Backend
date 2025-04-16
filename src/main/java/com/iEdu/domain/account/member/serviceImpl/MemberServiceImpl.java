@@ -3,7 +3,6 @@ package com.iEdu.domain.account.member.serviceImpl;
 import com.iEdu.domain.account.auth.loginUser.LoginUserDto;
 import com.iEdu.domain.account.auth.service.AuthService;
 import com.iEdu.domain.account.member.dto.req.BasicUpdateForm;
-import com.iEdu.domain.account.member.dto.req.MemberForm;
 import com.iEdu.domain.account.member.dto.req.ParentForm;
 import com.iEdu.domain.account.member.dto.req.TeacherUpdateForm;
 import com.iEdu.domain.account.member.dto.res.DetailMemberDto;
@@ -613,4 +612,12 @@ public class MemberServiceImpl implements MemberService {
                 )
                 .build();
     }
+
+    @Override
+    public String getMemberNameById(Long memberId) {
+        Member member = memberRepository.findById(memberId)
+                .orElseThrow(() -> new RuntimeException("존재하지 않는 회원입니다."));
+        return member.getName();
+    }
+
 }

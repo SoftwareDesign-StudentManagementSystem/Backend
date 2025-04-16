@@ -2,7 +2,6 @@ package com.iEdu.domain.account.member.service;
 
 import com.iEdu.domain.account.auth.loginUser.LoginUserDto;
 import com.iEdu.domain.account.member.dto.req.BasicUpdateForm;
-import com.iEdu.domain.account.member.dto.req.MemberForm;
 import com.iEdu.domain.account.member.dto.req.ParentForm;
 import com.iEdu.domain.account.member.dto.req.TeacherUpdateForm;
 import com.iEdu.domain.account.member.dto.res.DetailMemberDto;
@@ -61,4 +60,8 @@ public interface MemberService {
 
     // 팔로우 취소하기 [학부모 권한]
     void cancelFollow(Long memberId, LoginUserDto loginUser);
+
+    // 주어진 ID로 회원(Member)을 조회
+    String getMemberNameById(Long memberId);
+
 }
