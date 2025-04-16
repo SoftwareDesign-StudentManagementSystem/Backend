@@ -8,6 +8,7 @@ import com.iEdu.domain.studentRecord.specialty.dto.res.SpecialtyDto;
 import com.iEdu.domain.studentRecord.specialty.service.SpecialtyService;
 import com.iEdu.global.common.response.ApiResponse;
 import com.iEdu.global.exception.ReturnCode;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -17,6 +18,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/rest-api/v1/specialty")
 @RequiredArgsConstructor
+@Tag(name = "Specialty", description = "특기사항 API")
 public class ApiV1SpecialtyController {
 
     private final SpecialtyService specialtyService;

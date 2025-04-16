@@ -3,6 +3,7 @@ package com.iEdu.domain.studentRecord.feedback.controller;
 import com.iEdu.domain.studentRecord.feedback.dto.req.FeedbackForm;
 import com.iEdu.domain.studentRecord.feedback.dto.res.FeedbackDto;
 import com.iEdu.domain.studentRecord.feedback.service.FeedbackService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -13,6 +14,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/rest-api/v1/feedback")
 @RequiredArgsConstructor
+@Tag(name = "Feedback", description = "피드백 API")
 public class ApiV1FeedbackController {
 
     private final FeedbackService feedbackService;
