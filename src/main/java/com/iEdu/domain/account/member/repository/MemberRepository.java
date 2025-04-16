@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDate;
 import java.util.Optional;
 
 @Repository
@@ -47,4 +48,8 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
     // 학년&반&번호로 학생 조회
     Page<Member> findByYearAndClassIdAndNumberAndRole(
             Integer year, Integer classId, Integer number, Member.MemberRole role, Pageable pageable);
+
+    // 이름&학년&반&번호&생년월일로 학생 팔로우
+    Optional<Member> findByNameAndYearAndClassIdAndNumberAndBirthday(
+            String name, Integer year, Integer classId, Integer number, LocalDate birthday);
 }

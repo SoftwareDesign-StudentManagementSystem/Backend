@@ -2,10 +2,7 @@ package com.iEdu.domain.account.member.controller;
 
 import com.iEdu.domain.account.auth.loginUser.LoginUser;
 import com.iEdu.domain.account.auth.loginUser.LoginUserDto;
-import com.iEdu.domain.account.member.dto.req.BasicUpdateForm;
-import com.iEdu.domain.account.member.dto.req.MemberForm;
-import com.iEdu.domain.account.member.dto.req.ParentForm;
-import com.iEdu.domain.account.member.dto.req.TeacherUpdateForm;
+import com.iEdu.domain.account.member.dto.req.*;
 import com.iEdu.domain.account.member.dto.res.DetailMemberDto;
 import com.iEdu.domain.account.member.dto.res.MemberDto;
 import com.iEdu.domain.account.member.entity.MemberPage;
@@ -128,9 +125,10 @@ public class ApiV1MemberController {
 
     // 팔로우 요청하기 [학부모 권한]
     @Operation(summary = "팔로우 요청하기 [학부모 권한]")
-    @PostMapping("/follow/{memberId}")
-    public ApiResponse<String> followReq(@PathVariable("memberId") Long memberId, @LoginUser LoginUserDto loginUser) {
-        memberService.followReq(memberId, loginUser);
+    @PostMapping("/follow")
+    public ApiResponse<String> followReq(@RequestBody @Valid FollowForm followForm,
+                                         @LoginUser LoginUserDto loginUser) {
+        memberService.followReq(followForm, loginUser);
         return ApiResponse.of(ReturnCode.SUCCESS);
     }
 
