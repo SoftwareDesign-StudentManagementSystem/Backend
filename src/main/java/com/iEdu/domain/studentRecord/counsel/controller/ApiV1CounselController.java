@@ -18,7 +18,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/rest-api/v1/counsel")
 @RequiredArgsConstructor
-@Tag(name = "Counsel API", description = "상담 기록 등록 및 조회 API")
+@Tag(name = "Counsel", description = "상담 API")
 public class ApiV1CounselController {
 
     private final CounselService counselService;
