@@ -18,12 +18,13 @@ import java.util.List;
 @SuperBuilder
 @DynamicInsert
 public class Member extends BaseEntity {
+    @Column(nullable = false)
     private Long accountId;
 
-    @Column(length = 1000)
+    @Column(length = 1000, nullable = false)
     private String password;
 
-    @Column(length = 20)
+    @Column(length = 20, nullable = false)
     private String name;
 
     @Column(length = 20)
@@ -32,12 +33,13 @@ public class Member extends BaseEntity {
     @Column(length = 50)
     private String email;
 
+    @Column(nullable = false)
     private LocalDate birthday;
 
     @Column(length = 300)
     private String profileImageUrl = "";  // 프로필 사진 경로
 
-    @Column(length = 50)
+    @Column(length = 50, nullable = false)
     private String schoolName;
 
     private Integer year;
@@ -47,15 +49,15 @@ public class Member extends BaseEntity {
     private Integer number;
 
     @Enumerated(EnumType.STRING)
-    @Column(length = 20)
+    @Column(length = 29)
     private Subject subject;  // 담당과목(선생님만 해당)
     public enum Subject{
         KOREAN_LANGUAGE, MATHEMATICS, ENGLISH, SOCIAL_STUDIES, HISTORY, ETHICS, ECONOMICS, PHYSICS, CHEMISTRY, BIOLOGY,
         EARTH_SCIENCE, MUSIC, ART, PHYSICAL_EDUCATION, TECHNOLOGY_AND_HOME_ECONOMICS, COMPUTER_SCIENCE, SECOND_FOREIGN_LANGUAGE
-        }
+    }
 
     @Enumerated(EnumType.STRING)
-    @Column(length = 6)
+    @Column(length = 6, nullable = false)
     private Gender gender;  // 성별
     public enum Gender {
         MALE, FEMALE;

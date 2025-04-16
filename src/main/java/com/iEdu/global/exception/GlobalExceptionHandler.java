@@ -1,6 +1,7 @@
 package com.iEdu.global.exception;
 
 import com.iEdu.domain.account.auth.exception.UnauthorizedException;
+import com.iEdu.global.common.response.ApiResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -14,5 +15,18 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ex.getMessage());
     }
 
-    // 다른 예외 처리 메서드들을 추가할 수 있습니다.
+    @ExceptionHandler(ServiceException.class)
+    public ResponseEntity<ApiResponse<Void>> handleServiceException(ServiceException ex) {
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.of(ex.getReturnCode()));
+    }
+
+    // 예외 누락 방지를 위해 최종 catch-all 핸들러도 추천
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ApiResponse<Void>> handleGeneralException(Exception ex) {
+        return ResponseEntity
+                .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ApiResponse.of(ReturnCode.INTERNAL_SERVER_ERROR));
+    }
 }

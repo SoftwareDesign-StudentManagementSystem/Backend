@@ -18,7 +18,6 @@ public class TeacherUpdateForm {
     private String phone;
     private String email;
     private LocalDate birthday;
-    private String profileImageUrl;
     private String schoolName;
     private Integer year;
     private Integer classId;

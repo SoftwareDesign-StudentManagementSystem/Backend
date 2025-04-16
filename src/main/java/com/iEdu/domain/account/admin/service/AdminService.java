@@ -22,11 +22,17 @@ public interface AdminService {
     DetailMemberDto getMemberDetailInfo(Long memberId, LoginUserDto loginUser);
 
     // 회원정보 수정 [관리자 권한]
-    void adminUpdateMemberInfo(MemberForm memberForm, LoginUserDto loginUser);
+    void adminUpdateMemberInfo(MemberForm memberForm, Long memberId, LoginUserDto loginUser);
 
     // 계정ID&이름으로 회원 검색하기 [관리자 권한]
     Page<MemberDto> searchMemberInfo(Pageable pageable, String keyword, LoginUserDto loginUser);
 
+    // 유저의 프로필 사진 삭제하기 [관리자 권한]
+    void deleteUserProfileImage(Long memberId, LoginUserDto loginUser);
+
     // 학생의 팔로워 목록에서 학부모 삭제하기 [관리자 권한]
-    void removeFollowed(Long memberId, LoginUserDto loginUser);
+    void removeFollowed(Long studentId, Long parentId, LoginUserDto loginUser);
+
+    // 회원 삭제하기 [관리자 권한]
+    void removeMember(Long memberId, LoginUserDto loginUser);
 }

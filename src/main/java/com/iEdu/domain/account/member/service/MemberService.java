@@ -10,6 +10,7 @@ import com.iEdu.domain.account.member.dto.res.MemberDto;
 import com.iEdu.domain.account.member.entity.Member;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.web.multipart.MultipartFile;
 
 public interface MemberService {
 
@@ -35,10 +36,10 @@ public interface MemberService {
     DetailMemberDto getMemberDetailInfo(Long studentId, LoginUserDto loginUser);
 
     // 학생/학부모 회원정보 수정 [학생/학부모 권한]
-    void basicUpdateMemberInfo(BasicUpdateForm basicUpdateForm, LoginUserDto loginUser);
+    void basicUpdateMemberInfo(BasicUpdateForm basicUpdateForm, MultipartFile imageFile, LoginUserDto loginUser);
 
     // 선생님 회원정보 수정 [선생님 권한]
-    void teacherUpdateMemberInfo(TeacherUpdateForm teacherUpdateForm, LoginUserDto loginUser);
+    void teacherUpdateMemberInfo(TeacherUpdateForm teacherUpdateForm, MultipartFile imageFile, LoginUserDto loginUser);
 
     // 회원탈퇴
     void deleteMember(LoginUserDto loginUser);

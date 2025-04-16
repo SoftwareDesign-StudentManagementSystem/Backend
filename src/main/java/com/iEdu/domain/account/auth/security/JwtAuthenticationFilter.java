@@ -19,6 +19,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 
 @Slf4j
 @Component
@@ -32,11 +33,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) throws ServletException {
         String path = request.getRequestURI();
-        String method = request.getMethod();
 
         // 인증이 필요 없는 URL 리스트
-        return path.startsWith("/rest-api/v1/auth/login")
-                || path.startsWith("/rest-api/v1/oauth2");
+        return path.startsWith("/swagger-ui") ||
+                path.startsWith("/v3/api-docs") ||
+                path.startsWith("/rest-api/v1/auth/login") ||
+                path.startsWith("/rest-api/v1/member/parent");
     }
 
     @Override
@@ -51,7 +53,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         boolean decodingSuccess = false;
-        String email = "";
+        Long accountId = null;
         try {
             if (!jwtTokenProvider.validateToken(token)) {
                 log.warn("토큰이 유효하지 않습니다.");
@@ -60,23 +62,23 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             }
 
             jwtTokenProvider.decodeToken(token);
-            email = jwtTokenProvider.getEmailFromToken(token);
+            accountId = jwtTokenProvider.getAccountIdFromToken(token);
             decodingSuccess = true;
-            log.info("정상적으로 사용자 정보를 토큰으로부터 가져왔습니다. Email: {}", email);
+            log.info("정상적으로 사용자 정보를 토큰으로부터 가져왔습니다. AccountId: {}", accountId);
         } catch (Exception e) {
             log.warn("유효하지 않은 Access Token: {}", e.getMessage());
         }
 
         if (decodingSuccess) {
             try {
-                UserDetails userDetails = userDetailsService.loadUserByUsername(email);
+                UserDetails userDetails = userDetailsService.loadUserByUsername(String.valueOf(accountId));
                 Authentication authentication = new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
                 SecurityContextHolder.getContext().setAuthentication(authentication);
                 log.debug("SecurityContext 에 인증 정보 설정 완료: {}", authentication);
             } catch (Exception e) {
                 log.error("인증 처리 실패: {}", e.getMessage());
                 SecurityContextHolder.clearContext();
-                refreshTokenService.deleteRefreshToken(email);
+                refreshTokenService.deleteRefreshToken(String.valueOf(accountId));
             }
         }
         filterChain.doFilter(request, response);

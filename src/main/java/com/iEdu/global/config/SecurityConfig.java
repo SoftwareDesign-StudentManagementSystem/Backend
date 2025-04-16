@@ -41,8 +41,9 @@ public class SecurityConfig {
 
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/rest-api/v1/auth/login",
-                                "/rest-api/v1/member",
-                                "/rest-api/v1/**").permitAll()
+                                "/rest-api/v1/member/parent",
+                                "/swagger-ui/**",
+                                "/v3/api-docs/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);

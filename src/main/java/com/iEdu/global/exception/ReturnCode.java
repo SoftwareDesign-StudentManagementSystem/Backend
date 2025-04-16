@@ -5,6 +5,7 @@ import lombok.Getter;
 @Getter
 public enum ReturnCode {
     SUCCESS(000, "SUECCESS_001", "요청에 성공하였습니다."),
+    INTERNAL_SERVER_ERROR(500, "INTERNAL_SERVER_ERROR", "서버 내부 오류가 발생했습니다."),
 
     // Page 관련 에러
     PAGE_REQUEST_FAIL(401, "PAGE_001", "적절하지 않은 페이지 요청입니다."),
@@ -23,6 +24,7 @@ public enum ReturnCode {
     PASSWORD_CHANGE_FAILED(500, "AUTH_011", "비밀번호 변경에 실패했습니다."),
     EMAIL_NOT_VERIFIED(400, "AUTH_012", "이메일 인증을 완료 후 회원가입 진행해주세요."),
     SOCIAL_ACCOUNT_ALREADY_IN_USE(400, "AUTH_013", "이미 사용중인 소셜 계정입니다."),
+    INVALID_ACCOUNT_ID(401, "AUTH_014", "유효하지 않은 계정ID입니다."),
 
     // Member 관련 에러
     MEMBER_ALREADY_EXISTS(404, "MEMBER_001", "이미 존재하는 사용자입니다."),
@@ -113,6 +115,7 @@ public enum ReturnCode {
     REQUEST_NOT_FOUND(404, "FOLLOW_002", "팔로우 요청을 찾을 수 없습니다."),
     ALREADY_FOLLOW(404, "FOLLOW_003", "이미 팔로우 중인 사용자입니다."),
     FOLLOWER_NOT_FOUND(404, "FOLLOW_004", "팔로워를 찾을 수 없습니다."),
+    FOLLOW_NOT_FOUND(404, "FOLLOW_005", "팔로우한 사용자 찾을 수 없습니다."),
 
     //board 관련 에러
     BOARD_NOT_FOUND(400,"BOARD_001","게시글을 찾을 수 없습니다."),

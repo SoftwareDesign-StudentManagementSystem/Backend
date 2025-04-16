@@ -17,7 +17,6 @@ public class ApiResponse<T> {
         response.returnCode = ReturnCode.SUCCESS;
         response.returnMessage = ReturnCode.SUCCESS.getMessage();
         response.data = data;
-
         return response;
     }
 
@@ -26,15 +25,13 @@ public class ApiResponse<T> {
         response.returnCode = ReturnCode.SUCCESS;
         response.returnMessage = ReturnCode.SUCCESS.getMessage();
         response.swdesignPage = swdesignPage;
-
         return response;
     }
 
-    public static <T> ApiResponse of(ReturnCode returnCode) {
+    public static <T> ApiResponse<T> of(ReturnCode returnCode) {
         ApiResponse<T> response = new ApiResponse<>();
-        response.returnCode = ReturnCode.SUCCESS;
-        response.returnMessage = ReturnCode.SUCCESS.getMessage();
-
+        response.returnCode = returnCode;
+        response.returnMessage = returnCode.getMessage();
         return response;
     }
 }
