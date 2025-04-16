@@ -30,9 +30,9 @@ public class LoginUserArgumentResolver implements HandlerMethodArgumentResolver 
                                   NativeWebRequest webRequest, WebDataBinderFactory binderFactory) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication != null && authentication.getPrincipal() instanceof UserDetails securityUser) {
-            String email = securityUser.getUsername(); // UserDetails의 getUsername()은 이메일을 반환
+            Long accountId = Long.parseLong(securityUser.getUsername()); // UserDetails의 getUsername()은 이메일을 반환
 
-            return memberRepository.findByEmail(email)
+            return memberRepository.findByAccountId(accountId)
                     .map(LoginUserDto::ConvertToLoginUserDto)
                     .orElseThrow(() -> new ServiceException(ReturnCode.USER_NOT_FOUND));
         }

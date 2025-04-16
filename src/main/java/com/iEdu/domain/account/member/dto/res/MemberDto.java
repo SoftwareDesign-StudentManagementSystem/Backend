@@ -14,5 +14,6 @@ public class MemberDto {
     private Integer year;
     private Integer classId;
     private Integer number;
+    private Member.Subject subject;
     private Member.MemberRole role;
 }
