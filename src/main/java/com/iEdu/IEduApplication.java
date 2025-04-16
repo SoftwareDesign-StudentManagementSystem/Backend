@@ -15,6 +15,8 @@ public class IEduApplication {
 		System.setProperty("AWS_ACCESS_KEY_ID", dotenv.get("AWS_ACCESS_KEY_ID"));
 		System.setProperty("AWS_SECRET_ACCESS_KEY", dotenv.get("AWS_SECRET_ACCESS_KEY"));
 		System.setProperty("JWT_SECRET_KEY", dotenv.get("JWT_SECRET_KEY"));
+		System.setProperty("POSTGRES_HOST", dotenv.get("POSTGRES_HOST"));
+		System.setProperty("POSTGRES_USERNAME", dotenv.get("POSTGRES_USERNAME"));
 		System.setProperty("POSTGRES_PASSWORD", dotenv.get("POSTGRES_PASSWORD"));
 
 		SpringApplication.run(IEduApplication.class, args);
