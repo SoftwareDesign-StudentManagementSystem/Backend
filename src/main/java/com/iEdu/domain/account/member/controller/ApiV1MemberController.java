@@ -125,7 +125,7 @@ public class ApiV1MemberController {
 
     // 팔로우 요청하기 [학부모 권한]
     @Operation(summary = "팔로우 요청하기 [학부모 권한]")
-    @PostMapping("/follow}")
+    @PostMapping("/follow")
     public ApiResponse<String> followReq(@RequestBody @Valid FollowForm followForm,
                                          @LoginUser LoginUserDto loginUser) {
         memberService.followReq(followForm, loginUser);
