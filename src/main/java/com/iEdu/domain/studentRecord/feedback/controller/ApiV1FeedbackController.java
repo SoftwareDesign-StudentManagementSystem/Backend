@@ -17,6 +17,8 @@ public class ApiV1FeedbackController {
 
     private final FeedbackService feedbackService;
 
+    // 피드백은 학생/학부모에 제공할 수 있는 옵션이 있어야됨
+
     @PostMapping
     public ResponseEntity<Map<String, String>> create(@RequestBody FeedbackForm form) {
         feedbackService.create(form);
