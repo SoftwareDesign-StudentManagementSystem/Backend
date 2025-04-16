@@ -1,93 +1,93 @@
-#version: '3.8'
-#services:
-#  postgres:
-#    image: postgres:latest
-#    container_name: iEdu-postgres_container
-#    environment:
-#      POSTGRES_USER: admin
-#      POSTGRES_PASSWORD: admin
-#      POSTGRES_DB: meta_db
-#    ports:
-#      - "5432:5432"
-#    volumes:
-#      - postgres_data:/var/lib/postgresql/data
-#
-#  redis:
-#    image: redis:latest
-#    container_name: iEdu-redis_container
-#    restart: always
-#    ports:
-#      - "6379:6379"
-#    volumes:
-#      - redis_data:/data
-#
-#volumes:
-#  postgres_data:
-#  redis_data:
+version: '3.8'
+services:
+  postgres:
+    image: postgres:latest
+    container_name: iEdu-postgres_container
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin
+      POSTGRES_DB: meta_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:latest
+    container_name: iEdu-redis_container
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+volumes:
+  postgres_data:
+  redis_data:
 
 
 
 # prod
 
-version: '3.8'
-services:
-  redis:
-    image: redis:latest
-    container_name: redis_container
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis-data:/data
-    command: redis-server --appendonly yes --replicaof no one
-    healthcheck:
-      test: [ "CMD", "redis-cli", "ping" ]
-      interval: 5s
-      timeout: 3s
-      retries: 5
-      start_period: 3s
-    networks:
-      - ec2-user_default
-
-  app:
-    image: junhui9789/iedu-app:latest
-    container_name: iedu-app
-    ports:
-      - "8080:8080"
-    env_file:
-      - ./env/.env
-    environment:
-      - SPRING_PROFILES_ACTIVE=prod
-      - DOTENV_PATH=/app/env
-    volumes:
-      - ./env:/app/env
-    depends_on:
-      redis:
-        condition: service_healthy  # Redis가 정상 작동할 때까지 대기
-      selenium:
-        condition: service_started
-    networks:
-      - ec2-user_default
-      - proxy-network
-
-  nginx-proxy-manager:
-    image: 'jc21/nginx-proxy-manager:latest'
-    container_name: nginx-proxy-manager
-    restart: unless-stopped
-    ports:
-      - '80:80'    # HTTP 포트
-      - '443:443'  # HTTPS 포트
-      - '81:81'    # 관리자 웹 인터페이스 포트
-    volumes:
-      - ./data:/data
-      - ./letsencrypt:/etc/letsencrypt
-    networks:
-      - proxy-network
-
-volumes:
-  redis-data:
-
-networks:
-  ec2-user_default:
-    driver: bridge
-  proxy-network:
-    driver: bridge
+#version: '3.8'
+#services:
+#  redis:
+#    image: redis:latest
+#    container_name: redis_container
+#    ports:
+#      - "6379:6379"
+#    volumes:
+#      - redis-data:/data
+#    command: redis-server --appendonly yes --replicaof no one
+#    healthcheck:
+#      test: [ "CMD", "redis-cli", "ping" ]
+#      interval: 5s
+#      timeout: 3s
+#      retries: 5
+#      start_period: 3s
+#    networks:
+#      - ec2-user_default
+#
+#  app:
+#    image: junhui9789/iedu-app:latest
+#    container_name: iedu-app
+#    ports:
+#      - "8080:8080"
+#    env_file:
+#      - ./env/.env
+#    environment:
+#      - SPRING_PROFILES_ACTIVE=prod
+#      - DOTENV_PATH=/app/env
+#    volumes:
+#      - ./env:/app/env
+#    depends_on:
+#      redis:
+#        condition: service_healthy  # Redis가 정상 작동할 때까지 대기
+#      selenium:
+#        condition: service_started
+#    networks:
+#      - ec2-user_default
+#      - proxy-network
+#
+#  nginx-proxy-manager:
+#    image: 'jc21/nginx-proxy-manager:latest'
+#    container_name: nginx-proxy-manager
+#    restart: unless-stopped
+#    ports:
+#      - '80:80'    # HTTP 포트
+#      - '443:443'  # HTTPS 포트
+#      - '81:81'    # 관리자 웹 인터페이스 포트
+#    volumes:
+#      - ./data:/data
+#      - ./letsencrypt:/etc/letsencrypt
+#    networks:
+#      - proxy-network
+#
+#volumes:
+#  redis-data:
+#
+#networks:
+#  ec2-user_default:
+#    driver: bridge
+#  proxy-network:
+#    driver: bridge
