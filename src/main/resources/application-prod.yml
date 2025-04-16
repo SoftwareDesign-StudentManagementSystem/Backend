@@ -1,7 +1,7 @@
 spring:
   datasource:
-    url: jdbc:postgresql://iedu.cb22cec4y0ui.ap-northeast-2.rds.amazonaws.com:5432/meta_db
-    username: iEduAdmin
+    url: jdbc:postgresql://${POSTGRES_HOST}:5432/meta_db
+    username: ${POSTGRES_USERNAME}
     password: ${POSTGRES_PASSWORD}
     driver-class-name: org.postgresql.Driver
   jpa:
