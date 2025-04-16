@@ -23,6 +23,8 @@ public class ApiV1CounselController {
 
     private final CounselService counselService;
 
+    // 상담 내역은 다른 교사들과 공유될 수 있어야됨
+
     @PostMapping
     @Operation(summary = "상담 기록 추가", description = "교사가 상담 기록을 추가")
     public ResponseEntity<Map<String, String>> addCounsel(@RequestBody CounselRequest request) {
