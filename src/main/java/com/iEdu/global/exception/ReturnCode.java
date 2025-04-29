@@ -139,7 +139,11 @@ public enum ReturnCode {
 
     // 포스트 엘라스틱 서치 에러 (
     DATA_CONVERSION_ERROR(500, "SEARCH_001", "데이터 변환 중 오류가 발생했습니다"),
-    SEARCH_POST_ERROR(500, "SEARCH_002", "엘라스틱 서치 검색 중 에러 발생");
+    SEARCH_POST_ERROR(500, "SEARCH_002", "엘라스틱 서치 검색 중 에러 발생"),
+
+    // Counsel 관련 에러
+    COUNSEL_DATE_INVALID(400, "COUNSEL_001", "상담 날짜는 오늘보다 이후일 수 없습니다."),
+    COUNSEL_CONTENT_REQUIRED(400, "COUNSEL_002", "상담 내용은 필수 입력입니다.");
 
     private final int status;
     private final String code;

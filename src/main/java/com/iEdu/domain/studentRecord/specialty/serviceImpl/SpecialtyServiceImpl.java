@@ -6,6 +6,7 @@ import com.iEdu.domain.account.member.repository.MemberRepository;
 import com.iEdu.domain.studentRecord.specialty.dto.req.SpecialtyForm;
 import com.iEdu.domain.studentRecord.specialty.dto.res.SpecialtyDto;
 import com.iEdu.domain.studentRecord.specialty.entity.Specialty;
+import com.iEdu.domain.studentRecord.specialty.entity.SpecialtyCategory;
 import com.iEdu.domain.studentRecord.specialty.repository.SpecialtyRepository;
 import com.iEdu.domain.studentRecord.specialty.service.SpecialtyService;
 import com.iEdu.global.exception.ReturnCode;
@@ -30,25 +31,21 @@ public class SpecialtyServiceImpl implements SpecialtyService {
     @Transactional(readOnly = true)
     public List<SpecialtyDto> getAllSpecialties(Long studentId, LoginUserDto loginUser) {
         Member.MemberRole role = loginUser.getRole();
-
         if (role == Member.MemberRole.ROLE_TEACHER) {
             return convertToDtoList(
                     specialtyRepository.findAllByMemberIdOrderByIdDesc(studentId)
             );
         }
-
         if (role == Member.MemberRole.ROLE_PARENT) {
             boolean isFollowed = loginUser.getFollowList().stream()
                     .anyMatch(f -> f.getFollow().getId().equals(studentId));
             if (!isFollowed) {
                 throw new ServiceException(ReturnCode.NOT_AUTHORIZED);
             }
-
             return convertToDtoList(
                     specialtyRepository.findAllByMemberIdOrderByIdDesc(studentId)
             );
         }
-
         throw new ServiceException(ReturnCode.NOT_AUTHORIZED);
     }
 
@@ -59,16 +56,13 @@ public class SpecialtyServiceImpl implements SpecialtyService {
     @Transactional
     public void createSpecialty(Long studentId, SpecialtyForm form, LoginUserDto loginUser) {
         validateTeacherRole(loginUser);
-
         Member student = memberRepository.findById(studentId)
                 .orElseThrow(() -> new ServiceException(ReturnCode.USER_NOT_FOUND));
-
         Specialty specialty = Specialty.builder()
                 .member(student)
                 .category(form.getCategory())
                 .content(form.getContent())
                 .build();
-
         specialtyRepository.save(specialty);
     }
 
@@ -79,10 +73,8 @@ public class SpecialtyServiceImpl implements SpecialtyService {
     @Transactional
     public void updateSpecialty(Long specialtyId, SpecialtyForm form, LoginUserDto loginUser) {
         validateTeacherRole(loginUser);
-
         Specialty specialty = specialtyRepository.findById(specialtyId)
                 .orElseThrow(() -> new ServiceException(ReturnCode.POST_NOT_FOUND));
-
         specialty.setCategory(form.getCategory());
         specialty.setContent(form.getContent());
     }
@@ -94,25 +86,50 @@ public class SpecialtyServiceImpl implements SpecialtyService {
     @Transactional
     public void deleteSpecialty(Long specialtyId, LoginUserDto loginUser) {
         validateTeacherRole(loginUser);
-
         Specialty specialty = specialtyRepository.findById(specialtyId)
                 .orElseThrow(() -> new ServiceException(ReturnCode.POST_NOT_FOUND));
-
         specialtyRepository.delete(specialty);
     }
 
+    /**
+     * 학생의 특기사항 조회 (카테고리 필터)
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public List<SpecialtyDto> getSpecialtiesByCategory(Long studentId, SpecialtyCategory category, LoginUserDto loginUser) {
+        Member.MemberRole role = loginUser.getRole();
+
+        if (role == Member.MemberRole.ROLE_TEACHER) {
+            return convertToDtoList(
+                    specialtyRepository.findAllByMemberIdAndCategory(studentId, category)
+            );
+        }
+        if (role == Member.MemberRole.ROLE_PARENT) {
+            boolean isFollowed = loginUser.getFollowList().stream()
+                    .anyMatch(f -> f.getFollow().getId().equals(studentId));
+            if (!isFollowed) {
+                throw new ServiceException(ReturnCode.NOT_AUTHORIZED);
+            }
+            return convertToDtoList(
+                    specialtyRepository.findAllByMemberIdAndCategory(studentId, category)
+            );
+        }
+        throw new ServiceException(ReturnCode.NOT_AUTHORIZED);
+    }
     /**
      * 단건 조회 - 권한 제한 없음
      */
     @Override
     @Transactional(readOnly = true)
     public SpecialtyDto getSpecialty(Long specialtyId, LoginUserDto loginUser) {
+        if (loginUser.getRole() != Member.MemberRole.ROLE_TEACHER) {
+            throw new ServiceException(ReturnCode.NOT_AUTHORIZED);
+        }
         Specialty specialty = specialtyRepository.findById(specialtyId)
                 .orElseThrow(() -> new ServiceException(ReturnCode.POST_NOT_FOUND));
 
         return convertToDto(specialty);
     }
-
     /**
      * 권한 체크: 선생님만 허용
      */

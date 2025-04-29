@@ -31,4 +31,9 @@ public class Specialty extends BaseEntity {
     // 특기사항 내용
     @Column(columnDefinition = "TEXT", nullable = false)
     private String content;
+
+    // 작성자
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "writer_id")
+    private Member writer;
 }
