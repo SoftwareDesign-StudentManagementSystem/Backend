@@ -1,10 +1,14 @@
 package com.iEdu.domain.studentRecord.grade.serviceImpl;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.iEdu.domain.account.auth.loginUser.LoginUserDto;
 import com.iEdu.domain.account.member.entity.Member;
 import com.iEdu.domain.account.member.entity.MemberFollow;
 import com.iEdu.domain.account.member.entity.MemberPage;
 import com.iEdu.domain.account.member.repository.MemberRepository;
+import com.iEdu.domain.notification.dto.res.NotificationDto;
+import com.iEdu.domain.notification.entity.Notification;
 import com.iEdu.domain.studentRecord.grade.dto.req.GradeForm;
 import com.iEdu.domain.studentRecord.grade.dto.req.GradeUpdateForm;
 import com.iEdu.domain.studentRecord.grade.dto.res.GradeDto;
@@ -16,10 +20,12 @@ import com.iEdu.global.exception.ReturnCode;
 import com.iEdu.global.exception.ServiceException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,6 +40,8 @@ import java.util.Optional;
 public class GradeServiceImpl implements GradeService {
     private final GradeRepository gradeRepository;
     private final MemberRepository memberRepository;
+    private final KafkaTemplate<String, String> kafkaTemplate;
+    private final ObjectMapper objectMapper;
 
     // 본인의 모든 성적 조회 [학생 권한]
     @Override
@@ -131,7 +139,7 @@ public class GradeServiceImpl implements GradeService {
     // 학생 성적 생성 [선생님 권한]
     @Override
     @Transactional
-    public void createGrade(Long studentId, GradeForm gradeForm, LoginUserDto loginUser){
+    public void createGrade(Long studentId, GradeForm gradeForm, LoginUserDto loginUser) {
         // ROLE_TEACHER 아닌 경우 예외 처리
         if (loginUser.getRole() != Member.MemberRole.ROLE_TEACHER) {
             throw new ServiceException(ReturnCode.NOT_AUTHORIZED);
@@ -147,58 +155,49 @@ public class GradeServiceImpl implements GradeService {
         Grade.Semester semester = gradeForm.getSemester();
         Double score = gradeForm.getScore();
         // 기존 성적 존재 여부 확인
-        Optional<Grade> existingGradeOpt = gradeRepository.findByMemberAndYearAndSemester(student, year, semester);
-        if (existingGradeOpt.isPresent()) {
-            // 기존 성적 있으면 업데이트
-            Grade grade = existingGradeOpt.get();
-            switch (subject) {
-                case KOREAN_LANGUAGE -> grade.setKoreanLanguageScore(score);
-                case MATHEMATICS -> grade.setMathematicsScore(score);
-                case ENGLISH -> grade.setEnglishScore(score);
-                case SOCIAL_STUDIES -> grade.setSocialStudiesScore(score);
-                case HISTORY -> grade.setHistoryScore(score);
-                case ETHICS -> grade.setEthicsScore(score);
-                case ECONOMICS -> grade.setEconomicsScore(score);
-                case PHYSICS -> grade.setPhysicsScore(score);
-                case CHEMISTRY -> grade.setChemistryScore(score);
-                case BIOLOGY -> grade.setBiologyScore(score);
-                case EARTH_SCIENCE -> grade.setEarthScienceScore(score);
-                case MUSIC -> grade.setMusicScore(score);
-                case ART -> grade.setArtScore(score);
-                case PHYSICAL_EDUCATION -> grade.setPhysicalEducationScore(score);
-                case TECHNOLOGY_AND_HOME_ECONOMICS -> grade.setTechnologyAndHomeEconomicScore(score);
-                case COMPUTER_SCIENCE -> grade.setComputerScienceScore(score);
-                case SECOND_FOREIGN_LANGUAGE -> grade.setSecondForeignLanguageScore(score);
-                default -> throw new ServiceException(ReturnCode.INVALID_SUBJECT);
+        Grade grade = gradeRepository.findByMemberAndYearAndSemester(student, year, semester)
+                .orElseGet(() -> Grade.builder()
+                        .member(student)
+                        .year(year)
+                        .semester(semester)
+                        .build());
+        // 과목별 점수 입력
+        switch (subject) {
+            case 국어 -> grade.setKoreanLanguageScore(score);
+            case 수학 -> grade.setMathematicsScore(score);
+            case 영어 -> grade.setEnglishScore(score);
+            case 사회 -> grade.setSocialStudiesScore(score);
+            case 한국사 -> grade.setHistoryScore(score);
+            case 윤리 -> grade.setEthicsScore(score);
+            case 경제 -> grade.setEconomicsScore(score);
+            case 물리 -> grade.setPhysicsScore(score);
+            case 화학 -> grade.setChemistryScore(score);
+            case 생명과학 -> grade.setBiologyScore(score);
+            case 지구과학 -> grade.setEarthScienceScore(score);
+            case 음악 -> grade.setMusicScore(score);
+            case 미술 -> grade.setArtScore(score);
+            case 체육 -> grade.setPhysicalEducationScore(score);
+            case 기술가정 -> grade.setTechnologyAndHomeEconomicScore(score);
+            case 컴퓨터 -> grade.setComputerScienceScore(score);
+            case 제2외국어 -> grade.setSecondForeignLanguageScore(score);
+            default -> throw new ServiceException(ReturnCode.INVALID_SUBJECT);
+        }
+        gradeRepository.save(grade);
+        // 모든 과목 점수가 입력됐는지 확인
+        if (isAllSubjectsFilled(grade)) {
+            Notification notification = Notification.builder()
+                    .receiverId(studentId)
+                    .objectId(grade.getId())
+                    .content(year + "학년 " + semester.toKoreanString() + " 성적이 등록되었습니다")
+                    .targetObject(Notification.TargetObject.Grade)
+                    .build();
+            try {
+                // 성적 생성 이벤트 생성
+                String message = objectMapper.writeValueAsString(notification);
+                kafkaTemplate.send("grade-topic", message);
+            } catch (JsonProcessingException e) {
+                log.error("Failed to serialize Notification: {}", e.getMessage());
             }
-            gradeRepository.save(grade);
-        } else {
-            // 성적이 없으면 새로 생성
-            Grade.GradeBuilder gradeBuilder = Grade.builder()
-                    .member(student)
-                    .year(year)
-                    .semester(semester);
-            switch (subject) {
-                case KOREAN_LANGUAGE -> gradeBuilder.koreanLanguageScore(score);
-                case MATHEMATICS -> gradeBuilder.mathematicsScore(score);
-                case ENGLISH -> gradeBuilder.englishScore(score);
-                case SOCIAL_STUDIES -> gradeBuilder.socialStudiesScore(score);
-                case HISTORY -> gradeBuilder.historyScore(score);
-                case ETHICS -> gradeBuilder.ethicsScore(score);
-                case ECONOMICS -> gradeBuilder.economicsScore(score);
-                case PHYSICS -> gradeBuilder.physicsScore(score);
-                case CHEMISTRY -> gradeBuilder.chemistryScore(score);
-                case BIOLOGY -> gradeBuilder.biologyScore(score);
-                case EARTH_SCIENCE -> gradeBuilder.earthScienceScore(score);
-                case MUSIC -> gradeBuilder.musicScore(score);
-                case ART -> gradeBuilder.artScore(score);
-                case PHYSICAL_EDUCATION -> gradeBuilder.physicalEducationScore(score);
-                case TECHNOLOGY_AND_HOME_ECONOMICS -> gradeBuilder.technologyAndHomeEconomicScore(score);
-                case COMPUTER_SCIENCE -> gradeBuilder.computerScienceScore(score);
-                case SECOND_FOREIGN_LANGUAGE -> gradeBuilder.secondForeignLanguageScore(score);
-                default -> throw new ServiceException(ReturnCode.INVALID_SUBJECT);
-            }
-            gradeRepository.save(gradeBuilder.build());
         }
     }
 
@@ -220,24 +219,37 @@ public class GradeServiceImpl implements GradeService {
         Double newScore = gradeUpdateForm.getScore();
         // 담당 과목에 맞는 필드만 업데이트
         switch (subject) {
-            case KOREAN_LANGUAGE -> grade.setKoreanLanguageScore(newScore);
-            case MATHEMATICS -> grade.setMathematicsScore(newScore);
-            case ENGLISH -> grade.setEnglishScore(newScore);
-            case SOCIAL_STUDIES -> grade.setSocialStudiesScore(newScore);
-            case HISTORY -> grade.setHistoryScore(newScore);
-            case ETHICS -> grade.setEthicsScore(newScore);
-            case ECONOMICS -> grade.setEconomicsScore(newScore);
-            case PHYSICS -> grade.setPhysicsScore(newScore);
-            case CHEMISTRY -> grade.setChemistryScore(newScore);
-            case BIOLOGY -> grade.setBiologyScore(newScore);
-            case EARTH_SCIENCE -> grade.setEarthScienceScore(newScore);
-            case MUSIC -> grade.setMusicScore(newScore);
-            case ART -> grade.setArtScore(newScore);
-            case PHYSICAL_EDUCATION -> grade.setPhysicalEducationScore(newScore);
-            case TECHNOLOGY_AND_HOME_ECONOMICS -> grade.setTechnologyAndHomeEconomicScore(newScore);
-            case COMPUTER_SCIENCE -> grade.setComputerScienceScore(newScore);
-            case SECOND_FOREIGN_LANGUAGE -> grade.setSecondForeignLanguageScore(newScore);
+            case 국어 -> grade.setKoreanLanguageScore(newScore);
+            case 수학 -> grade.setMathematicsScore(newScore);
+            case 영어 -> grade.setEnglishScore(newScore);
+            case 사회 -> grade.setSocialStudiesScore(newScore);
+            case 한국사 -> grade.setHistoryScore(newScore);
+            case 윤리 -> grade.setEthicsScore(newScore);
+            case 경제 -> grade.setEconomicsScore(newScore);
+            case 물리 -> grade.setPhysicsScore(newScore);
+            case 화학 -> grade.setChemistryScore(newScore);
+            case 생명과학 -> grade.setBiologyScore(newScore);
+            case 지구과학 -> grade.setEarthScienceScore(newScore);
+            case 음악 -> grade.setMusicScore(newScore);
+            case 미술 -> grade.setArtScore(newScore);
+            case 체육 -> grade.setPhysicalEducationScore(newScore);
+            case 기술가정 -> grade.setTechnologyAndHomeEconomicScore(newScore);
+            case 컴퓨터 -> grade.setComputerScienceScore(newScore);
+            case 제2외국어 -> grade.setSecondForeignLanguageScore(newScore);
             default -> throw new ServiceException(ReturnCode.INVALID_SUBJECT);
+        }
+        // 성적 수정 이벤트 생성
+        Notification notification = Notification.builder()
+                .receiverId(grade.getMember().getId())
+                .objectId(grade.getId())
+                .content(grade.getYear() + "학년 " + grade.getSemester().toKoreanString() + " " + subject + " 점수가 수정되었습니다")
+                .targetObject(Notification.TargetObject.Grade)
+                .build();
+        try {
+            String message = objectMapper.writeValueAsString(notification);
+            kafkaTemplate.send("grade-topic", message);
+        } catch (JsonProcessingException e) {
+            log.error("Failed to serialize Notification: {}", e.getMessage());
         }
     }
 
@@ -258,25 +270,46 @@ public class GradeServiceImpl implements GradeService {
         }
         // 담당 과목 점수만 null로 설정 (실제 "삭제" 대신)
         switch (subject) {
-            case KOREAN_LANGUAGE -> grade.setKoreanLanguageScore(null);
-            case MATHEMATICS -> grade.setMathematicsScore(null);
-            case ENGLISH -> grade.setEnglishScore(null);
-            case SOCIAL_STUDIES -> grade.setSocialStudiesScore(null);
-            case HISTORY -> grade.setHistoryScore(null);
-            case ETHICS -> grade.setEthicsScore(null);
-            case ECONOMICS -> grade.setEconomicsScore(null);
-            case PHYSICS -> grade.setPhysicsScore(null);
-            case CHEMISTRY -> grade.setChemistryScore(null);
-            case BIOLOGY -> grade.setBiologyScore(null);
-            case EARTH_SCIENCE -> grade.setEarthScienceScore(null);
-            case MUSIC -> grade.setMusicScore(null);
-            case ART -> grade.setArtScore(null);
-            case PHYSICAL_EDUCATION -> grade.setPhysicalEducationScore(null);
-            case TECHNOLOGY_AND_HOME_ECONOMICS -> grade.setTechnologyAndHomeEconomicScore(null);
-            case COMPUTER_SCIENCE -> grade.setComputerScienceScore(null);
-            case SECOND_FOREIGN_LANGUAGE -> grade.setSecondForeignLanguageScore(null);
+            case 국어 -> grade.setKoreanLanguageScore(null);
+            case 수학 -> grade.setMathematicsScore(null);
+            case 영어 -> grade.setEnglishScore(null);
+            case 사회 -> grade.setSocialStudiesScore(null);
+            case 한국사 -> grade.setHistoryScore(null);
+            case 윤리 -> grade.setEthicsScore(null);
+            case 경제 -> grade.setEconomicsScore(null);
+            case 물리 -> grade.setPhysicsScore(null);
+            case 화학 -> grade.setChemistryScore(null);
+            case 생명과학 -> grade.setBiologyScore(null);
+            case 지구과학 -> grade.setEarthScienceScore(null);
+            case 음악 -> grade.setMusicScore(null);
+            case 미술 -> grade.setArtScore(null);
+            case 체육 -> grade.setPhysicalEducationScore(null);
+            case 기술가정 -> grade.setTechnologyAndHomeEconomicScore(null);
+            case 컴퓨터 -> grade.setComputerScienceScore(null);
+            case 제2외국어 -> grade.setSecondForeignLanguageScore(null);
             default -> throw new ServiceException(ReturnCode.INVALID_SUBJECT);
         }
+    }
+
+    // 모든 과목의 성적 입력 확인
+    private boolean isAllSubjectsFilled(Grade grade) {
+        return grade.getKoreanLanguageScore() != null
+                && grade.getMathematicsScore() != null
+                && grade.getEnglishScore() != null
+                && grade.getSocialStudiesScore() != null
+                && grade.getHistoryScore() != null
+                && grade.getEthicsScore() != null
+                && grade.getEconomicsScore() != null
+                && grade.getPhysicsScore() != null
+                && grade.getChemistryScore() != null
+                && grade.getBiologyScore() != null
+                && grade.getEarthScienceScore() != null
+                && grade.getMusicScore() != null
+                && grade.getArtScore() != null
+                && grade.getPhysicalEducationScore() != null
+                && grade.getTechnologyAndHomeEconomicScore() != null
+                && grade.getComputerScienceScore() != null
+                && grade.getSecondForeignLanguageScore() != null;
     }
 
     // 요청 페이지 수 제한
@@ -300,23 +333,23 @@ public class GradeServiceImpl implements GradeService {
                 .profileImageUrl(grade.getMember().getProfileImageUrl())
                 .year(gradeYear)
                 .semester(semester)
-                .koreanLanguage(createSubjectScore(grade.getKoreanLanguageScore(), allGrades.stream().map(Grade::getKoreanLanguageScore).toList()))
-                .mathematics(createSubjectScore(grade.getMathematicsScore(), allGrades.stream().map(Grade::getMathematicsScore).toList()))
-                .english(createSubjectScore(grade.getEnglishScore(), allGrades.stream().map(Grade::getEnglishScore).toList()))
-                .socialStudies(createSubjectScore(grade.getSocialStudiesScore(), allGrades.stream().map(Grade::getSocialStudiesScore).toList()))
-                .history(createSubjectScore(grade.getHistoryScore(), allGrades.stream().map(Grade::getHistoryScore).toList()))
-                .ethics(createSubjectScore(grade.getEthicsScore(), allGrades.stream().map(Grade::getEthicsScore).toList()))
-                .economics(createSubjectScore(grade.getEconomicsScore(), allGrades.stream().map(Grade::getEconomicsScore).toList()))
-                .physics(createSubjectScore(grade.getPhysicsScore(), allGrades.stream().map(Grade::getPhysicsScore).toList()))
-                .chemistry(createSubjectScore(grade.getChemistryScore(), allGrades.stream().map(Grade::getChemistryScore).toList()))
-                .biology(createSubjectScore(grade.getBiologyScore(), allGrades.stream().map(Grade::getBiologyScore).toList()))
-                .earthScience(createSubjectScore(grade.getEarthScienceScore(), allGrades.stream().map(Grade::getEarthScienceScore).toList()))
-                .music(createSubjectScore(grade.getMusicScore(), allGrades.stream().map(Grade::getMusicScore).toList()))
-                .art(createSubjectScore(grade.getArtScore(), allGrades.stream().map(Grade::getArtScore).toList()))
-                .physicalEducation(createSubjectScore(grade.getPhysicalEducationScore(), allGrades.stream().map(Grade::getPhysicalEducationScore).toList()))
-                .technologyAndHomeEconomics(createSubjectScore(grade.getTechnologyAndHomeEconomicScore(), allGrades.stream().map(Grade::getTechnologyAndHomeEconomicScore).toList()))
-                .computerScience(createSubjectScore(grade.getComputerScienceScore(), allGrades.stream().map(Grade::getComputerScienceScore).toList()))
-                .secondForeignLanguage(createSubjectScore(grade.getSecondForeignLanguageScore(), allGrades.stream().map(Grade::getSecondForeignLanguageScore).toList()))
+                .국어(createSubjectScore(grade.getKoreanLanguageScore(), allGrades.stream().map(Grade::getKoreanLanguageScore).toList()))
+                .수학(createSubjectScore(grade.getMathematicsScore(), allGrades.stream().map(Grade::getMathematicsScore).toList()))
+                .영어(createSubjectScore(grade.getEnglishScore(), allGrades.stream().map(Grade::getEnglishScore).toList()))
+                .사회(createSubjectScore(grade.getSocialStudiesScore(), allGrades.stream().map(Grade::getSocialStudiesScore).toList()))
+                .한국사(createSubjectScore(grade.getHistoryScore(), allGrades.stream().map(Grade::getHistoryScore).toList()))
+                .윤리(createSubjectScore(grade.getEthicsScore(), allGrades.stream().map(Grade::getEthicsScore).toList()))
+                .경제(createSubjectScore(grade.getEconomicsScore(), allGrades.stream().map(Grade::getEconomicsScore).toList()))
+                .물리(createSubjectScore(grade.getPhysicsScore(), allGrades.stream().map(Grade::getPhysicsScore).toList()))
+                .화학(createSubjectScore(grade.getChemistryScore(), allGrades.stream().map(Grade::getChemistryScore).toList()))
+                .생명과학(createSubjectScore(grade.getBiologyScore(), allGrades.stream().map(Grade::getBiologyScore).toList()))
+                .지구과학(createSubjectScore(grade.getEarthScienceScore(), allGrades.stream().map(Grade::getEarthScienceScore).toList()))
+                .음악(createSubjectScore(grade.getMusicScore(), allGrades.stream().map(Grade::getMusicScore).toList()))
+                .미술(createSubjectScore(grade.getArtScore(), allGrades.stream().map(Grade::getArtScore).toList()))
+                .체육(createSubjectScore(grade.getPhysicalEducationScore(), allGrades.stream().map(Grade::getPhysicalEducationScore).toList()))
+                .기술가정(createSubjectScore(grade.getTechnologyAndHomeEconomicScore(), allGrades.stream().map(Grade::getTechnologyAndHomeEconomicScore).toList()))
+                .컴퓨터(createSubjectScore(grade.getComputerScienceScore(), allGrades.stream().map(Grade::getComputerScienceScore).toList()))
+                .제2외국어(createSubjectScore(grade.getSecondForeignLanguageScore(), allGrades.stream().map(Grade::getSecondForeignLanguageScore).toList()))
                 .build();
     }
 

@@ -28,10 +28,8 @@ public class ParentForm {
 
     private String email;
 
-    @NotNull(message = "생일은 필수입니다.")
     private LocalDate birthday;
 
-    @NotBlank(message = "학교 이름은 필수입니다.")
     private String schoolName;
 
     @NotNull(message = "성별은 필수입니다.")

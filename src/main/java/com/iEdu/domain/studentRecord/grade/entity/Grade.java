@@ -26,7 +26,14 @@ public class Grade extends BaseEntity {
     @Column(length = 15)
     private Semester semester;
     public enum Semester {
-        FIRST_SEMESTER, SECOND_SEMESTER
+        FIRST_SEMESTER, SECOND_SEMESTER;
+
+        public String toKoreanString() {
+            return switch (this) {
+                case FIRST_SEMESTER -> "1학기";
+                case SECOND_SEMESTER -> "2학기";
+            };
+        }
     }
 
     private Double koreanLanguageScore;

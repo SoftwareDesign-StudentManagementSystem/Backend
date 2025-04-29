@@ -33,14 +33,14 @@ public class Member extends BaseEntity {
     @Column(length = 50)
     private String email;
 
-    @Column(nullable = false)
+    @Column
     private LocalDate birthday;
 
     @Column(length = 300)
     private String profileImageUrl = "";  // 프로필 사진 경로
 
-    @Column(length = 50, nullable = false)
-    private String schoolName;
+    @Builder.Default
+    private String schoolName = "송도고등학교";
 
     private Integer year;
 
@@ -52,8 +52,8 @@ public class Member extends BaseEntity {
     @Column(length = 29)
     private Subject subject;  // 담당과목(선생님만 해당)
     public enum Subject{
-        KOREAN_LANGUAGE, MATHEMATICS, ENGLISH, SOCIAL_STUDIES, HISTORY, ETHICS, ECONOMICS, PHYSICS, CHEMISTRY, BIOLOGY,
-        EARTH_SCIENCE, MUSIC, ART, PHYSICAL_EDUCATION, TECHNOLOGY_AND_HOME_ECONOMICS, COMPUTER_SCIENCE, SECOND_FOREIGN_LANGUAGE
+        국어, 수학, 영어, 사회, 한국사, 윤리, 경제, 물리, 화학, 생명과학,
+        지구과학, 음악, 미술, 체육, 기술가정, 컴퓨터, 제2외국어
     }
 
     @Enumerated(EnumType.STRING)

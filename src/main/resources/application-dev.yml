@@ -19,6 +19,8 @@ spring:
     mongodb:
       uri: mongodb://admin:admin@localhost:27017/meta_db?authSource=admin
       database: meta_db
+  kafka:
+    bootstrap-servers: localhost:9092
 
 springdoc:
   api-docs:
