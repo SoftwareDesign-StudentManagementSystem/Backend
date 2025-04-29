@@ -13,7 +13,6 @@ import lombok.experimental.SuperBuilder;
 @AllArgsConstructor
 @SuperBuilder
 public class Specialty extends BaseEntity {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -22,11 +21,6 @@ public class Specialty extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "member_id", nullable = false)
     private Member member;
-
-    // 카테고리 (예: 학업, 태도 등)
-    @Enumerated(EnumType.STRING)
-    @Column(length = 30, nullable = false)
-    private SpecialtyCategory category;
 
     // 특기사항 내용
     @Column(columnDefinition = "TEXT", nullable = false)

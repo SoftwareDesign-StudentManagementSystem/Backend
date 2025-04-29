@@ -1,6 +1,5 @@
 package com.iEdu.domain.studentRecord.specialty.dto.res;
 
-import com.iEdu.domain.studentRecord.specialty.entity.SpecialtyCategory;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -16,7 +15,6 @@ public class SpecialtyDto {
 
     private Long id; // 특기사항 ID
     private Long memberId; // 작성 대상 학생의 멤버 ID
-    private SpecialtyCategory category; // ENUM - 카테고리
     private String content; // 특기사항 내용
     private String writerName; // 작성자 이름
     private LocalDate createdDate; // 생성일

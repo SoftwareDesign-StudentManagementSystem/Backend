@@ -5,7 +5,6 @@ import com.iEdu.domain.account.auth.loginUser.LoginUserDto;
 import com.iEdu.domain.studentRecord.specialty.dto.req.SpecialtyForm;
 
 import com.iEdu.domain.studentRecord.specialty.dto.res.SpecialtyDto;
-import com.iEdu.domain.studentRecord.specialty.entity.SpecialtyCategory;
 import com.iEdu.domain.studentRecord.specialty.service.SpecialtyService;
 import com.iEdu.global.common.response.ApiResponse;
 import com.iEdu.global.exception.ReturnCode;
@@ -41,9 +40,8 @@ public class ApiV1SpecialtyController {
     // 특기사항 카테고리별 조회 [학부모/선생님 권한]
     @GetMapping("/{studentId}/filter")
     public ApiResponse<List<SpecialtyDto>> getSpecialtiesByCategory(@PathVariable Long studentId,
-                                                                    @RequestParam SpecialtyCategory category,
                                                                     @LoginUser LoginUserDto loginUser) {
-        return ApiResponse.of(specialtyService.getSpecialtiesByCategory(studentId, category, loginUser));
+        return ApiResponse.of(specialtyService.getSpecialtiesByCategory(studentId, loginUser));
     }
 
     // 특기사항 등록 [선생님 전용]
