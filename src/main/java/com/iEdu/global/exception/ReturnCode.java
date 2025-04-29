@@ -127,11 +127,11 @@ public enum ReturnCode {
     BOARDCOMMENT_NOT_FOUND(400,"BOARDCOMMENT_001","게시글의 댓글을 찾을 수 없습니다."),
 
     // 알림 관련 에러
-    ALERT_NOT_FOUND(404, "ALERT_001", "해당 알림을 찾을 수 없습니다."),
-    MAP_TO_JSON_FAILED(500, "ALERT_002", "맵을 JSON으로 변환하는데 실패했습니다."),
-    NOT_AUTHORIZED(401, "ALERT_003", "권한이 없습니다."),
-    NAVI_VALIDATE_ERROR(400, "ALERT_004", "navigationData에 필수 키가 없습니다"),
-    ARGS_VALIDATE_ERROR(400, "ALERT_005", "메시지 인자가 부족합니다."),
+    NOTIFICATION_NOT_FOUND(404, "NOTIFICATION_001", "해당 알림을 찾을 수 없습니다."),
+    MAP_TO_JSON_FAILED(500, "NOTIFICATION_002", "맵을 JSON으로 변환하는데 실패했습니다."),
+    NOT_AUTHORIZED(401, "NOTIFICATION_003", "권한이 없습니다."),
+    NAVI_VALIDATE_ERROR(400, "NOTIFICATION_004", "navigationData에 필수 키가 없습니다"),
+    ARGS_VALIDATE_ERROR(400, "NOTIFICATION_005", "메시지 인자가 부족합니다."),
 
     // Business 에러 (500번대)
     INTERNAL_ERROR(500, "SYS_001", "내부 시스템 에러"),

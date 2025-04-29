@@ -59,6 +59,9 @@ dependencies {
 	implementation("com.vladmihalcea:hibernate-types-60:2.21.1")
 	implementation("io.github.cdimascio:dotenv-java:2.2.0")
 
+	// kafka
+	implementation("org.springframework.kafka:spring-kafka")
+
 	// swagger
 	implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.6")
 }

@@ -12,8 +12,9 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.web.multipart.MultipartFile;
 
-public interface MemberService {
+import java.util.List;
 
+public interface MemberService {
     // 학부모 회원가입
     Member signup(ParentForm parentForm);
 
@@ -62,7 +63,9 @@ public interface MemberService {
     // 팔로우 취소하기 [학부모 권한]
     void cancelFollow(Long memberId, LoginUserDto loginUser);
 
-    // 주어진 ID로 회원(Member)을 조회
+    // 회원ID로 회원이름 조회
     String getMemberNameById(Long memberId);
 
+    // 학생ID로 학부모ID 조회
+    List<Member> findParentsByStudentId(Long studentId);
 }

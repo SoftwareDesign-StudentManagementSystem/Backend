@@ -1,5 +1,7 @@
 package com.iEdu.domain.account.member.serviceImpl;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.iEdu.domain.account.auth.loginUser.LoginUserDto;
 import com.iEdu.domain.account.auth.service.AuthService;
 import com.iEdu.domain.account.member.dto.req.BasicUpdateForm;
@@ -17,13 +19,16 @@ import com.iEdu.domain.account.member.repository.MemberFollowRepository;
 import com.iEdu.domain.account.member.repository.MemberFollowReqRepository;
 import com.iEdu.domain.account.member.repository.MemberRepository;
 import com.iEdu.domain.account.member.service.MemberService;
+import com.iEdu.domain.notification.entity.Notification;
 import com.iEdu.global.exception.ReturnCode;
 import com.iEdu.global.exception.ServiceException;
 import com.iEdu.global.s3.S3Service;
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.security.crypto.bcrypt.BCrypt;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -45,6 +50,8 @@ public class MemberServiceImpl implements MemberService {
     private final PasswordEncoder passwordEncoder;
     private final AuthService authService;
     private final S3Service s3Service;
+    private final KafkaTemplate<String, String> kafkaTemplate;
+    private final ObjectMapper objectMapper;
 
     // 학부모 회원가입
     @Override
@@ -361,6 +368,19 @@ public class MemberServiceImpl implements MemberService {
                 .followRec(followRec)
                 .build();
         memberFollowReqRepository.save(memberFollowReq);
+        // 팔로우 요청 이벤트 생성
+        Notification notification = Notification.builder()
+                .receiverId(followRec.getId())
+                .objectId(memberFollowReq.getId())
+                .content(loginUser.getName() + " 학부모님이 팔로우를 요청하였습니다")
+                .targetObject(Notification.TargetObject.Member)
+                .build();
+        try {
+            String message = objectMapper.writeValueAsString(notification);
+            kafkaTemplate.send("follow-topic", message);
+        } catch (JsonProcessingException e) {
+            log.error("Failed to serialize Notification: {}", e.getMessage());
+        }
     }
 
     // 팔로우 요청 취소하기 [학부모 권한]
@@ -398,6 +418,19 @@ public class MemberServiceImpl implements MemberService {
                 .followed(receiver)
                 .build();
         memberFollowRepository.save(memberFollow);
+        // 팔로우 수락 이벤트 생성
+        Notification notification = Notification.builder()
+                .receiverId(memberId)
+                .objectId(memberFollow.getId())
+                .content(loginUser.getName() + " 학생이 팔로우 요청을 수락하였습니다")
+                .targetObject(Notification.TargetObject.Member)
+                .build();
+        try {
+            String message = objectMapper.writeValueAsString(notification);
+            kafkaTemplate.send("follow-topic", message);
+        } catch (JsonProcessingException e) {
+            log.error("Failed to serialize Notification: {}", e.getMessage());
+        }
     }
 
     // 팔로우 요청 거절하기 [학생 권한]
@@ -430,6 +463,26 @@ public class MemberServiceImpl implements MemberService {
         MemberFollow memberFollow = memberFollowRepository.findByFollowAndFollowed(follow, followed)
                 .orElseThrow(() -> new ServiceException(ReturnCode.FOLLOW_NOT_FOUND));
         memberFollowRepository.delete(memberFollow);
+    }
+
+    // 회원ID로 회원이름 조회
+    @Override
+    @Transactional(readOnly = true)
+    public String getMemberNameById(Long memberId) {
+        Member member = memberRepository.findById(memberId)
+                .orElseThrow(() -> new ServiceException(ReturnCode.USER_NOT_FOUND));
+        return member.getName();
+    }
+
+    // 학생ID로 학부모ID 조회
+    @Override
+    @Transactional(readOnly = true)
+    public List<Member> findParentsByStudentId(Long studentId) {
+        Member student = memberRepository.findById(studentId)
+                .orElseThrow(() -> new ServiceException(ReturnCode.USER_NOT_FOUND));
+        return student.getFollowedList().stream()
+                .map(MemberFollow::getFollow) // 학부모 Member 가져오기
+                .collect(Collectors.toList());
     }
 
     // 요청 페이지 수 제한
@@ -621,12 +674,4 @@ public class MemberServiceImpl implements MemberService {
                 )
                 .build();
     }
-
-    @Override
-    public String getMemberNameById(Long memberId) {
-        Member member = memberRepository.findById(memberId)
-                .orElseThrow(() -> new RuntimeException("존재하지 않는 회원입니다."));
-        return member.getName();
-    }
-
 }

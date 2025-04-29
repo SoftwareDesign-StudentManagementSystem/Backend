@@ -16,6 +16,8 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
@@ -26,7 +28,7 @@ import java.time.YearMonth;
 import static com.iEdu.domain.account.member.entity.Member.Subject.*;
 
 @Configuration
-@Profile("prod")
+@Profile("!prod")
 @RequiredArgsConstructor
 public class NotProd {
     private final AdminService adminService;
@@ -143,12 +145,7 @@ public class NotProd {
 
             // 선생님 가데이터 생성 로직
             List<Member.Subject> subjectList = List.of(
-                    KOREAN_LANGUAGE, MATHEMATICS, ENGLISH,
-                    Member.Subject.SOCIAL_STUDIES, Member.Subject.HISTORY, Member.Subject.ETHICS, Member.Subject.ECONOMICS,
-                    Member.Subject.PHYSICS, Member.Subject.CHEMISTRY, Member.Subject.BIOLOGY, Member.Subject.EARTH_SCIENCE,
-                    Member.Subject.MUSIC, Member.Subject.ART, Member.Subject.PHYSICAL_EDUCATION,
-                    Member.Subject.TECHNOLOGY_AND_HOME_ECONOMICS, Member.Subject.COMPUTER_SCIENCE,
-                    Member.Subject.SECOND_FOREIGN_LANGUAGE
+                    국어, 수학, 영어, 사회, 한국사, 윤리, 경제, 물리, 화학, 생명과학, 지구과학, 음악, 미술, 체육, 기술가정, 컴퓨터, 제2외국어
             );
 
             int teacherEmailCount = 1;
@@ -235,7 +232,6 @@ public class NotProd {
                 int endId = studentGrade * 175;
                 for (int studentId = startId; studentId <= endId; studentId++) {
                     for (int targetGrade = 1; targetGrade <= studentGrade; targetGrade++) {
-                        // 해당 학년 담당 교사들 추출 (17명)
                         int finalGrade = targetGrade;
                         List<Member> teachersForGrade = teacherList.stream()
                                 .filter(t -> t.getYear() == finalGrade)
@@ -243,13 +239,12 @@ public class NotProd {
                         for (int subjectIdx = 0; subjectIdx < subjectList.size(); subjectIdx++) {
                             Member teacher = teachersForGrade.get(subjectIdx);
                             LoginUserDto loginUser = LoginUserDto.ConvertToLoginUserDto(teacher);
-                            double rawScore = 60 + random.nextDouble() * 40;
-                            double roundedScore = Math.round(rawScore * 10) / 10.0;
                             for (Grade.Semester semester : Grade.Semester.values()) {
+                                double score = generateScore();  // 학기마다 점수 생성
                                 GradeForm gradeForm = GradeForm.builder()
                                         .year(targetGrade)
                                         .semester(semester)
-                                        .score(roundedScore) // 60~100
+                                        .score(score)
                                         .build();
                                 gradeService.createGrade((long) studentId, gradeForm, loginUser);
                             }
@@ -288,5 +283,21 @@ public class NotProd {
         int month = ThreadLocalRandom.current().nextInt(1, 13);
         int day = ThreadLocalRandom.current().nextInt(1, YearMonth.of(year, month).lengthOfMonth() + 1);
         return LocalDate.of(year, month, day);
+    }
+
+    // 성적 분포에 맞춰 점수를 생성하는 메소드
+    private double generateScore() {
+        double score;
+        double rand = random.nextDouble();
+        if (rand < 0.6) { // 60% 확률로 70~90점 사이
+            score = 70 + random.nextDouble() * 20;
+        } else if (rand < 0.8) { // 20% 확률로 60~69점 사이
+            score = 60 + random.nextDouble() * 10;
+        } else { // 20% 확률로 91~100점 사이
+            score = 91 + random.nextDouble() * 9;
+        }
+        // 소수점 1자리로 설정 (점수의 다양성을 위해)
+        BigDecimal bd = new BigDecimal(score).setScale(1, RoundingMode.HALF_UP);
+        return bd.doubleValue();
     }
 }
