@@ -1,5 +1,8 @@
 package com.iEdu.domain.studentRecord.feedback.entity;
 
 public enum FeedbackCategory {
-    태도, 학업, 출결, 기타
+    GRADE,      // 성적
+    ATTITUDE,   // 태도
+    ATTENDANCE, // 출결
+    BEHAVIOR    // 행동
 }

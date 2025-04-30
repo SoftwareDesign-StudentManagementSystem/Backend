@@ -37,6 +37,13 @@ public class ApiV1SpecialtyController {
         return ApiResponse.of(specialtyService.getSpecialty(specialtyId, loginUser));
     }
 
+    // 특기사항 카테고리별 조회 [학부모/선생님 권한]
+    @GetMapping("/{studentId}/filter")
+    public ApiResponse<List<SpecialtyDto>> getSpecialtiesByCategory(@PathVariable Long studentId,
+                                                                    @LoginUser LoginUserDto loginUser) {
+        return ApiResponse.of(specialtyService.getSpecialtiesByCategory(studentId, loginUser));
+    }
+
     // 특기사항 등록 [선생님 전용]
     @PostMapping("/{studentId}")
     public ApiResponse<String> createSpecialty(@PathVariable Long studentId,

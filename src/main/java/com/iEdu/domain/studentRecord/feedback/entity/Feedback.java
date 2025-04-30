@@ -3,6 +3,8 @@ package com.iEdu.domain.studentRecord.feedback.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.time.LocalDate;
+
 @Entity
 @Getter
 @Setter
@@ -21,10 +23,13 @@ public class Feedback {
     @Enumerated(EnumType.STRING)
     private FeedbackCategory category;
 
+    @Column(nullable = false)
     private String content;
 
-    private Boolean visibleToStudent;
+    @Column(nullable = false)
+    private LocalDate recordedDate;
 
+    private Boolean visibleToStudent;
     private Boolean visibleToParent;
 }
 
