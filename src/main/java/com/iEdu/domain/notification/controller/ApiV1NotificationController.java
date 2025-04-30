@@ -9,6 +9,7 @@ import com.iEdu.domain.notification.service.NotificationService;
 import com.iEdu.global.common.response.ApiResponse;
 import com.iEdu.global.common.response.IEduPage;
 import com.iEdu.global.exception.ReturnCode;
+import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -24,6 +25,7 @@ public class ApiV1NotificationController {
     private final NotificationService notificationService;
 
     // 알림 목록 조회 [학부모/학생 권한]
+    @Operation(summary = "알림 목록 조회 [학부모/학생 권한]")
     @GetMapping
     public ApiResponse<NotificationDto> getNotifications(@ModelAttribute NotificationPage request, @LoginUser LoginUserDto loginUser) {
         Pageable pageable = PageRequest.of(request.getPage(), request.getSize());
@@ -31,6 +33,7 @@ public class ApiV1NotificationController {
     }
 
     // 알림 읽음 처리 [학부모/학생 권한]
+    @Operation(summary = "알림 읽음 처리 [학부모/학생 권한]")
     @PutMapping
     public ApiResponse<String> markAsRead(@RequestBody @Valid NotificationForm notificationForm,
                                           @LoginUser LoginUserDto loginUser) {

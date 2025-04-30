@@ -80,7 +80,7 @@ volumes:
 #      - SPRING_PROFILES_ACTIVE=prod
 #      - DOTENV_PATH=/app/env
 #    volumes:
-#      - ./env/.env:/app/.env
+#      - ./env:/app/env
 #    depends_on:
 #      redis:
 #        condition: service_healthy  # Redis가 정상 작동할 때까지 대기
