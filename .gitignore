@@ -41,6 +41,7 @@ out/
 dockerProjects
 src/main/resources/application-secret.yml
 .env
+fcm-service-account.json
 
 # Terraform 상태 파일
 *.tfstate

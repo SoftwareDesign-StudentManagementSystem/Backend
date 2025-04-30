@@ -12,7 +12,7 @@ public interface SpecialtyService {
 
     void updateSpecialty(Long specialtyId, SpecialtyForm form, LoginUserDto loginUser);
 
-    List<SpecialtyDto> getSpecialtiesByCategory(Long studentId, LoginUserDto loginUser);
+    // 특기사항 학년/학기별 조회 [학부모/선생님 권한]
 
     void deleteSpecialty(Long specialtyId, LoginUserDto loginUser);
 

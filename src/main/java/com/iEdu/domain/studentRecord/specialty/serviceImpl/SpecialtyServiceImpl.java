@@ -88,31 +88,8 @@ public class SpecialtyServiceImpl implements SpecialtyService {
         specialtyRepository.delete(specialty);
     }
 
-    /**
-     * 학생의 특기사항 조회 (카테고리 필터)
-     */
-    @Override
-    @Transactional(readOnly = true)
-    public List<SpecialtyDto> getSpecialtiesByCategory(Long studentId, LoginUserDto loginUser) {
-        Member.MemberRole role = loginUser.getRole();
+    // 특기사항 학년/학기별 조회 [학부모/선생님 권한]
 
-        if (role == Member.MemberRole.ROLE_TEACHER) {
-            return convertToDtoList(
-                    specialtyRepository.findAllByMemberIdAndCategory(studentId)
-            );
-        }
-        if (role == Member.MemberRole.ROLE_PARENT) {
-            boolean isFollowed = loginUser.getFollowList().stream()
-                    .anyMatch(f -> f.getFollow().getId().equals(studentId));
-            if (!isFollowed) {
-                throw new ServiceException(ReturnCode.NOT_AUTHORIZED);
-            }
-            return convertToDtoList(
-                    specialtyRepository.findAllByMemberIdAndCategory(studentId)
-            );
-        }
-        throw new ServiceException(ReturnCode.NOT_AUTHORIZED);
-    }
     /**
      * 단건 조회 - 권한 제한 없음
      */

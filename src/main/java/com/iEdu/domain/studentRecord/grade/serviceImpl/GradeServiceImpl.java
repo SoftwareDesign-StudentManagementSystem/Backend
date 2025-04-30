@@ -7,7 +7,6 @@ import com.iEdu.domain.account.member.entity.Member;
 import com.iEdu.domain.account.member.entity.MemberFollow;
 import com.iEdu.domain.account.member.entity.MemberPage;
 import com.iEdu.domain.account.member.repository.MemberRepository;
-import com.iEdu.domain.notification.dto.res.NotificationDto;
 import com.iEdu.domain.notification.entity.Notification;
 import com.iEdu.domain.studentRecord.grade.dto.req.GradeForm;
 import com.iEdu.domain.studentRecord.grade.dto.req.GradeUpdateForm;
@@ -20,7 +19,6 @@ import com.iEdu.global.exception.ReturnCode;
 import com.iEdu.global.exception.ServiceException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -32,7 +30,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
-import java.util.Optional;
 
 @Slf4j
 @Service

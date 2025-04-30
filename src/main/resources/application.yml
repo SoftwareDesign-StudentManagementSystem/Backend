@@ -9,7 +9,6 @@ spring:
       enabled: ALWAYS
   profiles:
     active: dev
-    include: secret
   servlet:
     multipart:
       max-file-size: 10MB
