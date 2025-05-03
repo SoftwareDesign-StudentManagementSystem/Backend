@@ -27,7 +27,7 @@ public class GradeEventListener {
     private final KafkaTemplate<String, String> kafkaTemplate;
     private final MemberService memberService;
     private final FcmService fcmService;
-    private final FcmTokenService fcmTokenService; // 🔥 추가: 토큰 조회용
+    private final FcmTokenService fcmTokenService;
 
     @KafkaListener(topics = "grade-topic", groupId = "1")
     public void consume(String message) {

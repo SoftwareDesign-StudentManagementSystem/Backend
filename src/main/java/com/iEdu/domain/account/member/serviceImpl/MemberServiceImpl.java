@@ -373,7 +373,7 @@ public class MemberServiceImpl implements MemberService {
                 .receiverId(followRec.getId())
                 .objectId(memberFollowReq.getId())
                 .content(loginUser.getName() + " 학부모님이 팔로우를 요청하였습니다")
-                .targetObject(Notification.TargetObject.Member)
+                .targetObject(Notification.TargetObject.Follow)
                 .build();
         try {
             String message = objectMapper.writeValueAsString(notification);
@@ -423,7 +423,7 @@ public class MemberServiceImpl implements MemberService {
                 .receiverId(memberId)
                 .objectId(memberFollow.getId())
                 .content(loginUser.getName() + " 학생이 팔로우 요청을 수락하였습니다")
-                .targetObject(Notification.TargetObject.Member)
+                .targetObject(Notification.TargetObject.Follow)
                 .build();
         try {
             String message = objectMapper.writeValueAsString(notification);

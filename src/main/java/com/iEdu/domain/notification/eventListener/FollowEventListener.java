@@ -22,7 +22,7 @@ public class FollowEventListener {
     private final NotificationService notificationService;
     private final KafkaTemplate<String, String> kafkaTemplate;
     private final FcmService fcmService;
-    private final FcmTokenService fcmTokenService; // 🔥 추가: 토큰 조회용
+    private final FcmTokenService fcmTokenService;
 
     @KafkaListener(topics = "follow-topic", groupId = "1")
     public void consume(String message) {
@@ -31,6 +31,7 @@ public class FollowEventListener {
         while (attempt < maxRetries) {
             try {
                 Notification notification = objectMapper.readValue(message, Notification.class);
+                // 팔로우 알림 생성 + FCM 전송
                 notificationService.createNotification(notification);
                 String fcmToken = fcmTokenService.getFcmToken(notification.getReceiverId());
                 if (fcmToken != null) {
