@@ -38,6 +38,6 @@ public class ApiV1NotificationController {
     public ApiResponse<String> markAsRead(@RequestBody @Valid NotificationForm notificationForm,
                                           @LoginUser LoginUserDto loginUser) {
         notificationService.markAsRead(notificationForm, loginUser);
-        return ApiResponse.of(ReturnCode.SUCCESS);  // 상태 코드 204: No Content
+        return ApiResponse.of(ReturnCode.SUCCESS);
     }
 }

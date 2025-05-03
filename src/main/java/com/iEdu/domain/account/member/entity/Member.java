@@ -36,6 +36,7 @@ public class Member extends BaseEntity {
     @Column
     private LocalDate birthday;
 
+    @Builder.Default
     @Column(length = 300)
     private String profileImageUrl = "";  // 프로필 사진 경로
 
@@ -79,15 +80,19 @@ public class Member extends BaseEntity {
         NORMAL, BANNED
     }
 
+    @Builder.Default
     @OneToMany(mappedBy = "follow", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<MemberFollow> followList = new ArrayList<>();  // 자녀 리스트
 
+    @Builder.Default
     @OneToMany(mappedBy = "followed", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<MemberFollow> followedList = new ArrayList<>();  // 학부모 리스트
 
+    @Builder.Default
     @OneToMany(mappedBy = "followReq", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<MemberFollowReq> followReqList = new ArrayList<>();  // 팔로우 요청한 자녀 리스트
 
+    @Builder.Default
     @OneToMany(mappedBy = "followRec", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<MemberFollowReq> followRecList = new ArrayList<>();  // 팔로우 요청 받은 학부모 리스트
 }

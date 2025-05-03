@@ -23,6 +23,6 @@ public class Notification extends BaseEntity {
     @Column(length = 10)
     private TargetObject targetObject;
     public enum TargetObject {
-        Attendance, Counsel, Feedback, Grade, Member, Specialty
+        Attendance, Counsel, Feedback, Grade, Follow, Specialty
     }
 }

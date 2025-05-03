@@ -80,7 +80,8 @@ volumes:
 #      - SPRING_PROFILES_ACTIVE=prod
 #      - DOTENV_PATH=/app/env
 #    volumes:
-#      - ./env:/app/env
+#      - ./env/.env:/app/.env
+#      - ./env/fcm-service-account.json:/app/fcm-service-account.json
 #    depends_on:
 #      redis:
 #        condition: service_healthy  # Redis가 정상 작동할 때까지 대기

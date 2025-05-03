@@ -1,8 +1,6 @@
 package com.iEdu.domain.account.member.dto.res;
 
 import com.iEdu.domain.account.member.entity.Member;
-import com.iEdu.domain.account.member.entity.MemberFollow;
-import com.iEdu.domain.account.member.entity.MemberFollowReq;
 import lombok.Builder;
 import lombok.Data;
 
