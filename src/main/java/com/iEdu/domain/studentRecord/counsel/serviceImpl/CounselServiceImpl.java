@@ -44,7 +44,7 @@ public class CounselServiceImpl implements CounselService {
 
         // 상담 날짜 유효성 검사 (미래 제한)
         if (request.getDate() == null || request.getDate().isAfter(LocalDate.now())) {
-            throw new ServiceExcepticn(ReturnCode.COUNSEL_DATE_INVALID);
+            throw new ServiceException(ReturnCode.COUNSEL_DATE_INVALID);
         }
 
         // 학생/교사 존재 여부 확인
