@@ -8,7 +8,6 @@ import java.time.LocalDate;
 @Setter
 public class CounselRequest {
     private Long studentId;
-    private Long teacherId;
     private LocalDate date;
     private String content;
     private boolean visibleToStudent;

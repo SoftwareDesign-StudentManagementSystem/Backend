@@ -18,5 +18,4 @@ public class FeedbackForm {
     private Boolean visibleToStudent; // 학생에게 공개 여부
     private Boolean visibleToParent;  // 학부모에게 공개 여부
     private LocalDate recordedDate;   // 기록 일자
-    // TODO: 알람 기능 (추후 개발 예정)
 }

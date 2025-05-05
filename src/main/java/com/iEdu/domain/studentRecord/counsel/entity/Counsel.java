@@ -1,5 +1,6 @@
 package com.iEdu.domain.studentRecord.counsel.entity;
 
+import com.iEdu.global.jpa.BaseEntity;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -10,7 +11,7 @@ import java.time.LocalDate;
 @Table(name = "counsel")
 @Getter
 @Setter
-public class Counsel {
+public class Counsel extends BaseEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
