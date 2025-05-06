@@ -13,7 +13,6 @@ import com.iEdu.global.exception.ReturnCode;
 import com.iEdu.global.exception.ServiceException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -79,28 +78,10 @@ public class CounselServiceImpl implements CounselService {
         // 기본값 지정
         if (startDate == null) startDate = LocalDate.of(1900, 1, 1);
         if (endDate == null) endDate = LocalDate.of(2100, 1, 1);
+        if (teacherName != null && teacherName.isBlank()) teacherName = null;
 
-        Page<Counsel> page = counselRepository.findByStudentIdAndDateBetween(studentId, startDate, endDate, pageable);
-
-        // 2차 필터: 선생 이름
-        Page<CounselResponse> result = page.map(counsel -> new CounselResponse(
-                counsel.getDate(),
-                memberService.getMemberNameById(counsel.getTeacherId()),
-                counsel.getContent(),
-                counsel.getVisibleToStudent(),
-                counsel.getVisibleToParent()
-        ));
-
-        // Optional 필터링: teacherName이 들어온 경우만 필터링
-        if (teacherName.isBlank()) {
-            result = new PageImpl<>(
-                    result.stream()
-                            .filter(c -> c.getTeacher().contains(teacherName))
-                            .toList(),
-                    pageable,
-                    result.getTotalElements()
-            );
-        }
-        return result;
+        return counselRepository.findCounselsByStudentAndFilter(
+                studentId, startDate, endDate, teacherName, pageable
+        );
     }
 }
