@@ -35,6 +35,5 @@ public interface CounselRepository extends JpaRepository<Counsel, Long> {
             @Param("teacherName") String teacherName,
             Pageable pageable
     );
-    Page<Counsel> findByStudentIdAndDateBetween(Long studentId, LocalDate startDate, LocalDate endDate, Pageable pageable);
 
 }

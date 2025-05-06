@@ -32,7 +32,7 @@ public class CounselServiceImpl implements CounselService {
     // 선생님 전용
     public void addCounsel(CounselRequest request, LoginUserDto loginUser){
         // 보안 검사
-        if (loginUser.getRole() == Member.MemberRole.ROLE_TEACHER) {
+        if (loginUser.getRole() != Member.MemberRole.ROLE_TEACHER) {
             throw new ServiceException(ReturnCode.NOT_AUTHORIZED);
         }
 
