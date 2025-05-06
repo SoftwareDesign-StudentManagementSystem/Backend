@@ -186,7 +186,7 @@ public class MemberServiceImpl implements MemberService {
         } else if (role == Member.MemberRole.ROLE_PARENT) {
             // 학부모: 본인의 followList에 있는 학생(자녀)만 조회 가능
             boolean isFollowed = loginUser.getFollowList().stream()
-                    .anyMatch(follow -> follow.getFollow().getId().equals(studentId));
+                    .anyMatch(follow -> follow.getFollowed().getId().equals(studentId));
             if (!isFollowed) {
                 throw new ServiceException(ReturnCode.NOT_AUTHORIZED);
             }
