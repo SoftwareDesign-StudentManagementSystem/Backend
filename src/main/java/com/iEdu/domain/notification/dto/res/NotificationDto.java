@@ -11,8 +11,9 @@ import lombok.experimental.SuperBuilder;
 @AllArgsConstructor
 @NoArgsConstructor
 public class NotificationDto {
-    private Long objectId;
+    private Long id;
     private String content;
     private Boolean isRead;
+    private Long objectId;
     private Notification.TargetObject targetObject;
 }

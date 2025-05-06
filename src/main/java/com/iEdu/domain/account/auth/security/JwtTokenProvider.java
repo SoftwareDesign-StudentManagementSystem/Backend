@@ -62,7 +62,7 @@ public class JwtTokenProvider {
         return false;
     }
 
-    // 이메일 추출
+    // 계정ID 추출
     public Long getAccountIdFromToken(String token) {
         String subject = Jwts.parser()
                 .verifyWith(key)
