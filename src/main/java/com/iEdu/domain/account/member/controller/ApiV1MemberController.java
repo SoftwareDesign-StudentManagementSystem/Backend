@@ -65,8 +65,8 @@ public class ApiV1MemberController {
     @GetMapping("/filter")
     public ApiResponse<MemberDto> getMyFilterInfo(@ModelAttribute MemberPage request,
                                                   @RequestParam(value = "year") Integer year,
-                                                  @RequestParam(value = "classId") Integer classId,
-                                                  @RequestParam(value = "number") Integer number,
+                                                  @RequestParam(value = "classId", required = false) Integer classId,
+                                                  @RequestParam(value = "number", required = false) Integer number,
                                                   @LoginUser LoginUserDto loginUser) {
         Pageable pageable = PageRequest.of(request.getPage(), request.getSize());
         return ApiResponse.of(IEduPage.of(memberService.getMyFilterInfo(year, classId, number, pageable, loginUser)));

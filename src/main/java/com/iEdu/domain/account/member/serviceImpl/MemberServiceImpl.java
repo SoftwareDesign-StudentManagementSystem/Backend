@@ -20,10 +20,11 @@ import com.iEdu.domain.account.member.repository.MemberFollowReqRepository;
 import com.iEdu.domain.account.member.repository.MemberRepository;
 import com.iEdu.domain.account.member.service.MemberService;
 import com.iEdu.domain.notification.entity.Notification;
+import com.iEdu.domain.account.member.entity.QMember;
 import com.iEdu.global.exception.ReturnCode;
 import com.iEdu.global.exception.ServiceException;
 import com.iEdu.global.s3.S3Service;
-import jakarta.persistence.EntityNotFoundException;
+import com.querydsl.core.BooleanBuilder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -36,7 +37,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -140,9 +140,19 @@ public class MemberServiceImpl implements MemberService {
         if (loginUser.getRole() != Member.MemberRole.ROLE_TEACHER) {
             throw new ServiceException(ReturnCode.NOT_AUTHORIZED);
         }
-        Page<Member> memberPage = memberRepository.findByYearAndClassIdAndNumberAndRole(
-                year, classId, number, Member.MemberRole.ROLE_STUDENT, pageable
-        );
+        QMember member = QMember.member;
+        BooleanBuilder builder = new BooleanBuilder();
+        builder.and(member.role.eq(Member.MemberRole.ROLE_STUDENT));
+        if (year != null) {
+            builder.and(member.year.eq(year));
+        }
+        if (classId != null) {
+            builder.and(member.classId.eq(classId));
+        }
+        if (number != null) {
+            builder.and(member.number.eq(number));
+        }
+        Page<Member> memberPage = memberRepository.findAll(builder, pageable);
         return memberPage.map(this::memberConvertToMemberDto);
     }
 
