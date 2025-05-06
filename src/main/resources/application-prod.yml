@@ -41,7 +41,7 @@ springdoc:
 logging:
   level:
     org.springframework.web: INFO
-    team.klover: INFO
+    team.iedu: INFO
     org.hibernate.SQL: WARN
     org.hibernate.type.descriptor.sql: WARN
 
