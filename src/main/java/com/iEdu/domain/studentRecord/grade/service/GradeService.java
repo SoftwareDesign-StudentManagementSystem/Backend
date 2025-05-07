@@ -7,6 +7,8 @@ import com.iEdu.domain.studentRecord.grade.dto.res.GradeDto;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
+import java.util.List;
+
 public interface GradeService {
     // 본인의 모든 성적 조회 [학생 권한]
     Page<GradeDto> getMyAllGrade(Pageable pageable, LoginUserDto loginUser);
@@ -14,10 +16,13 @@ public interface GradeService {
     // 학생의 모든 성적 조회 [학부모/선생님 권한]
     Page<GradeDto> getAllGrade(Long studentId, Pageable pageable, LoginUserDto loginUser);
 
-    // (학년&학기)로 본인 성적 조회 [학생 권한]
+    // (학년/학기)로 본인 성적 조회 [학생 권한]
     GradeDto getMyFilterGrade(Integer year, Integer semester, LoginUserDto loginUser);
 
-    // (학년&학기)로 학생 성적 조회 [학부모/선생님 권한]
+    // (학년/반/번호/학기)로 학생들 성적 조회 [선생님 권한]
+    List<GradeDto> getStudentsGrade(Integer year, Integer classId, Integer number, Integer semester, LoginUserDto loginUser);
+
+    // (학년/학기)로 학생 성적 조회 [학부모/선생님 권한]
     GradeDto getFilterGrade(Long studentId, Integer year, Integer semester, LoginUserDto loginUser);
 
     // 학생 성적 생성 [선생님 권한]

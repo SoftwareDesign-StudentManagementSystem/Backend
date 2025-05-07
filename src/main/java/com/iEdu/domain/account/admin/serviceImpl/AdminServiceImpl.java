@@ -66,6 +66,25 @@ public class AdminServiceImpl implements AdminService {
         return member;
     }
 
+    // 역할별 회원 조회 [관리자 권한]
+    @Override
+    @Transactional
+    public Page<MemberDto> getMemberByRole(String role, Pageable pageable, LoginUserDto loginUser){
+        // ROLE_ADMIN이 아닌 경우 예외 처리
+        if (loginUser.getRole() != Member.MemberRole.ROLE_ADMIN) {
+            throw new ServiceException(ReturnCode.NOT_AUTHORIZED);
+        }
+        // 문자열 role을 Enum으로 변환
+        Member.MemberRole memberRole;
+        try {
+            memberRole = Member.MemberRole.valueOf(role);
+        } catch (IllegalArgumentException e) {
+            throw new ServiceException(ReturnCode.INVALID_ROLE);
+        }
+        Page<Member> members = memberRepository.findByRoleOrderByIdAsc(memberRole, pageable);
+        return members.map(this::memberConvertToMemberDto);
+    }
+
     // 회원가입 [관리자 권한]
     @Override
     @Transactional
@@ -109,7 +128,7 @@ public class AdminServiceImpl implements AdminService {
         }
         Member member = memberRepository.findById(memberId)
                 .orElseThrow(() -> new ServiceException(ReturnCode.USER_NOT_FOUND));
-        return memberConvertToMemberInfo(member);
+        return memberConvertToMemberDto(member);
     }
 
     // 다른 멤버의 상세회원정보 조회 [관리자 권한]
@@ -122,7 +141,7 @@ public class AdminServiceImpl implements AdminService {
         }
         Member member = memberRepository.findById(memberId)
                 .orElseThrow(() -> new ServiceException(ReturnCode.USER_NOT_FOUND));
-        return memberConvertToDetailMemberInfo(member);
+        return memberConvertToDetailMemberDto(member);
     }
 
     // 회원정보 수정 [관리자 권한]
@@ -190,7 +209,7 @@ public class AdminServiceImpl implements AdminService {
         }
         checkPageSize(pageable.getPageSize());
         Page<Member> members = memberRepository.findByKeyword(pageable, keyword);
-        return members.map(this::memberConvertToMemberInfo);
+        return members.map(this::memberConvertToMemberDto);
     }
 
     // 유저의 프로필 사진 삭제하기 [관리자 권한]
@@ -246,7 +265,7 @@ public class AdminServiceImpl implements AdminService {
     }
 
     // Member를 MemberDto로 변환
-    private MemberDto memberConvertToMemberInfo(Member member) {
+    private MemberDto memberConvertToMemberDto(Member member) {
         return MemberDto.builder()
                 .id(member.getId())
                 .name(member.getName())
@@ -261,7 +280,7 @@ public class AdminServiceImpl implements AdminService {
     }
 
     // Member를 DetailMemberDto로 변환
-    private DetailMemberDto memberConvertToDetailMemberInfo(Member member) {
+    private DetailMemberDto memberConvertToDetailMemberDto(Member member) {
         return DetailMemberDto.builder()
                 .id(member.getId())
                 .accountId(member.getAccountId())

@@ -12,6 +12,7 @@ public class GradeDto {
     private String profileImageUrl;
     private Integer year;
     private Grade.Semester semester;
+    private String gradeRank;
     private SubjectScore 국어;
     private SubjectScore 수학;
     private SubjectScore 영어;
