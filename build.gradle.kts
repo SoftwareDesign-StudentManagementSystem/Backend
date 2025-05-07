@@ -70,25 +70,35 @@ dependencies {
 
 	// QueryDSL
 	implementation("com.querydsl:querydsl-jpa:5.0.0:jakarta")
+	implementation("com.querydsl:querydsl-apt:5.0.0:jakarta")
 	annotationProcessor("com.querydsl:querydsl-apt:5.0.0:jakarta")
-	annotationProcessor("jakarta.persistence:jakarta.persistence-api:3.1.0")
-	annotationProcessor("jakarta.annotation:jakarta.annotation-api:2.1.1")
+	annotationProcessor("jakarta.annotation:jakarta.annotation-api")
+	annotationProcessor("jakarta.persistence:jakarta.persistence-api")
 }
 
 tasks.withType<Test> {
 	useJUnitPlatform()
 }
 
+// Querydsl 설정
+val generated = "src/main/generated"
+
+// querydsl QClass 파일 생성 위치를 지정
 tasks.withType<JavaCompile> {
-	options.generatedSourceOutputDirectory.set(file("src/main/generated"))
+	options.generatedSourceOutputDirectory.set(file(generated))
 }
 
+// java source set 에 querydsl QClass 위치 추가
 sourceSets {
-	main {
+	named("main") {
 		java {
-			srcDirs(
-				"Backend/build/generated"
-			)
+			"src/main/java"
+			srcDir(generated)
 		}
 	}
+}
+
+// gradle clean 시에 QClass 디렉토리 삭제
+tasks.named<Delete>("clean") {
+	delete(file(generated))
 }
