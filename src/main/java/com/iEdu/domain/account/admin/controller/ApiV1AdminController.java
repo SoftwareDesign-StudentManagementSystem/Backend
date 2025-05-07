@@ -15,6 +15,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.apache.kafka.shaded.com.google.protobuf.Api;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.web.bind.annotation.*;
@@ -33,6 +34,16 @@ public class ApiV1AdminController {
     public ApiResponse<String> adminSignup(@RequestBody @Valid MemberForm memberForm, @LoginUser LoginUserDto loginUser) {
         adminService.adminSignup(memberForm, loginUser);
         return ApiResponse.of(ReturnCode.SUCCESS);
+    }
+
+    // 역할별 회원 조회 [관리자 권한]
+    @Operation(summary = "역할별 회원 조회 [관리자 권한]")
+    @GetMapping
+    public ApiResponse<MemberDto> getMemberByRole(@ModelAttribute MemberPage request, @RequestParam(value = "role") String role,
+                                                  @LoginUser LoginUserDto loginUser) {
+        Pageable pageable = PageRequest.of(request.getPage(), request.getSize());
+
+        return ApiResponse.of(IEduPage.of(adminService.getMemberByRole(role, pageable, loginUser)));
     }
 
     // 다른 멤버의 회원정보 조회 [관리자 권한]

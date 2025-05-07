@@ -18,13 +18,14 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping(value="/rest-api/v1/grade")
 @RequiredArgsConstructor
 @Tag(name = "Grade", description = "성적 API")
 public class ApiV1GradeController {
     private final GradeService gradeService;
-
     // 본인의 모든 성적 조회 [학생 권한]
     @Operation(summary = "본인의 모든 성적 조회 [학생 권한]")
     @GetMapping
@@ -43,8 +44,8 @@ public class ApiV1GradeController {
         return ApiResponse.of(IEduPage.of(gradeService.getAllGrade(studentId, pageable, loginUser)));
     }
 
-    // (학년&학기)로 본인 성적 조회 [학생 권한]
-    @Operation(summary = "(학년&학기)로 본인 성적 조회 [학생 권한]")
+    // (학년/학기)로 본인 성적 조회 [학생 권한]
+    @Operation(summary = "(학년/학기)로 본인 성적 조회 [학생 권한]")
     @GetMapping("/filter")
     public ApiResponse<GradeDto> getMyFilterGrade(@RequestParam(value = "year") Integer year,
                                                   @RequestParam(value = "semester") Integer semester,
@@ -52,8 +53,19 @@ public class ApiV1GradeController {
         return ApiResponse.of(gradeService.getMyFilterGrade(year, semester, loginUser));
     }
 
-    // (학년&학기)로 학생 성적 조회 [학부모/선생님 권한]
-    @Operation(summary = "(학년&학기)로 학생 성적 조회 [학부모/선생님 권한]")
+    // (학년/반/번호/학기)로 학생들 성적 조회 [선생님 권한]
+    @Operation(summary = "(학년/반/번호/학기)로 학생들 성적 조회 [선생님 권한]")
+    @GetMapping("/filter/students")
+    public ApiResponse<List<GradeDto>> getStudentsGrade(@RequestParam(value = "year") Integer year,
+                                                        @RequestParam(value = "classId") Integer classId,
+                                                        @RequestParam(value = "number", required = false) Integer number,
+                                                        @RequestParam(value = "semester") Integer semester,
+                                                        @LoginUser LoginUserDto loginUser){
+        return ApiResponse.of(gradeService.getStudentsGrade(year, classId, number, semester, loginUser));
+    }
+
+    // (학년/학기)로 학생 성적 조회 [학부모/선생님 권한]
+    @Operation(summary = "(학년/학기)로 학생 성적 조회 [학부모/선생님 권한]")
     @GetMapping("/filter/{studentId}")
     public ApiResponse<GradeDto> getFilterGrade(@PathVariable("studentId") Long studentId,
                                                 @RequestParam(value = "year") Integer year,

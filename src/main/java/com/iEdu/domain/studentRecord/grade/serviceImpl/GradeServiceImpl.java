@@ -13,6 +13,7 @@ import com.iEdu.domain.studentRecord.grade.dto.req.GradeUpdateForm;
 import com.iEdu.domain.studentRecord.grade.dto.res.GradeDto;
 import com.iEdu.domain.studentRecord.grade.dto.res.SubjectScore;
 import com.iEdu.domain.studentRecord.grade.entity.Grade;
+import com.iEdu.domain.studentRecord.grade.repository.GradeQueryRepository;
 import com.iEdu.domain.studentRecord.grade.repository.GradeRepository;
 import com.iEdu.domain.studentRecord.grade.service.GradeService;
 import com.iEdu.global.exception.ReturnCode;
@@ -29,7 +30,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Slf4j
 @Service
@@ -37,6 +41,7 @@ import java.util.Objects;
 public class GradeServiceImpl implements GradeService {
     private final GradeRepository gradeRepository;
     private final MemberRepository memberRepository;
+    private final GradeQueryRepository gradeQueryRepository;
     private final KafkaTemplate<String, String> kafkaTemplate;
     private final ObjectMapper objectMapper;
 
@@ -91,7 +96,7 @@ public class GradeServiceImpl implements GradeService {
         throw new ServiceException(ReturnCode.NOT_AUTHORIZED);
     }
 
-    // (학년&학기)로 본인 성적 조회 [학생 권한]
+    // (학년/학기)로 본인 성적 조회 [학생 권한]
     @Override
     @Transactional
     public GradeDto getMyFilterGrade(Integer year, Integer semester, LoginUserDto loginUser){
@@ -105,7 +110,24 @@ public class GradeServiceImpl implements GradeService {
         return convertToGradeDto(grade);
     }
 
-    // (학년&학기)로 학생 성적 조회 [학부모/선생님 권한]
+    // (학년/반/번호/학기)로 학생들 성적 조회 [선생님 권한]
+    @Override
+    @Transactional
+    public List<GradeDto> getStudentsGrade(Integer year, Integer classId, Integer number, Integer semester, LoginUserDto loginUser){
+        // ROLE_TEACHER 아닌 경우 예외 처리
+        if (loginUser.getRole() != Member.MemberRole.ROLE_TEACHER) {
+            throw new ServiceException(ReturnCode.NOT_AUTHORIZED);
+        }
+        Grade.Semester semesterEnum = (semester == 1) ? Grade.Semester.FIRST_SEMESTER : Grade.Semester.SECOND_SEMESTER;
+
+        // 학생들 성적 조회 (QueryDSL 사용)
+        List<Grade> grades = gradeQueryRepository.findAllByClassAndSemester(year, classId, number, semesterEnum);
+        return grades.stream()
+                .map(this::convertToGradeDto)
+                .toList();
+    }
+
+    // (학년/학기)로 학생 성적 조회 [학부모/선생님 권한]
     @Override
     @Transactional
     public GradeDto getFilterGrade(Long studentId, Integer year, Integer semester, LoginUserDto loginUser){
@@ -321,15 +343,15 @@ public class GradeServiceImpl implements GradeService {
     private GradeDto convertToGradeDto(Grade grade) {
         Integer gradeYear = grade.getYear();  // 학년
         Grade.Semester semester = grade.getSemester();
-
         List<Grade> allGrades = gradeRepository.findAllByMember_YearAndSemester(gradeYear, semester);
-
+        String gradeRank = calculateGradeRank(grade, allGrades); // 학년 석차 계산
         return GradeDto.builder()
                 .id(grade.getId())
                 .studentId(grade.getMember().getId())
                 .profileImageUrl(grade.getMember().getProfileImageUrl())
                 .year(gradeYear)
                 .semester(semester)
+                .gradeRank(gradeRank)
                 .국어(createSubjectScore(grade.getKoreanLanguageScore(), allGrades.stream().map(Grade::getKoreanLanguageScore).toList()))
                 .수학(createSubjectScore(grade.getMathematicsScore(), allGrades.stream().map(Grade::getMathematicsScore).toList()))
                 .영어(createSubjectScore(grade.getEnglishScore(), allGrades.stream().map(Grade::getEnglishScore).toList()))
@@ -385,5 +407,50 @@ public class GradeServiceImpl implements GradeService {
                 .achievementLevel(achievementLevel)
                 .relativeRankGrade(relativeRankGrade)
                 .build();
+    }
+
+    // 학년 석차 계산
+    private String calculateGradeRank(Grade targetGrade, List<Grade> allGrades) {
+        // 학생별 평균 점수 매핑
+        Map<Long, Double> studentAverageMap = allGrades.stream()
+                .collect(Collectors.toMap(
+                        g -> g.getMember().getId(),
+                        this::calculateAverageScore
+                ));
+        // 현재 학생의 평균 점수
+        Double targetAverage = calculateAverageScore(targetGrade);
+        // 평균 점수 내림차순 정렬 후 등수 결정
+        List<Double> sortedAverages = studentAverageMap.values().stream()
+                .sorted(Comparator.reverseOrder())
+                .toList();
+        int rank = sortedAverages.indexOf(targetAverage) + 1;
+        return rank + "/" + allGrades.size();
+    }
+
+    // 전과목 평균 계산
+    private Double calculateAverageScore(Grade grade) {
+        return Stream.of(
+                        grade.getKoreanLanguageScore(),
+                        grade.getMathematicsScore(),
+                        grade.getEnglishScore(),
+                        grade.getSocialStudiesScore(),
+                        grade.getHistoryScore(),
+                        grade.getEthicsScore(),
+                        grade.getEconomicsScore(),
+                        grade.getPhysicsScore(),
+                        grade.getChemistryScore(),
+                        grade.getBiologyScore(),
+                        grade.getEarthScienceScore(),
+                        grade.getMusicScore(),
+                        grade.getArtScore(),
+                        grade.getPhysicalEducationScore(),
+                        grade.getTechnologyAndHomeEconomicScore(),
+                        grade.getComputerScienceScore(),
+                        grade.getSecondForeignLanguageScore()
+                )
+                .filter(Objects::nonNull)  // 혹시 null 있을 때 대비
+                .mapToDouble(Double::doubleValue)
+                .average()
+                .orElse(0.0);
     }
 }
