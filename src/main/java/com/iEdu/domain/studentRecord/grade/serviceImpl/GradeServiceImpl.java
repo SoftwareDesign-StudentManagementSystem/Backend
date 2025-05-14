@@ -412,9 +412,11 @@ public class GradeServiceImpl implements GradeService {
     // 학년 석차 계산
     private String calculateGradeRank(Grade targetGrade, List<Grade> allGrades) {
         // 학생별 평균 점수 매핑
-        Map<Long, Double> studentAverageMap = allGrades.stream()
+        Map<String, Double> studentAverageMap = allGrades.stream()
                 .collect(Collectors.toMap(
-                        g -> g.getMember().getId(),
+                        g -> g.getMember().getId()
+                                + "_" + g.getYear()
+                                + "_" + g.getSemester().name(),
                         this::calculateAverageScore
                 ));
         // 현재 학생의 평균 점수
