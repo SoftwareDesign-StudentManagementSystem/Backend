@@ -12,11 +12,11 @@ public interface AdminService {
     // 회원가입 [가데이터/초기 관리자 생성]
     Member sudoSignup(MemberForm memberForm);
 
-    // 역할별 회원 조회 [관리자 권한]
-    Page<MemberDto> getMemberByRole(String role, Pageable pageable, LoginUserDto loginUser);
-
     // 회원가입 [관리자 권한]
     Member adminSignup(MemberForm memberForm, LoginUserDto loginUser);
+
+    // 역할별 회원 조회 [관리자 권한]
+    Page<MemberDto> getMemberByRole(String role, Pageable pageable, LoginUserDto loginUser);
 
     // 다른 멤버의 회원정보 조회 [관리자 권한]
     MemberDto getMemberInfo(Long memberId, LoginUserDto loginUser);

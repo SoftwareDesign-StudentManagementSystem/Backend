@@ -66,25 +66,6 @@ public class AdminServiceImpl implements AdminService {
         return member;
     }
 
-    // 역할별 회원 조회 [관리자 권한]
-    @Override
-    @Transactional
-    public Page<MemberDto> getMemberByRole(String role, Pageable pageable, LoginUserDto loginUser){
-        // ROLE_ADMIN이 아닌 경우 예외 처리
-        if (loginUser.getRole() != Member.MemberRole.ROLE_ADMIN) {
-            throw new ServiceException(ReturnCode.NOT_AUTHORIZED);
-        }
-        // 문자열 role을 Enum으로 변환
-        Member.MemberRole memberRole;
-        try {
-            memberRole = Member.MemberRole.valueOf(role);
-        } catch (IllegalArgumentException e) {
-            throw new ServiceException(ReturnCode.INVALID_ROLE);
-        }
-        Page<Member> members = memberRepository.findByRoleOrderByIdAsc(memberRole, pageable);
-        return members.map(this::memberConvertToMemberDto);
-    }
-
     // 회원가입 [관리자 권한]
     @Override
     @Transactional
@@ -116,6 +97,25 @@ public class AdminServiceImpl implements AdminService {
                 .build();
         memberRepository.save(member);
         return member;
+    }
+
+    // 역할별 회원 조회 [관리자 권한]
+    @Override
+    @Transactional
+    public Page<MemberDto> getMemberByRole(String role, Pageable pageable, LoginUserDto loginUser){
+        // ROLE_ADMIN이 아닌 경우 예외 처리
+        if (loginUser.getRole() != Member.MemberRole.ROLE_ADMIN) {
+            throw new ServiceException(ReturnCode.NOT_AUTHORIZED);
+        }
+        // 문자열 role을 Enum으로 변환
+        Member.MemberRole memberRole;
+        try {
+            memberRole = Member.MemberRole.valueOf(role);
+        } catch (IllegalArgumentException e) {
+            throw new ServiceException(ReturnCode.INVALID_ROLE);
+        }
+        Page<Member> members = memberRepository.findByRoleOrderByIdAsc(memberRole, pageable);
+        return members.map(this::memberConvertToMemberDto);
     }
 
     // 다른 멤버의 회원정보 조회 [관리자 권한]

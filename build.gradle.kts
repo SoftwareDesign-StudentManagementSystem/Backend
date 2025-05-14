@@ -85,6 +85,7 @@ val generated = "src/main/generated"
 
 // querydsl QClass 파일 생성 위치를 지정
 tasks.withType<JavaCompile> {
+	options.release.set(21)
 	options.generatedSourceOutputDirectory.set(file(generated))
 }
 

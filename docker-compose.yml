@@ -23,7 +23,7 @@ services:
       - redis_data:/data
 
   redpanda-0:
-    image: docker.redpanda.com/redpandadata/redpanda:v23.3.6
+    image: docker.redpanda.com/redpandadata/redpanda:latest
     container_name: redpanda-0
     command:
       - redpanda
@@ -55,11 +55,11 @@ volumes:
 #  redis:
 #    image: redis:latest
 #    container_name: redis_container
-#    ports:
-#      - "6379:6379"
 #    volumes:
 #      - redis-data:/data
-#    command: redis-server --appendonly yes
+#    command: >
+#      redis-server --appendonly yes
+#                   --bind 0.0.0.0
 #    healthcheck:
 #      test: [ "CMD", "redis-cli", "ping" ]
 #      interval: 5s
