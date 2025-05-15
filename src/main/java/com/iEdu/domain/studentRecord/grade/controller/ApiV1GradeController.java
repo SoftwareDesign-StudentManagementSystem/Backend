@@ -26,6 +26,7 @@ import java.util.List;
 @Tag(name = "Grade", description = "성적 API")
 public class ApiV1GradeController {
     private final GradeService gradeService;
+
     // 본인의 모든 성적 조회 [학생 권한]
     @Operation(summary = "본인의 모든 성적 조회 [학생 권한]")
     @GetMapping

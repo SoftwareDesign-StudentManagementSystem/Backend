@@ -10,6 +10,10 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.SuperBuilder;
 
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
+
 @Entity
 @Setter
 @Getter
@@ -22,11 +26,9 @@ public class Attendance extends BaseEntity {
     private Member member;
 
     private Integer year;
-
-    @Enumerated(EnumType.STRING)
-    @Column(length = 15)
     private Grade.Semester semester;
-    public enum Semester {
-        FIRST_SEMESTER, SECOND_SEMESTER
-    }
+    private LocalDate date;
+
+    @OneToMany(mappedBy = "attendance", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<PeriodAttendance> periodAttendances = new ArrayList<>();
 }
