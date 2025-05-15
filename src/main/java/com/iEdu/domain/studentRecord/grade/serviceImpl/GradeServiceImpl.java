@@ -61,7 +61,7 @@ public class GradeServiceImpl implements GradeService {
                 Sort.by(Sort.Order.desc("year"), Sort.Order.desc("semester"))
         );
         Page<Grade> gradePage = gradeRepository.findAllByMemberId(loginUser.getId(), sortedPageable);
-        return gradePage.map(this::convertToGradeDto);
+        return gradePage.map(grade -> convertToGradeDto(grade, loginUser.getAccountId()));
     }
 
     // 학생의 모든 성적 조회 [학부모/선생님 권한]
@@ -69,6 +69,7 @@ public class GradeServiceImpl implements GradeService {
     @Transactional
     public Page<GradeDto> getAllGrade(Long studentId, Pageable pageable, LoginUserDto loginUser){
         Member.MemberRole role = loginUser.getRole();
+        Member student = memberRepository.getById(studentId);
         // 정렬 조건 추가: year(내림차순), semester(SECOND_SEMESTER 우선)
         Pageable sortedPageable = PageRequest.of(
                 pageable.getPageNumber(),
@@ -78,8 +79,7 @@ public class GradeServiceImpl implements GradeService {
         if (role == Member.MemberRole.ROLE_TEACHER) {
             // 선생님: 학생만 조회 가능
             Page<Grade> gradePage = gradeRepository.findAllByMemberId(studentId, sortedPageable);
-            return gradePage.map(this::convertToGradeDto);
-
+            return gradePage.map(grade -> convertToGradeDto(grade, student.getAccountId()));
         } else if (role == Member.MemberRole.ROLE_PARENT) {
             // 학부모: 본인의 followList에 있는 학생(자녀)만 조회 가능
             Member parent = loginUser.ConvertToMember();
@@ -90,7 +90,7 @@ public class GradeServiceImpl implements GradeService {
                 throw new ServiceException(ReturnCode.NOT_AUTHORIZED);
             }
             Page<Grade> gradePage = gradeRepository.findAllByMemberId(studentId, sortedPageable);
-            return gradePage.map(this::convertToGradeDto);
+            return gradePage.map(grade -> convertToGradeDto(grade, student.getAccountId()));
         }
         // 권한 없음
         throw new ServiceException(ReturnCode.NOT_AUTHORIZED);
@@ -107,23 +107,24 @@ public class GradeServiceImpl implements GradeService {
         Grade.Semester semesterEnum = (semester == 1) ? Grade.Semester.FIRST_SEMESTER : Grade.Semester.SECOND_SEMESTER;
         Grade grade = gradeRepository.findByMemberIdAndYearAndSemester(loginUser.getId(), year, semesterEnum)
                 .orElseThrow(() -> new ServiceException(ReturnCode.GRADE_NOT_FOUND));
-        return convertToGradeDto(grade);
+        return convertToGradeDto(grade, loginUser.getAccountId());
     }
 
     // (학년/반/번호/학기)로 학생들 성적 조회 [선생님 권한]
     @Override
     @Transactional
     public List<GradeDto> getStudentsGrade(Integer year, Integer classId, Integer number, Integer semester, LoginUserDto loginUser){
-        // ROLE_TEACHER 아닌 경우 예외 처리
         if (loginUser.getRole() != Member.MemberRole.ROLE_TEACHER) {
             throw new ServiceException(ReturnCode.NOT_AUTHORIZED);
         }
         Grade.Semester semesterEnum = (semester == 1) ? Grade.Semester.FIRST_SEMESTER : Grade.Semester.SECOND_SEMESTER;
+        List<Grade> grades = gradeQueryRepository.findAllByStudentInfoAndSemesterAndYear(
+                year, classId, number, semesterEnum, year
+        );
 
-        // 학생들 성적 조회 (QueryDSL 사용)
-        List<Grade> grades = gradeQueryRepository.findAllByClassAndSemester(year, classId, number, semesterEnum);
+        // 학급 전체 성적 데이터 기준으로 랭크 계산
         return grades.stream()
-                .map(this::convertToGradeDto)
+                .map(grade -> convertToGradeDto(grade, grade.getMember().getAccountId()))
                 .toList();
     }
 
@@ -132,12 +133,13 @@ public class GradeServiceImpl implements GradeService {
     @Transactional
     public GradeDto getFilterGrade(Long studentId, Integer year, Integer semester, LoginUserDto loginUser){
         Member.MemberRole role = loginUser.getRole();
+        Member student = memberRepository.getById(studentId);
         Grade.Semester semesterEnum = (semester == 1) ? Grade.Semester.FIRST_SEMESTER : Grade.Semester.SECOND_SEMESTER;
         if (role == Member.MemberRole.ROLE_TEACHER) {
             // 선생님: 학생만 조회 가능
             Grade grade = gradeRepository.findByMemberIdAndYearAndSemester(studentId, year, semesterEnum)
                     .orElseThrow(() -> new ServiceException(ReturnCode.GRADE_NOT_FOUND));
-            return convertToGradeDto(grade);
+            return convertToGradeDto(grade, student.getAccountId());
         } else if (role == Member.MemberRole.ROLE_PARENT) {
             // 학부모: 본인의 followList에 있는 학생(자녀)만 조회 가능
             Member parent = loginUser.ConvertToMember();
@@ -149,7 +151,7 @@ public class GradeServiceImpl implements GradeService {
             }
             Grade grade = gradeRepository.findByMemberIdAndYearAndSemester(studentId, year, semesterEnum)
                     .orElseThrow(() -> new ServiceException(ReturnCode.USER_NOT_FOUND));
-            return convertToGradeDto(grade);
+            return convertToGradeDto(grade, student.getAccountId());
         }
         // 권한 없음
         throw new ServiceException(ReturnCode.NOT_AUTHORIZED);
@@ -340,35 +342,44 @@ public class GradeServiceImpl implements GradeService {
     }
 
     // Grade를 GradeDto로 변환
-    private GradeDto convertToGradeDto(Grade grade) {
-        Integer gradeYear = grade.getYear();  // 학년
+    private GradeDto convertToGradeDto(Grade grade, Long studentAccountId) {
+        Integer year = grade.getYear();
         Grade.Semester semester = grade.getSemester();
-        List<Grade> allGrades = gradeRepository.findAllByMember_YearAndSemester(gradeYear, semester);
-        String gradeRank = calculateGradeRank(grade, allGrades); // 학년 석차 계산
+
+        Long targetEntranceYear = studentAccountId / 100000;
+
+        // 해당 학년과 학기의 모든 성적 불러오기
+        List<Grade> allGradesForYearAndSemester = gradeRepository.findAllByYearAndSemester(year, semester);
+
+        // 입학 연도 필터링 → 같은 입학연도 학생들만 남김
+        List<Grade> sameCohortGrades = allGradesForYearAndSemester.stream()
+                .filter(g -> (g.getMember().getAccountId() / 100000) == targetEntranceYear)
+                .toList();
+        String gradeRankForYear = calculateGradeRank(grade, sameCohortGrades);
         return GradeDto.builder()
                 .id(grade.getId())
                 .studentId(grade.getMember().getId())
                 .profileImageUrl(grade.getMember().getProfileImageUrl())
-                .year(gradeYear)
+                .year(year)
                 .semester(semester)
-                .gradeRank(gradeRank)
-                .국어(createSubjectScore(grade.getKoreanLanguageScore(), allGrades.stream().map(Grade::getKoreanLanguageScore).toList()))
-                .수학(createSubjectScore(grade.getMathematicsScore(), allGrades.stream().map(Grade::getMathematicsScore).toList()))
-                .영어(createSubjectScore(grade.getEnglishScore(), allGrades.stream().map(Grade::getEnglishScore).toList()))
-                .사회(createSubjectScore(grade.getSocialStudiesScore(), allGrades.stream().map(Grade::getSocialStudiesScore).toList()))
-                .한국사(createSubjectScore(grade.getHistoryScore(), allGrades.stream().map(Grade::getHistoryScore).toList()))
-                .윤리(createSubjectScore(grade.getEthicsScore(), allGrades.stream().map(Grade::getEthicsScore).toList()))
-                .경제(createSubjectScore(grade.getEconomicsScore(), allGrades.stream().map(Grade::getEconomicsScore).toList()))
-                .물리(createSubjectScore(grade.getPhysicsScore(), allGrades.stream().map(Grade::getPhysicsScore).toList()))
-                .화학(createSubjectScore(grade.getChemistryScore(), allGrades.stream().map(Grade::getChemistryScore).toList()))
-                .생명과학(createSubjectScore(grade.getBiologyScore(), allGrades.stream().map(Grade::getBiologyScore).toList()))
-                .지구과학(createSubjectScore(grade.getEarthScienceScore(), allGrades.stream().map(Grade::getEarthScienceScore).toList()))
-                .음악(createSubjectScore(grade.getMusicScore(), allGrades.stream().map(Grade::getMusicScore).toList()))
-                .미술(createSubjectScore(grade.getArtScore(), allGrades.stream().map(Grade::getArtScore).toList()))
-                .체육(createSubjectScore(grade.getPhysicalEducationScore(), allGrades.stream().map(Grade::getPhysicalEducationScore).toList()))
-                .기술가정(createSubjectScore(grade.getTechnologyAndHomeEconomicScore(), allGrades.stream().map(Grade::getTechnologyAndHomeEconomicScore).toList()))
-                .컴퓨터(createSubjectScore(grade.getComputerScienceScore(), allGrades.stream().map(Grade::getComputerScienceScore).toList()))
-                .제2외국어(createSubjectScore(grade.getSecondForeignLanguageScore(), allGrades.stream().map(Grade::getSecondForeignLanguageScore).toList()))
+                .gradeRank(gradeRankForYear)
+                .국어(createSubjectScore(grade.getKoreanLanguageScore(), sameCohortGrades.stream().map(Grade::getKoreanLanguageScore).toList()))
+                .수학(createSubjectScore(grade.getMathematicsScore(), sameCohortGrades.stream().map(Grade::getMathematicsScore).toList()))
+                .영어(createSubjectScore(grade.getEnglishScore(), sameCohortGrades.stream().map(Grade::getEnglishScore).toList()))
+                .사회(createSubjectScore(grade.getSocialStudiesScore(), sameCohortGrades.stream().map(Grade::getSocialStudiesScore).toList()))
+                .한국사(createSubjectScore(grade.getHistoryScore(), sameCohortGrades.stream().map(Grade::getHistoryScore).toList()))
+                .윤리(createSubjectScore(grade.getEthicsScore(), sameCohortGrades.stream().map(Grade::getEthicsScore).toList()))
+                .경제(createSubjectScore(grade.getEconomicsScore(), sameCohortGrades.stream().map(Grade::getEconomicsScore).toList()))
+                .물리(createSubjectScore(grade.getPhysicsScore(), sameCohortGrades.stream().map(Grade::getPhysicsScore).toList()))
+                .화학(createSubjectScore(grade.getChemistryScore(), sameCohortGrades.stream().map(Grade::getChemistryScore).toList()))
+                .생명과학(createSubjectScore(grade.getBiologyScore(), sameCohortGrades.stream().map(Grade::getBiologyScore).toList()))
+                .지구과학(createSubjectScore(grade.getEarthScienceScore(), sameCohortGrades.stream().map(Grade::getEarthScienceScore).toList()))
+                .음악(createSubjectScore(grade.getMusicScore(), sameCohortGrades.stream().map(Grade::getMusicScore).toList()))
+                .미술(createSubjectScore(grade.getArtScore(), sameCohortGrades.stream().map(Grade::getArtScore).toList()))
+                .체육(createSubjectScore(grade.getPhysicalEducationScore(), sameCohortGrades.stream().map(Grade::getPhysicalEducationScore).toList()))
+                .기술가정(createSubjectScore(grade.getTechnologyAndHomeEconomicScore(), sameCohortGrades.stream().map(Grade::getTechnologyAndHomeEconomicScore).toList()))
+                .컴퓨터(createSubjectScore(grade.getComputerScienceScore(), sameCohortGrades.stream().map(Grade::getComputerScienceScore).toList()))
+                .제2외국어(createSubjectScore(grade.getSecondForeignLanguageScore(), sameCohortGrades.stream().map(Grade::getSecondForeignLanguageScore).toList()))
                 .build();
     }
 
@@ -410,49 +421,28 @@ public class GradeServiceImpl implements GradeService {
     }
 
     // 학년 석차 계산
-    private String calculateGradeRank(Grade targetGrade, List<Grade> allGrades) {
-        // 학생별 평균 점수 매핑
-        Map<String, Double> studentAverageMap = allGrades.stream()
-                .collect(Collectors.toMap(
-                        g -> g.getMember().getId()
-                                + "_" + g.getYear()
-                                + "_" + g.getSemester().name(),
-                        this::calculateAverageScore
-                ));
-        // 현재 학생의 평균 점수
-        Double targetAverage = calculateAverageScore(targetGrade);
-        // 평균 점수 내림차순 정렬 후 등수 결정
-        List<Double> sortedAverages = studentAverageMap.values().stream()
-                .sorted(Comparator.reverseOrder())
+    private String calculateGradeRank(Grade target, List<Grade> grades) {
+        // 총점으로 석차 계산한다고 가정
+        List<Grade> sorted = grades.stream()
+                .sorted(Comparator.comparingDouble(this::calculateTotalScore).reversed())
                 .toList();
-        int rank = sortedAverages.indexOf(targetAverage) + 1;
-        return rank + "/" + allGrades.size();
+        int rank = 1;
+        for (int i = 0; i < sorted.size(); i++) {
+            if (sorted.get(i).getId().equals(target.getId())) {
+                rank = i + 1;
+                break;
+            }
+        }
+        return rank + "/" + sorted.size();  // 예: 12/175
     }
 
     // 전과목 평균 계산
-    private Double calculateAverageScore(Grade grade) {
-        return Stream.of(
-                        grade.getKoreanLanguageScore(),
-                        grade.getMathematicsScore(),
-                        grade.getEnglishScore(),
-                        grade.getSocialStudiesScore(),
-                        grade.getHistoryScore(),
-                        grade.getEthicsScore(),
-                        grade.getEconomicsScore(),
-                        grade.getPhysicsScore(),
-                        grade.getChemistryScore(),
-                        grade.getBiologyScore(),
-                        grade.getEarthScienceScore(),
-                        grade.getMusicScore(),
-                        grade.getArtScore(),
-                        grade.getPhysicalEducationScore(),
-                        grade.getTechnologyAndHomeEconomicScore(),
-                        grade.getComputerScienceScore(),
-                        grade.getSecondForeignLanguageScore()
-                )
-                .filter(Objects::nonNull)  // 혹시 null 있을 때 대비
-                .mapToDouble(Double::doubleValue)
-                .average()
-                .orElse(0.0);
+    private double calculateTotalScore(Grade g) {
+        return g.getKoreanLanguageScore() + g.getMathematicsScore() + g.getEnglishScore()
+                + g.getSocialStudiesScore() + g.getHistoryScore() + g.getEthicsScore()
+                + g.getEconomicsScore() + g.getPhysicsScore() + g.getChemistryScore()
+                + g.getBiologyScore() + g.getEarthScienceScore() + g.getMusicScore()
+                + g.getArtScore() + g.getPhysicalEducationScore() + g.getTechnologyAndHomeEconomicScore()
+                + g.getComputerScienceScore() + g.getSecondForeignLanguageScore();
     }
 }

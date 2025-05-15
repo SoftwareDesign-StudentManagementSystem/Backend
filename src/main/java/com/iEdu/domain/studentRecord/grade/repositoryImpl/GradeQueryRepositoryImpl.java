@@ -1,6 +1,7 @@
 package com.iEdu.domain.studentRecord.grade.repositoryImpl;
 
 import com.iEdu.domain.studentRecord.grade.entity.Grade;
+import com.iEdu.domain.studentRecord.grade.entity.QGrade;
 import com.iEdu.domain.studentRecord.grade.repository.GradeQueryRepository;
 import com.querydsl.core.types.dsl.BooleanExpression;
 import com.querydsl.jpa.impl.JPAQueryFactory;
@@ -10,7 +11,6 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 
 import static com.iEdu.domain.account.member.entity.QMember.member;
-import static com.iEdu.domain.studentRecord.grade.entity.QGrade.grade;
 
 @RequiredArgsConstructor
 @Repository
@@ -18,21 +18,26 @@ public class GradeQueryRepositoryImpl implements GradeQueryRepository {
     private final JPAQueryFactory queryFactory;
 
     @Override
-    public List<Grade> findAllByClassAndSemester(Integer year, Integer classId, Integer number, Grade.Semester semester) {
+    public List<Grade> findAllByStudentInfoAndSemesterAndYear(
+            Integer studentYear, Integer classId, Integer number,
+            Grade.Semester semester, Integer gradeYear) {
+
+        QGrade grade = QGrade.grade;
+
         return queryFactory
                 .selectFrom(grade)
-                .join(grade.member, member).fetchJoin()
                 .where(
-                        member.year.eq(year),
-                        member.classId.eq(classId),
-                        eqNumber(number),
-                        grade.semester.eq(semester)
+                        grade.member.year.eq(studentYear),
+                        grade.member.classId.eq(classId),
+                        eqNumber(grade, number),
+                        grade.semester.eq(semester),
+                        grade.year.eq(gradeYear)
                 )
-                .orderBy(member.number.asc())
                 .fetch();
     }
 
-    private BooleanExpression eqNumber(Integer number) {
-        return (number != null) ? member.number.eq(number) : null;
+    // grade를 인자로 받고, member.number.eq(number) 처리
+    private BooleanExpression eqNumber(QGrade grade, Integer number) {
+        return number != null ? grade.member.number.eq(number) : null;
     }
 }

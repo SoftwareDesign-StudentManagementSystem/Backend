@@ -17,7 +17,7 @@ import java.util.Date;
 public class JwtTokenProvider {
     public static final String AUTHORIZATION_HEADER = "Authorization";
     public static final String BEARER_PREFIX = "Bearer ";
-    private String secretKey;
+    private final String secretKey;
     private final SecretKey key;
 
     // SecretKey 초기화 (한 번만 생성)
