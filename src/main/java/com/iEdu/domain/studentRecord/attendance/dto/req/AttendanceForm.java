@@ -1,6 +1,7 @@
 package com.iEdu.domain.studentRecord.attendance.dto.req;
 
-import com.iEdu.domain.studentRecord.grade.entity.Grade;
+import com.iEdu.domain.studentRecord.attendance.entity.PeriodAttendance;
+import com.iEdu.global.common.enums.Semester;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -15,8 +16,8 @@ import java.util.List;
 @AllArgsConstructor
 public class AttendanceForm {
     private Long studentId;
-    private LocalDate date;
     private Integer year;
-    private Grade.Semester semester;
-    private List<PeriodAttendanceForm> periodAttendances;
+    private Semester semester;
+    private LocalDate date;
+    private List<PeriodAttendance> periodAttendances;
 }

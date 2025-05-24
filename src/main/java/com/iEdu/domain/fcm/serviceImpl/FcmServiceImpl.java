@@ -3,7 +3,6 @@ package com.iEdu.domain.fcm.serviceImpl;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.auth.oauth2.GoogleCredentials;
 import com.iEdu.domain.fcm.dto.FcmMessage;
-import com.iEdu.domain.fcm.dto.FcmRequestBody;
 import com.iEdu.domain.fcm.service.FcmService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

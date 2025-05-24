@@ -23,7 +23,7 @@ public class PeriodAttendance extends BaseEntity {
     @Column(length = 15)
     private State state;
     public enum State {
-        ATTENDANCE, LATE, EXCUSED, ABSENCE;
+        출석, 결석, 지각, 조퇴;
     }
 
     @Enumerated(EnumType.STRING)

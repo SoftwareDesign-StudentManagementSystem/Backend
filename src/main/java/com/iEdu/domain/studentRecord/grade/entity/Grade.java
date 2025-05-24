@@ -1,6 +1,7 @@
 package com.iEdu.domain.studentRecord.grade.entity;
 
 import com.iEdu.domain.account.member.entity.Member;
+import com.iEdu.global.common.enums.Semester;
 import com.iEdu.global.jpa.BaseEntity;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -25,16 +26,6 @@ public class Grade extends BaseEntity {
     @Enumerated(EnumType.STRING)
     @Column(length = 15)
     private Semester semester;
-    public enum Semester {
-        FIRST_SEMESTER, SECOND_SEMESTER;
-
-        public String toKoreanString() {
-            return switch (this) {
-                case FIRST_SEMESTER -> "1학기";
-                case SECOND_SEMESTER -> "2학기";
-            };
-        }
-    }
 
     private Double koreanLanguageScore;
     private Double mathematicsScore;

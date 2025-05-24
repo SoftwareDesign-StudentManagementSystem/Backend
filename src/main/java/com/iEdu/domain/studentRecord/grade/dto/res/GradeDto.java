@@ -1,6 +1,6 @@
 package com.iEdu.domain.studentRecord.grade.dto.res;
 
-import com.iEdu.domain.studentRecord.grade.entity.Grade;
+import com.iEdu.global.common.enums.Semester;
 import lombok.Builder;
 import lombok.Data;
 
@@ -11,7 +11,7 @@ public class GradeDto {
     private Long studentId;
     private String profileImageUrl;
     private Integer year;
-    private Grade.Semester semester;
+    private Semester semester;
     private String gradeRank;
     private SubjectScore 국어;
     private SubjectScore 수학;

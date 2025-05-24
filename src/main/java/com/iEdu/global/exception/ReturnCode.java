@@ -94,6 +94,12 @@ public enum ReturnCode {
     GRADE_NOT_FOUND(404, "GRADE_001", "성적을 찾을 수 없습니다."),
     INVALID_SUBJECT(404, "GRADE_002", "존재하지 않는 과목입니다."),
 
+    // Attendance 관련 에러
+    ATTENDANCE_NOT_FOUND(404, "ATTENDANCE_001", "출결을 찾을 수 없습니다."),
+
+    // Semester 관련 에러
+    INVALID_SEMESTER(404, "SEMESTER_001", "존재하지 않는 학기입니다."),
+
     // ClassId 관련 에러
     CLASSID_NOT_FOUND(404, "CLASSID_001", "배정 받은 반이 존재하지 않습니다."),
 

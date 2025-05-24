@@ -1,10 +1,11 @@
 package com.iEdu.domain.studentRecord.attendance.dto.res;
 
-import com.iEdu.domain.studentRecord.grade.entity.Grade;
+import com.iEdu.global.common.enums.Semester;
 import lombok.Builder;
 import lombok.Data;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 
 @Data
@@ -13,7 +14,8 @@ public class AttendanceDto {
     private Long id;
     private Long studentId;
     private Integer year;
-    private Grade.Semester semester;
+    private Semester semester;
     private LocalDate date;
-    private List<PeriodAttendanceDto> periodAttendances;
+    @Builder.Default
+    private List<PeriodAttendanceDto> periodAttendanceDtos = new ArrayList<>();
 }
