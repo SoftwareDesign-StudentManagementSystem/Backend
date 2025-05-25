@@ -13,7 +13,6 @@ import com.iEdu.global.initData.utils.NotProdUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -30,7 +29,7 @@ public class NotProdStudentRecordService {
     private final MemberRepository memberRepository;
     private final NotProdUtils notProdUtils;
 
-    // 성적 가데이터 생성 로직
+    // 성적 가데이터 생성
     public void createGradeData() {
         List<Member> teacherList = memberRepository.findAll().stream()
                 .filter(m -> m.getRole() == Member.MemberRole.ROLE_TEACHER)

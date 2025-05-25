@@ -84,7 +84,7 @@ public class ApiV1AttendanceController {
 
     // 학생 출결 삭제 [선생님 권힌]
     @Operation(summary = "학생 출결 삭제 [선생님 권힌]")
-    @PutMapping("/{attendanceId")
+    @DeleteMapping("/{attendanceId}")
     public ApiResponse<String> deleteAttendance(@PathVariable("attendanceId") Long attendanceId, @LoginUser LoginUserDto loginUser){
         attendanceService.deleteAttendance(attendanceId, loginUser);
         return ApiResponse.of(ReturnCode.SUCCESS);

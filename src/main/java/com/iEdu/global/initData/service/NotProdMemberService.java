@@ -22,7 +22,7 @@ public class NotProdMemberService {
     private final NotProdUtils notProdUtils;
     private final Random random = new Random();
 
-    // 학생 가데이터 생성 로직
+    // 학생 가데이터 생성
     public void createStudents(List<Long> studentIds, List<String> studentPasswords) {
         int emailCounter = 1;
         Map<Integer, Set<Long>> gradeUsedSuffixMap = new HashMap<>();
@@ -43,7 +43,7 @@ public class NotProdMemberService {
 
                     long studentSuffix;
                     do {
-                        studentSuffix = 1000 + random.nextInt(9000);
+                        studentSuffix = 1000 + random.nextInt(90000); // 5자리
                     } while (gradeUsedSuffixMap.get(grade).contains(studentSuffix));
                     gradeUsedSuffixMap.get(grade).add(studentSuffix);
                     long accountId = Long.parseLong(gradePrefix + studentSuffix);
@@ -78,7 +78,7 @@ public class NotProdMemberService {
         System.out.println("-- 총 525명의 학생 가데이터 생성 완료! --");
     }
 
-    // 학부모 가데이터 생성 로직
+    // 학부모 가데이터 생성
     public void createParents(List<Long> studentIds, List<String> studentPasswords, List<Long> parentIds) {
         for (int i = 0; i < 3; i++) {
             String name = notProdUtils.generateRandomFullName(true);
@@ -101,7 +101,7 @@ public class NotProdMemberService {
         System.out.println("-- 학부모 3명 회원가입 완료! --");
     }
 
-    // 선생님 가데이터 생성 로직
+    // 선생님 가데이터 생성
     public void createTeachers(List<Long> teacherIds, List<String> teacherPasswords) {
         List<Member.Subject> subjectList = List.of(Member.Subject.values());
         int teacherEmailCount = 1;
@@ -148,7 +148,7 @@ public class NotProdMemberService {
         System.out.println("-- 테스트용 교사 51명 생성 완료! --");
     }
 
-    // 관리자 가데이터 생성 로직
+    // 관리자 가데이터 생성
     public void createAdmin(List<Long> adminAccountIdHolder, List<String> adminPasswordHolder) {
         Long accountId = notProdUtils.generateRandom9DigitAccountId();
         String password = "iEdu77";
