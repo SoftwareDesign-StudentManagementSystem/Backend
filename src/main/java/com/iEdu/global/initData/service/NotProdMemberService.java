@@ -84,7 +84,7 @@ public class NotProdMemberService {
             String name = notProdUtils.generateRandomFullName(true);
             int randomTwoDigits = random.nextInt(90) + 10;
             Long parentAccountId = Long.parseLong(studentIds.get(i) + String.valueOf(randomTwoDigits));
-
+            log.info("parentAccountId", parentAccountId);
             ParentForm parentForm = ParentForm.builder()
                     .accountId(parentAccountId)
                     .password(studentPasswords.get(i))

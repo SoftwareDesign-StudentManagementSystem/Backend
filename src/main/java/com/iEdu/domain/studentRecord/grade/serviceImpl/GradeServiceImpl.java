@@ -114,6 +114,7 @@ public class GradeServiceImpl implements GradeService {
         );
         // 학급 전체 성적 데이터 기준으로 랭크 계산
         return grades.stream()
+                .sorted(Comparator.comparing(g -> g.getMember().getId())) // studentId 기준 오름차순 정렬
                 .map(grade -> convertToGradeDto(grade, grade.getMember().getAccountId()))
                 .toList();
     }

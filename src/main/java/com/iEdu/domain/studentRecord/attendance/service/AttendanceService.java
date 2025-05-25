@@ -14,10 +14,10 @@ public interface AttendanceService {
     Page<AttendanceDto> getAllAttendance(Long studentId, Pageable pageable, LoginUserDto loginUser);
 
     // (학년/학기)로 본인 출결 조회 [학생 권한]
-    AttendanceDto getMyFilterAttendance(Integer year, Integer semester, LoginUserDto loginUser);
+    Page<AttendanceDto>  getMyFilterAttendance(Integer year, Integer semester, Pageable pageable, LoginUserDto loginUser);
 
     // (학년/학기)로 학생 출결 조회 [학부모/선생님 권한]
-    AttendanceDto getFilterAttendance(Long studentId, Integer year, Integer semester, LoginUserDto loginUser);
+    Page<AttendanceDto>  getFilterAttendance(Long studentId, Integer year, Integer semester, Pageable pageable, LoginUserDto loginUser);
 
     // 학생 출결 생성 [선생님 권한]
     void createAttendance(Long studentId, AttendanceForm attendanceForm, LoginUserDto loginUser);

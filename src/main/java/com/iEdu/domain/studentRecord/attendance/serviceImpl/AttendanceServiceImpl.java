@@ -43,7 +43,7 @@ public class AttendanceServiceImpl implements AttendanceService {
         Pageable sortedPageable = PageRequest.of(
                 pageable.getPageNumber(),
                 pageable.getPageSize(),
-                Sort.by(Sort.Order.desc("year"), Sort.Order.desc("semester"))
+                Sort.by(Sort.Order.asc("year"), Sort.Order.asc("semester"), Sort.Order.asc("date"))
         );
         // ROLE_STUDENT 아닌 경우 예외 처리
         if (loginUser.getRole() != Member.MemberRole.ROLE_STUDENT) {
@@ -58,11 +58,11 @@ public class AttendanceServiceImpl implements AttendanceService {
     @Transactional(readOnly = true)
     public Page<AttendanceDto> getAllAttendance(Long studentId, Pageable pageable, LoginUserDto loginUser) {
         checkPageSize(pageable.getPageSize());
-        // 정렬 조건 추가: year(내림차순), semester(SECOND_SEMESTER 우선)
+        // 정렬 조건 추가: year(오름차순), semester(FIRST_SEMESTER 우선), date(오름차순)
         Pageable sortedPageable = PageRequest.of(
                 pageable.getPageNumber(),
                 pageable.getPageSize(),
-                Sort.by(Sort.Order.desc("year"), Sort.Order.desc("semester"))
+                Sort.by(Sort.Order.asc("year"), Sort.Order.asc("semester"), Sort.Order.asc("date"))
         );
         // ROLE_PARENT/ROLE_TEACHER 아닌 경우 예외 처리
         validateAccessToStudent(loginUser, studentId);
@@ -73,29 +73,41 @@ public class AttendanceServiceImpl implements AttendanceService {
     // (학년/학기)로 본인 출결 조회 [학생 권한]
     @Override
     @Transactional(readOnly = true)
-    public AttendanceDto getMyFilterAttendance(Integer year, Integer semester, LoginUserDto loginUser) {
+    public Page<AttendanceDto> getMyFilterAttendance(Integer year, Integer semester, Pageable pageable, LoginUserDto loginUser) {
+        checkPageSize(pageable.getPageSize());
+        // 정렬 조건 추가: date(오름차순)
+        Pageable sortedPageable = PageRequest.of(
+                pageable.getPageNumber(),
+                pageable.getPageSize(),
+                Sort.by(Sort.Direction.ASC, "date")
+        );
         // ROLE_STUDENT 아닌 경우 예외 처리
         if (loginUser.getRole() != Member.MemberRole.ROLE_STUDENT) {
             throw new ServiceException(ReturnCode.NOT_AUTHORIZED);
         }
         Semester semesterEnum = convertToSemesterEnum(semester);
-        Attendance attendance = attendanceRepository
-                .findByMemberIdAndYearAndSemester(loginUser.getId(), year, semesterEnum)
-                .orElseThrow(() -> new ServiceException(ReturnCode.ATTENDANCE_NOT_FOUND));
-        return convertToAttendanceDto(attendance);
+        Page<Attendance> attendancePage = attendanceRepository
+                .findAllByMemberIdAndYearAndSemester(loginUser.getId(), year, semesterEnum, sortedPageable);
+        return attendancePage.map(this::convertToAttendanceDto);
     }
 
     // (학년/학기)로 학생 출결 조회 [학부모/선생님 권한]
     @Override
     @Transactional(readOnly = true)
-    public AttendanceDto getFilterAttendance(Long studentId, Integer year, Integer semester, LoginUserDto loginUser) {
+    public Page<AttendanceDto> getFilterAttendance(Long studentId, Integer year, Integer semester, Pageable pageable, LoginUserDto loginUser) {
+        checkPageSize(pageable.getPageSize());
+        // 정렬 조건 추가: date(오름차순)
+        Pageable sortedPageable = PageRequest.of(
+                pageable.getPageNumber(),
+                pageable.getPageSize(),
+                Sort.by(Sort.Direction.ASC, "date")
+        );
         // ROLE_PARENT/ROLE_TEACHER 아닌 경우 예외 처리
         validateAccessToStudent(loginUser, studentId);
         Semester semesterEnum = convertToSemesterEnum(semester);
-        Attendance attendance = attendanceRepository
-                .findByMemberIdAndYearAndSemester(studentId, year, semesterEnum)
-                .orElseThrow(() -> new ServiceException(ReturnCode.ATTENDANCE_NOT_FOUND));
-        return convertToAttendanceDto(attendance);
+        Page<Attendance> attendancePage = attendanceRepository
+                .findAllByMemberIdAndYearAndSemester(studentId, year, semesterEnum, pageable);
+        return attendancePage.map(this::convertToAttendanceDto);
     }
 
     // 학생 출결 생성 [선생님 권한]

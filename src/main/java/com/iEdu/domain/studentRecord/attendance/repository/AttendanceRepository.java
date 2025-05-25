@@ -15,5 +15,5 @@ public interface AttendanceRepository extends JpaRepository<Attendance, Long> {
     Page<Attendance> findByMemberId(Long memberId, Pageable pageable);
 
     // 특정 학년/학기의 출결 데이터 조회
-    Optional<Attendance> findByMemberIdAndYearAndSemester(Long memberId, Integer year, Semester semester);
+    Page<Attendance> findAllByMemberIdAndYearAndSemester(Long memberId, Integer year, Semester semester, Pageable pageable);
 }

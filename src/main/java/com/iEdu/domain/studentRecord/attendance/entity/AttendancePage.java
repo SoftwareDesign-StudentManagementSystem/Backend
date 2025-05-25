@@ -7,7 +7,7 @@ import lombok.Getter;
 public class AttendancePage {
     // 기본 page, size
     private int page = 0;
-    private int size = 31;
+    private int size = 25;
     @Getter
-    private static final int maxPageSize = 31;
+    private static final int maxPageSize = 25;
 }

@@ -85,8 +85,10 @@ public class NotProdStudentRecordService {
             LoginUserDto loginUser = LoginUserDto.ConvertToLoginUserDto(teacher);
 
             for (int targetYear = 1; targetYear <= teacherYear; targetYear++) {
+                int baseYear = 2025 - (teacherYear - targetYear);  // 출결 대상 학년이 있었던 실제 연도
+
                 for (Semester semester : Semester.values()) {
-                    List<LocalDate> schoolDays = notProdUtils.getSchoolDaysForSemester(semester);
+                    List<LocalDate> schoolDays = notProdUtils.getSchoolDaysForSemester(baseYear, semester);
 
                     for (Member student : students) {
                         // 출결 생성 시 년도는 targetYear(과거 학년)으로 세팅

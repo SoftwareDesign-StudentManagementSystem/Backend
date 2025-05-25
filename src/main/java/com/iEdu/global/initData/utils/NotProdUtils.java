@@ -89,13 +89,13 @@ public class NotProdUtils {
     }
 
     // 학기별 수업일 계산
-    public List<LocalDate> getSchoolDaysForSemester(Semester semester) {
+    public List<LocalDate> getSchoolDaysForSemester(int baseYear, Semester semester) {
         LocalDate start = semester == Semester.FIRST_SEMESTER
-                ? LocalDate.of(2024, 3, 2)
-                : LocalDate.of(2024, 9, 1);
+                ? LocalDate.of(baseYear, 3, 2)
+                : LocalDate.of(baseYear, 9, 1);
         LocalDate end = semester == Semester.FIRST_SEMESTER
-                ? LocalDate.of(2024, 7, 15)
-                : LocalDate.of(2024, 12, 31);
+                ? LocalDate.of(baseYear, 7, 15)
+                : LocalDate.of(baseYear, 12, 31);
         List<LocalDate> schoolDays = new ArrayList<>();
         LocalDate date = start;
 
