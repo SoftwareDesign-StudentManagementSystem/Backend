@@ -3,6 +3,7 @@ package com.iEdu.domain.studentRecord.grade.repositoryImpl;
 import com.iEdu.domain.studentRecord.grade.entity.Grade;
 import com.iEdu.domain.studentRecord.grade.entity.QGrade;
 import com.iEdu.domain.studentRecord.grade.repository.GradeQueryRepository;
+import com.iEdu.global.common.enums.Semester;
 import com.querydsl.core.types.dsl.BooleanExpression;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import lombok.RequiredArgsConstructor;
@@ -20,7 +21,7 @@ public class GradeQueryRepositoryImpl implements GradeQueryRepository {
     @Override
     public List<Grade> findAllByStudentInfoAndSemesterAndYear(
             Integer studentYear, Integer classId, Integer number,
-            Grade.Semester semester, Integer gradeYear) {
+            Semester semester, Integer gradeYear) {
 
         QGrade grade = QGrade.grade;
 

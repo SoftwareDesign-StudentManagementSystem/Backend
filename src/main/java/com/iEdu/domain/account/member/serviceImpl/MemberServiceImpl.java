@@ -59,7 +59,6 @@ public class MemberServiceImpl implements MemberService {
     public Member signup(ParentForm parentForm){
         Long accountId = parentForm.getAccountId();
         String email = parentForm.getEmail();
-
         // 0. accountId 길이 검증 (11자리인지 확인)
         if (String.valueOf(accountId).length() != 11) {
             throw new ServiceException(ReturnCode.INVALID_ACCOUNT_ID);
@@ -119,6 +118,8 @@ public class MemberServiceImpl implements MemberService {
     @Override
     @Transactional
     public Page<MemberDto> getMyStudentInfo(Pageable pageable, LoginUserDto loginUser){
+        checkPageSize(pageable.getPageSize());
+        // ROLE_TEACHER 아닌 경우 예외 처리
         if (loginUser.getRole() != Member.MemberRole.ROLE_TEACHER) {
             throw new ServiceException(ReturnCode.NOT_AUTHORIZED);
         }
@@ -137,6 +138,8 @@ public class MemberServiceImpl implements MemberService {
     @Override
     @Transactional
     public Page<MemberDto> getMyFilterInfo(Integer year, Integer classId, Integer number, Pageable pageable, LoginUserDto loginUser){
+        checkPageSize(pageable.getPageSize());
+        // ROLE_TEACHER 아닌 경우 예외 처리
         if (loginUser.getRole() != Member.MemberRole.ROLE_TEACHER) {
             throw new ServiceException(ReturnCode.NOT_AUTHORIZED);
         }
@@ -160,52 +163,22 @@ public class MemberServiceImpl implements MemberService {
     @Override
     @Transactional
     public MemberDto getMemberInfo(Long studentId, LoginUserDto loginUser) {
-        Member.MemberRole role = loginUser.getRole();
-        if (role == Member.MemberRole.ROLE_TEACHER) {
-            // 선생님: 학생만 조회 가능
-            Member student = memberRepository.findByIdAndRole(studentId, Member.MemberRole.ROLE_STUDENT)
-                    .orElseThrow(() -> new ServiceException(ReturnCode.USER_NOT_FOUND));
-            return memberConvertToMemberDto(student);
-
-        } else if (role == Member.MemberRole.ROLE_PARENT) {
-            // 학부모: 본인의 followList에 있는 학생(자녀)만 조회 가능
-            boolean isFollowed = loginUser.getFollowList().stream()
-                    .anyMatch(follow -> follow.getFollow().getId().equals(studentId));
-            if (!isFollowed) {
-                throw new ServiceException(ReturnCode.NOT_AUTHORIZED);
-            }
-            Member student = memberRepository.findByIdAndRole(studentId, Member.MemberRole.ROLE_STUDENT)
-                    .orElseThrow(() -> new ServiceException(ReturnCode.USER_NOT_FOUND));
-            return memberConvertToMemberDto(student);
-        }
-        // 권한 없음
-        throw new ServiceException(ReturnCode.NOT_AUTHORIZED);
+        // ROLE_PARENT/ROLE_TEACHER 아닌 경우 예외 처리
+        validateAccessToStudent(loginUser, studentId);
+        Member student = memberRepository.findByIdAndRole(studentId, Member.MemberRole.ROLE_STUDENT)
+                .orElseThrow(() -> new ServiceException(ReturnCode.USER_NOT_FOUND));
+        return memberConvertToMemberDto(student);
     }
 
     // 학생의 상세회원정보 조회 [학부모/선생님 권한]
     @Override
     @Transactional
     public DetailMemberDto getMemberDetailInfo(Long studentId, LoginUserDto loginUser) {
-        Member.MemberRole role = loginUser.getRole();
-        if (role == Member.MemberRole.ROLE_TEACHER) {
-            // 선생님: 학생만 조회 가능
-            Member student = memberRepository.findByIdAndRole(studentId, Member.MemberRole.ROLE_STUDENT)
-                    .orElseThrow(() -> new ServiceException(ReturnCode.USER_NOT_FOUND));
-            return memberConvertToDetailMemberDto(student);
-
-        } else if (role == Member.MemberRole.ROLE_PARENT) {
-            // 학부모: 본인의 followList에 있는 학생(자녀)만 조회 가능
-            boolean isFollowed = loginUser.getFollowList().stream()
-                    .anyMatch(follow -> follow.getFollowed().getId().equals(studentId));
-            if (!isFollowed) {
-                throw new ServiceException(ReturnCode.NOT_AUTHORIZED);
-            }
-            Member student = memberRepository.findByIdAndRole(studentId, Member.MemberRole.ROLE_STUDENT)
-                    .orElseThrow(() -> new ServiceException(ReturnCode.USER_NOT_FOUND));
-            return memberConvertToDetailMemberDto(student);
-        }
-        // 권한 없음
-        throw new ServiceException(ReturnCode.NOT_AUTHORIZED);
+        // ROLE_PARENT/ROLE_TEACHER 아닌 경우 예외 처리
+        validateAccessToStudent(loginUser, studentId);
+        Member student = memberRepository.findByIdAndRole(studentId, Member.MemberRole.ROLE_STUDENT)
+                .orElseThrow(() -> new ServiceException(ReturnCode.USER_NOT_FOUND));
+        return memberConvertToDetailMemberDto(student);
     }
 
     // 학생/학부모 회원정보 수정 [학생/학부모 권한]
@@ -503,7 +476,25 @@ public class MemberServiceImpl implements MemberService {
         }
     }
 
-    // LoginUser를 MemberDto로 변환
+    // ROLE_PARENT/ROLE_TEACHER 아닌 경우 예외 처리
+    private void validateAccessToStudent(LoginUserDto loginUser, Long studentId) {
+        Member.MemberRole role = loginUser.getRole();
+        if (role != Member.MemberRole.ROLE_PARENT && role != Member.MemberRole.ROLE_TEACHER) {
+            throw new ServiceException(ReturnCode.NOT_AUTHORIZED);
+        }
+        // ROLE_PARENT인 경우 자녀인지 확인
+        if (role == Member.MemberRole.ROLE_PARENT) {
+            Member parent = loginUser.ConvertToMember();
+            boolean isMyChild = parent.getFollowList().stream()
+                    .map(MemberFollow::getFollowed)
+                    .anyMatch(child -> child != null && child.getId().equals(studentId));
+            if (!isMyChild) {
+                throw new ServiceException(ReturnCode.NOT_AUTHORIZED);
+            }
+        }
+    }
+
+    // LoginUser -> MemberDto 변환
     private MemberDto loginUserConvertToMemberDto(LoginUserDto loginUser) {
         return MemberDto.builder()
                 .id(loginUser.getId())
@@ -518,7 +509,7 @@ public class MemberServiceImpl implements MemberService {
                 .build();
     }
 
-    // Member를 MemberDto로 변환
+    // Member -> MemberDto 변환
     private MemberDto memberConvertToMemberDto(Member member) {
         return MemberDto.builder()
                 .id(member.getId())
@@ -533,7 +524,7 @@ public class MemberServiceImpl implements MemberService {
                 .build();
     }
 
-    // LoginUser를 DetailMemberDto로 변환
+    // LoginUser -> DetailMemberDto 변환
     private DetailMemberDto loginUserConvertToDetailMemberDto(LoginUserDto loginUser) {
         return DetailMemberDto.builder()
                 .id(loginUser.getId())
@@ -609,7 +600,7 @@ public class MemberServiceImpl implements MemberService {
                 .build();
     }
 
-    // Member를 DetailMemberDto로 변환
+    // Member -> DetailMemberDto 변환
     private DetailMemberDto memberConvertToDetailMemberDto(Member member) {
         return DetailMemberDto.builder()
                 .id(member.getId())

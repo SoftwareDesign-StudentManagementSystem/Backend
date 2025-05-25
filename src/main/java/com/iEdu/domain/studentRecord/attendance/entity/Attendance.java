@@ -1,13 +1,10 @@
 package com.iEdu.domain.studentRecord.attendance.entity;
 
 import com.iEdu.domain.account.member.entity.Member;
-import com.iEdu.domain.studentRecord.grade.entity.Grade;
+import com.iEdu.global.common.enums.Semester;
 import com.iEdu.global.jpa.BaseEntity;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 import lombok.experimental.SuperBuilder;
 
 import java.time.LocalDate;
@@ -26,9 +23,14 @@ public class Attendance extends BaseEntity {
     private Member member;
 
     private Integer year;
-    private Grade.Semester semester;
+    
+    @Enumerated(EnumType.STRING)
+    @Column(length = 15)
+    private Semester semester;
+
     private LocalDate date;
 
     @OneToMany(mappedBy = "attendance", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
     private List<PeriodAttendance> periodAttendances = new ArrayList<>();
 }

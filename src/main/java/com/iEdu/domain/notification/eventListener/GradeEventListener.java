@@ -1,5 +1,6 @@
 package com.iEdu.domain.notification.eventListener;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.iEdu.domain.account.member.entity.Member;
 import com.iEdu.domain.account.member.service.MemberService;
@@ -29,26 +30,18 @@ public class GradeEventListener {
     private final FcmService fcmService;
     private final FcmTokenService fcmTokenService;
 
-    @KafkaListener(topics = "grade-topic", groupId = "1")
+    @KafkaListener(topics = "grade-topic", groupId = "1", concurrency = "3")
     public void consume(String message) {
         int maxRetries = 3;
         int attempt = 0;
         while (attempt < maxRetries) {
             try {
                 Notification notification = objectMapper.readValue(message, Notification.class);
+
                 // 1. 학생 알림 생성 + FCM 전송
                 notificationService.createNotification(notification);
-                String studentToken = fcmTokenService.getFcmToken(notification.getReceiverId());
-                if (studentToken != null) {
-                    FcmMessage studentMessage = FcmMessage.builder()
-                            .targetToken(studentToken)
-                            .title("성적 알림")
-                            .body(notification.getContent())
-                            .build();
-                    fcmService.sendMessageTo(studentMessage);
-                } else {
-                    log.warn("FCM token not found for studentId: {}", notification.getReceiverId());
-                }
+                sendFcm(notification.getReceiverId(), "성적 알림", notification.getContent());
+
                 // 2. 학부모 알림 생성 + FCM 전송
                 List<Member> parentList = memberService.findParentsByStudentId(notification.getReceiverId());
                 for (Member parent : parentList) {
@@ -59,25 +52,35 @@ public class GradeEventListener {
                             .targetObject(notification.getTargetObject())
                             .build();
                     notificationService.createNotification(parentNotification);
-                    String parentToken = fcmTokenService.getFcmToken(parent.getId());
-                    if (parentToken != null) {
-                        FcmMessage parentMessage = FcmMessage.builder()
-                                .targetToken(parentToken)
-                                .title("자녀 성적 알림")
-                                .body(notification.getContent())
-                                .build();
-                        fcmService.sendMessageTo(parentMessage);
-                    } else {
-                        log.warn("FCM token not found for parentId: {}", parent.getId());
-                    }
+                    sendFcm(parent.getId(), "자녀 성적 알림", notification.getContent());
                 }
-                return;
+                return; // 성공 시 종료
+            } catch (JsonProcessingException e) {
+                log.error("Failed to parse message (not retryable): {}, error: {}", message, e.getMessage());
+                break; // 재시도 무의미 → DLT 이동
             } catch (Exception e) {
                 attempt++;
-                log.error("Retry attempt {} failed: {}", attempt, e.getMessage());
+                log.error("Retry attempt {} failed for message {}: {}", attempt, message, e.getMessage());
             }
         }
         kafkaTemplate.send("grade-topic-dlt", message);
     }
-}
 
+    private void sendFcm(Long receiverId, String title, String body) {
+        String token = fcmTokenService.getFcmToken(receiverId);
+        if (token != null) {
+            FcmMessage message = FcmMessage.builder()
+                    .targetToken(token)
+                    .title(title)
+                    .body(body)
+                    .build();
+            try {
+                fcmService.sendMessageTo(message);
+            } catch (Exception e) {
+                log.error("Failed to send FCM to receiverId {}: {}", receiverId, e.getMessage());
+            }
+        } else {
+            log.warn("FCM token not found for receiverId: {}", receiverId);
+        }
+    }
+}

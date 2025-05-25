@@ -1,5 +1,6 @@
 package com.iEdu.domain.notification.eventListener;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.iEdu.domain.notification.entity.Notification;
 import com.iEdu.domain.notification.service.NotificationService;
@@ -31,25 +32,37 @@ public class FollowEventListener {
         while (attempt < maxRetries) {
             try {
                 Notification notification = objectMapper.readValue(message, Notification.class);
-                // 팔로우 알림 생성 + FCM 전송
+                // 알림 저장
                 notificationService.createNotification(notification);
-                String fcmToken = fcmTokenService.getFcmToken(notification.getReceiverId());
-                if (fcmToken != null) {
-                    FcmMessage fcmMessage = FcmMessage.builder()
-                            .targetToken(fcmToken)
-                            .title("팔로우 알림")
-                            .body(notification.getContent())
-                            .build();
-                    fcmService.sendMessageTo(fcmMessage);
-                } else {
-                    log.warn("FCM token not found for memberId: {}", notification.getReceiverId());
-                }
-                return;
+                // FCM 전송
+                sendFcm(notification.getReceiverId(), "팔로우 알림", notification.getContent());
+                return; // 성공하면 리턴
+            } catch (JsonProcessingException e) {
+                log.error("Failed to parse message (not retryable): {}, error: {}", message, e.getMessage());
+                break; // 재시도 의미 없음
             } catch (Exception e) {
                 attempt++;
-                log.error("Retry attempt {} failed: {}", attempt, e.getMessage());
+                log.error("Retry attempt {} failed for message {}: {}", attempt, message, e.getMessage());
             }
         }
-        kafkaTemplate.send("follow-topic-dlt", message);
+        kafkaTemplate.send("follow-topic-dlt", message); // 실패한 메시지 DLT로
+    }
+
+    private void sendFcm(Long receiverId, String title, String body) {
+        String token = fcmTokenService.getFcmToken(receiverId);
+        if (token != null) {
+            FcmMessage message = FcmMessage.builder()
+                    .targetToken(token)
+                    .title(title)
+                    .body(body)
+                    .build();
+            try {
+                fcmService.sendMessageTo(message);
+            } catch (Exception e) {
+                log.error("Failed to send FCM to receiverId {}: {}", receiverId, e.getMessage());
+            }
+        } else {
+            log.warn("FCM token not found for receiverId: {}", receiverId);
+        }
     }
 }
