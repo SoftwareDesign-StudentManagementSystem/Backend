@@ -73,7 +73,6 @@ public class NotProdStudentRecordService {
         List<Member> studentList = memberRepository.findAll().stream()
                 .filter(m -> m.getRole() == Member.MemberRole.ROLE_STUDENT)
                 .toList();
-
         for (Member teacher : teacherList) {
             Integer teacherYear = teacher.getYear();
             Integer teacherClassId = teacher.getClassId();

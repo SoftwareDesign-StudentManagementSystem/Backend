@@ -23,29 +23,23 @@ public class NotProdService {
     private Long adminAccountId;
     private String adminPassword;
 
+    // 1) 트랜잭션 내 데이터 생성 메서드
     @Transactional
-    public void initDummyData() {
-        // 학생 가데이터 생성
+    public void initDummyDataTransactional() {
         notProdMemberService.createStudents(studentIds, studentPasswords);
-
-        // 학부모 가데이터 생성
         notProdMemberService.createParents(studentIds, studentPasswords, parentIds);
-
-        // 선생님 가데이터 생성
         notProdMemberService.createTeachers(teacherIds, teacherPasswords);
-
-        // 관리자 가데이터 생성
         notProdMemberService.createAdmin(adminIdHolder, adminPwHolder);
         this.adminAccountId = adminIdHolder.get(0);
         this.adminPassword = adminPwHolder.get(0);
-
-        // 성적 가데이터 생성
         notProdStudentRecordService.createGradeData();
-
-        // 출결 가데이터 생성
         notProdStudentRecordService.createAttendanceData();
+        // 알림 등 이벤트는 트랜잭션 커밋 이후 처리됨
+    }
 
-        // 가데이터 정보 출력
+    // 2) 트랜잭션 커밋 후 가데이터 정보 출력
+    public void initDummyData() {
+        initDummyDataTransactional();
         NotProdPrintTestAccount.printTestAccounts(
                 studentIds,
                 studentPasswords,
