@@ -1,19 +1,16 @@
 package com.iEdu.domain.studentRecord.feedback.service;
 
-import com.iEdu.domain.studentRecord.feedback.dto.req.FeedbackForm;
+import com.iEdu.domain.account.auth.loginUser.LoginUserDto;
 import com.iEdu.domain.studentRecord.feedback.dto.res.FeedbackDto;
-import com.iEdu.domain.studentRecord.feedback.entity.FeedbackCategory;
-
-import java.time.LocalDate;
-import java.util.List;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 public interface FeedbackService {
-    void create(FeedbackForm form);
-    List<FeedbackDto> readByStudentId(Long studentId);
-    List<FeedbackDto> searchByFilters(Long studentId,
-                                      Long teacherId,
-                                      FeedbackCategory category,
-                                      LocalDate startDate,
-                                      LocalDate endDate);
+    // 본인/자녀의 모든 피드백 조회 [학생/학부모 권한]
+    Page<FeedbackDto> getMyAllFeedback(Pageable pageable, LoginUserDto loginUser);
+
+    // 학생의 모든 피드백 조회 [선생님 권한]
+    Page<FeedbackDto> getAllFeedback(Long studentId, Pageable pageable, LoginUserDto loginUser);
+
 
 }

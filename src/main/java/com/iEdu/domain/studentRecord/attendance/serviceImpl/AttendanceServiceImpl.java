@@ -39,7 +39,7 @@ public class AttendanceServiceImpl implements AttendanceService {
     @Transactional(readOnly = true)
     public Page<AttendanceDto> getMyAllAttendance(Pageable pageable, LoginUserDto loginUser) {
         checkPageSize(pageable.getPageSize());
-        // 정렬 조건 추가: year(내림차순), semester(SECOND_SEMESTER 우선)
+        // 정렬 조건 추가: year(오름차순), semester(FIRST_SEMESTER 우선), date(오름차순)
         Pageable sortedPageable = PageRequest.of(
                 pageable.getPageNumber(),
                 pageable.getPageSize(),
@@ -214,7 +214,6 @@ public class AttendanceServiceImpl implements AttendanceService {
                 .collect(Collectors.toList());
         return AttendanceDto.builder()
                 .id(attendance.getId())
-                .studentId(attendance.getMember().getId())
                 .year(attendance.getYear())
                 .semester(attendance.getSemester())
                 .date(attendance.getDate())
