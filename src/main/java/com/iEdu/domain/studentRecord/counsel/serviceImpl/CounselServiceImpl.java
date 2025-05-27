@@ -34,23 +34,6 @@ public class CounselServiceImpl implements CounselService {
     private final MemberRepository memberRepository;
     private final CounselQueryRepository counselQueryRepository;
 
-    // 본인의 모든 상담 조회 [학생 권한]
-    @Override
-    @Transactional(readOnly = true)
-    public Page<CounselDto> getMyAllCounsel(Pageable pageable, LoginUserDto loginUser) {
-        checkPageSize(pageable.getPageSize());
-        // 정렬 조건 추가: year(내림차순), semester(SECOND_SEMESTER 우선), createdAt(내림차순)
-        Pageable sortedPageable = PageRequest.of(
-                pageable.getPageNumber(),
-                pageable.getPageSize(),
-                Sort.by(Sort.Order.desc("year"), Sort.Order.desc("semester"), Sort.Order.desc("createdAt"))
-        );
-        // ROLE_STUDENT 아닌 경우 예외 처리
-        validateStudentRole(loginUser);
-        Page<Counsel> counselPage = counselRepository.findByMemberId(loginUser.getId(), sortedPageable);
-        return counselPage.map(this::convertToCounselDto);
-    }
-
     // 학생의 모든 상담 조회 [학부모/선생님 권한]
     @Override
     @Transactional(readOnly = true)
@@ -65,26 +48,6 @@ public class CounselServiceImpl implements CounselService {
         // ROLE_PARENT/ROLE_TEACHER 아닌 경우 예외 처리
         validateAccessToStudent(loginUser, studentId);
         Page<Counsel> counselPage = counselRepository.findByMemberId(studentId, sortedPageable);
-        return counselPage.map(this::convertToCounselDto);
-    }
-
-    // (학년/학기)로 본인 상담 조회 [학생 권한]
-    @Override
-    @Transactional(readOnly = true)
-    public Page<CounselDto> getMyFilterCounsel(Integer year, Integer semester, Pageable pageable, LoginUserDto loginUser) {
-        checkPageSize(pageable.getPageSize());
-        // 정렬 조건: createdAt 내림차순
-        Pageable sortedPageable = PageRequest.of(
-                pageable.getPageNumber(),
-                pageable.getPageSize(),
-                Sort.by(Sort.Direction.DESC, "createdAt")
-        );
-        // ROLE_STUDENT 아닌 경우 예외 처리
-        validateStudentRole(loginUser);
-        Semester semesterEnum = convertToSemesterEnum(semester);
-        Page<Counsel> counselPage = counselRepository.findByMemberIdAndYearAndSemester(
-                loginUser.getId(), year, semesterEnum, sortedPageable
-        );
         return counselPage.map(this::convertToCounselDto);
     }
 

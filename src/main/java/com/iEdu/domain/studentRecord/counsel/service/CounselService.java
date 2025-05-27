@@ -9,14 +9,8 @@ import org.springframework.data.domain.Pageable;
 import java.util.List;
 
 public interface CounselService {
-    // 본인의 모든 상담 조회 [학생 권한]
-    Page<CounselDto> getMyAllCounsel(Pageable pageable, LoginUserDto loginUser);
-
     // 학생의 모든 상담 조회 [학부모/선생님 권한]
     Page<CounselDto> getAllCounsel(Long studentId, Pageable pageable, LoginUserDto loginUser);
-
-    // (학년/학기)로 본인 상담 조회 [학생 권한]
-    Page<CounselDto> getMyFilterCounsel(Integer year, Integer semester, Pageable pageable, LoginUserDto loginUser);
 
     // (학년/반/번호/학기)로 학생들 상담 조회 [선생님 권한]
     List<CounselDto> getStudentsCounsel(Integer year, Integer classId, Integer number, Integer semester, LoginUserDto loginUser);

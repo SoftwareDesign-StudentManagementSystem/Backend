@@ -144,6 +144,7 @@ public class FeedbackServiceImpl implements FeedbackService {
                 .orElseThrow(() -> new ServiceException(ReturnCode.USER_NOT_FOUND));
         Feedback feedback = Feedback.builder()
                 .member(student)
+                .teacherName(loginUser.getName())
                 .year(feedbackForm.getYear())
                 .semester(feedbackForm.getSemester())
                 .content(feedbackForm.getContent())
@@ -194,6 +195,7 @@ public class FeedbackServiceImpl implements FeedbackService {
         return FeedbackDto.builder()
                 .id(feedback.getId())
                 .studentId(feedback.getMember().getId())
+                .teacherName(feedback.getTeacherName())
                 .year(feedback.getYear())
                 .semester(feedback.getSemester())
                 .category(feedback.getCategory())
