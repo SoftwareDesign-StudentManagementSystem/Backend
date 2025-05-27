@@ -40,6 +40,8 @@ import java.io.IOException;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import static com.iEdu.global.common.utils.RoleValidator.*;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -120,9 +122,7 @@ public class MemberServiceImpl implements MemberService {
     public Page<MemberDto> getMyStudentInfo(Pageable pageable, LoginUserDto loginUser){
         checkPageSize(pageable.getPageSize());
         // ROLE_TEACHER 아닌 경우 예외 처리
-        if (loginUser.getRole() != Member.MemberRole.ROLE_TEACHER) {
-            throw new ServiceException(ReturnCode.NOT_AUTHORIZED);
-        }
+        validateTeacherRole(loginUser);
         Integer year = loginUser.getYear();
         Integer classId = loginUser.getClassId();
         if (classId == null) {
@@ -140,9 +140,7 @@ public class MemberServiceImpl implements MemberService {
     public Page<MemberDto> getMyFilterInfo(Integer year, Integer classId, Integer number, Pageable pageable, LoginUserDto loginUser){
         checkPageSize(pageable.getPageSize());
         // ROLE_TEACHER 아닌 경우 예외 처리
-        if (loginUser.getRole() != Member.MemberRole.ROLE_TEACHER) {
-            throw new ServiceException(ReturnCode.NOT_AUTHORIZED);
-        }
+        validateTeacherRole(loginUser);
         QMember member = QMember.member;
         BooleanBuilder builder = new BooleanBuilder();
         builder.and(member.role.eq(Member.MemberRole.ROLE_STUDENT));
@@ -185,11 +183,8 @@ public class MemberServiceImpl implements MemberService {
     @Override
     @Transactional
     public void basicUpdateMemberInfo(BasicUpdateForm basicUpdateForm, MultipartFile imageFile, LoginUserDto loginUser){
-        // ROLE_STUDENT 또는 ROLE_PARENT 아닌 경우 예외 처리
-        if (loginUser.getRole() != Member.MemberRole.ROLE_STUDENT &&
-                loginUser.getRole() != Member.MemberRole.ROLE_PARENT) {
-            throw new ServiceException(ReturnCode.NOT_AUTHORIZED);
-        }
+        // ROLE_STUDENT/ROLE_PARENT 아닌 경우 예외 처리
+        validateStudentOrParentRole(loginUser);
         // 기존 이미지 삭제 후 입력 받은 이미지 S3에 저장
         String imageUrl = loginUser.getProfileImageUrl(); // 기본적으로 기존 이미지 URL을 사용
         if (imageFile != null && !imageFile.isEmpty()) {
@@ -237,9 +232,7 @@ public class MemberServiceImpl implements MemberService {
     @Transactional
     public void teacherUpdateMemberInfo(TeacherUpdateForm teacherUpdateForm, MultipartFile imageFile, LoginUserDto loginUser){
         // ROLE_TEACHER 아닌 경우 예외 처리
-        if (loginUser.getRole() != Member.MemberRole.ROLE_TEACHER) {
-            throw new ServiceException(ReturnCode.NOT_AUTHORIZED);
-        }
+        validateTeacherRole(loginUser);
         // 기존 이미지 삭제 후 입력 받은 이미지 S3에 저장
         String imageUrl = loginUser.getProfileImageUrl(); // 기본적으로 기존 이미지 URL을 사용
         if (imageFile != null && !imageFile.isEmpty()) {
@@ -310,11 +303,8 @@ public class MemberServiceImpl implements MemberService {
     @Override
     @Transactional
     public Page<MemberDto> searchMemberInfo(Pageable pageable, String keyword, LoginUserDto loginUser) {
-        // ROLE_TEACHER 또는 ROLE_PARENT이 아닌 경우 예외 처리
-        if (loginUser.getRole() != Member.MemberRole.ROLE_TEACHER &&
-                loginUser.getRole() != Member.MemberRole.ROLE_PARENT) {
-            throw new ServiceException(ReturnCode.NOT_AUTHORIZED);
-        }
+        // ROLE_PARENT이/ROLE_TEACHER 아닌 경우 예외 처리
+        validateParentOrTeacherRole(loginUser);
         checkPageSize(pageable.getPageSize());
         Page<Member> members = memberRepository.findByKeywordAndRole(pageable, keyword, Member.MemberRole.ROLE_STUDENT);
         return members.map(this::memberConvertToMemberDto);
@@ -325,9 +315,7 @@ public class MemberServiceImpl implements MemberService {
     @Transactional
     public void followReq(FollowForm followForm, LoginUserDto loginUser){
         // ROLE_PARENT 아닌 경우 예외 처리
-        if (loginUser.getRole() != Member.MemberRole.ROLE_PARENT) {
-            throw new ServiceException(ReturnCode.NOT_AUTHORIZED);
-        }
+        validateParentRole(loginUser);
         Member followReq = loginUser.ConvertToMember();
         Member followRec = memberRepository.findByNameAndYearAndClassIdAndNumberAndBirthday(
                 followForm.getName(),
@@ -371,9 +359,7 @@ public class MemberServiceImpl implements MemberService {
     @Transactional
     public void cancelFollowReq(Long memberId, LoginUserDto loginUser){
         // ROLE_PARENT 아닌 경우 예외 처리
-        if (loginUser.getRole() != Member.MemberRole.ROLE_PARENT) {
-            throw new ServiceException(ReturnCode.NOT_AUTHORIZED);
-        }
+        validateParentRole(loginUser);
         Member followReq = loginUser.ConvertToMember();
         Member followRec = memberRepository.findById(memberId)
                 .orElseThrow(() -> new ServiceException(ReturnCode.USER_NOT_FOUND));
@@ -387,9 +373,7 @@ public class MemberServiceImpl implements MemberService {
     @Transactional
     public void acceptFollowReq(Long memberId, LoginUserDto loginUser){
         // ROLE_STUDENT 아닌 경우 예외 처리
-        if (loginUser.getRole() != Member.MemberRole.ROLE_STUDENT) {
-            throw new ServiceException(ReturnCode.NOT_AUTHORIZED);
-        }
+        validateStudentRole(loginUser);
         Member requester = memberRepository.findById(memberId)
                 .orElseThrow(() -> new ServiceException(ReturnCode.USER_NOT_FOUND));
         Member receiver = loginUser.ConvertToMember();
@@ -421,9 +405,7 @@ public class MemberServiceImpl implements MemberService {
     @Transactional
     public void refuseFollowReq(Long memberId, LoginUserDto loginUser){
         // ROLE_STUDENT 아닌 경우 예외 처리
-        if (loginUser.getRole() != Member.MemberRole.ROLE_STUDENT) {
-            throw new ServiceException(ReturnCode.NOT_AUTHORIZED);
-        }
+        validateStudentRole(loginUser);
         Member requester = memberRepository.findById(memberId)
                 .orElseThrow(() -> new ServiceException(ReturnCode.USER_NOT_FOUND));
         Member receiver = loginUser.ConvertToMember();
@@ -437,9 +419,7 @@ public class MemberServiceImpl implements MemberService {
     @Transactional
     public void cancelFollow(Long memberId, LoginUserDto loginUser){
         // ROLE_PARENT 아닌 경우 예외 처리
-        if (loginUser.getRole() != Member.MemberRole.ROLE_PARENT) {
-            throw new ServiceException(ReturnCode.NOT_AUTHORIZED);
-        }
+        validateParentRole(loginUser);
         Member follow = loginUser.ConvertToMember();
         Member followed = memberRepository.findById(memberId)
                 .orElseThrow(() -> new ServiceException(ReturnCode.USER_NOT_FOUND));
@@ -473,24 +453,6 @@ public class MemberServiceImpl implements MemberService {
         int maxPageSize = MemberPage.getMaxPageSize();
         if (pageSize > maxPageSize) {
             throw new ServiceException(ReturnCode.PAGE_REQUEST_FAIL);
-        }
-    }
-
-    // ROLE_PARENT/ROLE_TEACHER 아닌 경우 예외 처리
-    private void validateAccessToStudent(LoginUserDto loginUser, Long studentId) {
-        Member.MemberRole role = loginUser.getRole();
-        if (role != Member.MemberRole.ROLE_PARENT && role != Member.MemberRole.ROLE_TEACHER) {
-            throw new ServiceException(ReturnCode.NOT_AUTHORIZED);
-        }
-        // ROLE_PARENT인 경우 자녀인지 확인
-        if (role == Member.MemberRole.ROLE_PARENT) {
-            Member parent = loginUser.ConvertToMember();
-            boolean isMyChild = parent.getFollowList().stream()
-                    .map(MemberFollow::getFollowed)
-                    .anyMatch(child -> child != null && child.getId().equals(studentId));
-            if (!isMyChild) {
-                throw new ServiceException(ReturnCode.NOT_AUTHORIZED);
-            }
         }
     }
 

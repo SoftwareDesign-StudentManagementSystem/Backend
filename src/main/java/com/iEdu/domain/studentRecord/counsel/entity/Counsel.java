@@ -1,28 +1,36 @@
 package com.iEdu.domain.studentRecord.counsel.entity;
 
+import com.iEdu.domain.account.member.entity.Member;
+import com.iEdu.global.common.enums.Semester;
+import com.iEdu.global.jpa.BaseEntity;
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
+import lombok.experimental.SuperBuilder;
 
 import java.time.LocalDate;
 
 @Entity
-@Table(name = "counsel")
 @Getter
 @Setter
-public class Counsel {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+@NoArgsConstructor
+@AllArgsConstructor
+@SuperBuilder
+public class Counsel extends BaseEntity {
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "student_id", nullable = false)
+    private Member member;
 
-    private Long studentId;
-    private Long teacherId;
+    private Integer year;
 
-    private LocalDate date;
+    @Enumerated(EnumType.STRING)
+    @Column(length = 15)
+    private Semester semester;
 
     @Column(length = 1000)
     private String content;
 
-    private Boolean visibleToStudent;
-    private Boolean visibleToParent;
+    private LocalDate nextCounselDate;
 }

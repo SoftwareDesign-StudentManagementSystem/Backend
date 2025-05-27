@@ -105,7 +105,6 @@ public class NotProdStudentRecordService {
                                 );
                             }
                             AttendanceForm form = AttendanceForm.builder()
-                                    .studentId(student.getId())
                                     .year(targetYear)  // 출결은 과거 학년 단위로 생성
                                     .semester(semester)
                                     .date(date)

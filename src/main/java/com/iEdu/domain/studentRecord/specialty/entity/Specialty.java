@@ -1,6 +1,7 @@
 package com.iEdu.domain.studentRecord.specialty.entity;
 
 import com.iEdu.domain.account.member.entity.Member;
+import com.iEdu.global.common.enums.Semester;
 import com.iEdu.global.jpa.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
@@ -13,21 +14,16 @@ import lombok.experimental.SuperBuilder;
 @AllArgsConstructor
 @SuperBuilder
 public class Specialty extends BaseEntity {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-
-    // 연관된 학생(Member)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "member_id", nullable = false)
     private Member member;
 
-    // 특기사항 내용
-    @Column(columnDefinition = "TEXT", nullable = false)
-    private String content;
+    private Integer year;
 
-    // 작성자
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "writer_id")
-    private Member writer;
+    @Enumerated(EnumType.STRING)
+    @Column(length = 15)
+    private Semester semester;
+
+    @Column(length = 1000)
+    private String content;
 }

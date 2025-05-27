@@ -27,6 +27,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import static com.iEdu.global.common.utils.Converter.convertToSemesterEnum;
+import static com.iEdu.global.common.utils.RoleValidator.*;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -39,16 +42,14 @@ public class AttendanceServiceImpl implements AttendanceService {
     @Transactional(readOnly = true)
     public Page<AttendanceDto> getMyAllAttendance(Pageable pageable, LoginUserDto loginUser) {
         checkPageSize(pageable.getPageSize());
-        // 정렬 조건 추가: year(내림차순), semester(SECOND_SEMESTER 우선)
+        // 정렬 조건 추가: year(오름차순), semester(FIRST_SEMESTER 우선), date(오름차순)
         Pageable sortedPageable = PageRequest.of(
                 pageable.getPageNumber(),
                 pageable.getPageSize(),
                 Sort.by(Sort.Order.asc("year"), Sort.Order.asc("semester"), Sort.Order.asc("date"))
         );
         // ROLE_STUDENT 아닌 경우 예외 처리
-        if (loginUser.getRole() != Member.MemberRole.ROLE_STUDENT) {
-            throw new ServiceException(ReturnCode.NOT_AUTHORIZED);
-        }
+        validateStudentRole(loginUser);
         Page<Attendance> attendancePage = attendanceRepository.findByMemberId(loginUser.getId(), sortedPageable);
         return attendancePage.map(this::convertToAttendanceDto);
     }
@@ -82,9 +83,7 @@ public class AttendanceServiceImpl implements AttendanceService {
                 Sort.by(Sort.Direction.ASC, "date")
         );
         // ROLE_STUDENT 아닌 경우 예외 처리
-        if (loginUser.getRole() != Member.MemberRole.ROLE_STUDENT) {
-            throw new ServiceException(ReturnCode.NOT_AUTHORIZED);
-        }
+        validateStudentRole(loginUser);
         Semester semesterEnum = convertToSemesterEnum(semester);
         Page<Attendance> attendancePage = attendanceRepository
                 .findAllByMemberIdAndYearAndSemester(loginUser.getId(), year, semesterEnum, sortedPageable);
@@ -106,27 +105,25 @@ public class AttendanceServiceImpl implements AttendanceService {
         validateAccessToStudent(loginUser, studentId);
         Semester semesterEnum = convertToSemesterEnum(semester);
         Page<Attendance> attendancePage = attendanceRepository
-                .findAllByMemberIdAndYearAndSemester(studentId, year, semesterEnum, pageable);
+                .findAllByMemberIdAndYearAndSemester(studentId, year, semesterEnum, sortedPageable);
         return attendancePage.map(this::convertToAttendanceDto);
     }
 
     // 학생 출결 생성 [선생님 권한]
     @Override
     @Transactional
-    public void createAttendance(Long studentId, AttendanceForm form, LoginUserDto loginUser){
+    public void createAttendance(Long studentId, AttendanceForm attendanceForm, LoginUserDto loginUser){
         // ROLE_TEACHER 아닌 경우 예외 처리
-        if (loginUser.getRole() != Member.MemberRole.ROLE_TEACHER) {
-            throw new ServiceException(ReturnCode.NOT_AUTHORIZED);
-        }
+        validateTeacherRole(loginUser);
         Member student = memberRepository.findById(studentId)
                 .orElseThrow(() -> new ServiceException(ReturnCode.USER_NOT_FOUND));
         Attendance attendance = Attendance.builder()
                 .member(student)
-                .year(form.getYear())
-                .semester(form.getSemester())
-                .date(form.getDate())
+                .year(attendanceForm.getYear())
+                .semester(attendanceForm.getSemester())
+                .date(attendanceForm.getDate())
                 .build();
-        for (PeriodAttendance pa : form.getPeriodAttendances()) {
+        for (PeriodAttendance pa : attendanceForm.getPeriodAttendances()) {
             pa.setAttendance(attendance); // set parent
             attendance.getPeriodAttendances().add(pa);
         }
@@ -136,18 +133,15 @@ public class AttendanceServiceImpl implements AttendanceService {
     // 학생 출결 수정 [선생님 권한]
     @Override
     @Transactional
-    public void updateAttendance(Long attendanceId, AttendanceForm form, LoginUserDto loginUser){
+    public void updateAttendance(Long attendanceId, AttendanceForm attendanceForm, LoginUserDto loginUser){
         // ROLE_TEACHER 아닌 경우 예외 처리
-        if (loginUser.getRole() != Member.MemberRole.ROLE_TEACHER) {
-            throw new ServiceException(ReturnCode.NOT_AUTHORIZED);
-        }
+        validateTeacherRole(loginUser);
         Attendance attendance = attendanceRepository.findById(attendanceId)
                 .orElseThrow(() -> new ServiceException(ReturnCode.ATTENDANCE_NOT_FOUND));
-        attendance.setYear(form.getYear());
-        attendance.setSemester(form.getSemester());
-        attendance.setDate(form.getDate());
+        attendance.setYear(attendanceForm.getYear());
+        attendance.setSemester(attendanceForm.getSemester());
         attendance.getPeriodAttendances().clear();
-        for (PeriodAttendance pa : form.getPeriodAttendances()) {
+        for (PeriodAttendance pa : attendanceForm.getPeriodAttendances()) {
             pa.setAttendance(attendance);
             attendance.getPeriodAttendances().add(pa);
         }
@@ -158,9 +152,7 @@ public class AttendanceServiceImpl implements AttendanceService {
     @Transactional
     public void deleteAttendance(Long attendanceId, LoginUserDto loginUser){
         // ROLE_TEACHER 아닌 경우 예외 처리
-        if (loginUser.getRole() != Member.MemberRole.ROLE_TEACHER) {
-            throw new ServiceException(ReturnCode.NOT_AUTHORIZED);
-        }
+        validateTeacherRole(loginUser);
         Attendance attendance = attendanceRepository.findById(attendanceId)
                 .orElseThrow(() -> new ServiceException(ReturnCode.ATTENDANCE_NOT_FOUND));
         attendanceRepository.delete(attendance);
@@ -174,33 +166,6 @@ public class AttendanceServiceImpl implements AttendanceService {
         if (pageSize > maxPageSize) {
             throw new ServiceException(ReturnCode.PAGE_REQUEST_FAIL);
         }
-    }
-
-    // ROLE_PARENT/ROLE_TEACHER 아닌 경우 예외 처리
-    private void validateAccessToStudent(LoginUserDto loginUser, Long studentId) {
-        Member.MemberRole role = loginUser.getRole();
-        if (role != Member.MemberRole.ROLE_PARENT && role != Member.MemberRole.ROLE_TEACHER) {
-            throw new ServiceException(ReturnCode.NOT_AUTHORIZED);
-        }
-        // ROLE_PARENT인 경우 자녀인지 확인
-        if (role == Member.MemberRole.ROLE_PARENT) {
-            Member parent = loginUser.ConvertToMember();
-            boolean isMyChild = parent.getFollowList().stream()
-                    .map(MemberFollow::getFollowed)
-                    .anyMatch(child -> child != null && child.getId().equals(studentId));
-            if (!isMyChild) {
-                throw new ServiceException(ReturnCode.NOT_AUTHORIZED);
-            }
-        }
-    }
-
-    // 학기 Integer -> Enum 변환
-    private Semester convertToSemesterEnum(Integer semester) {
-        return switch (semester) {
-            case 1 -> Semester.FIRST_SEMESTER;
-            case 2 -> Semester.SECOND_SEMESTER;
-            default -> throw new ServiceException(ReturnCode.INVALID_SEMESTER);
-        };
     }
 
     // Attendance -> AttendanceDto 변환

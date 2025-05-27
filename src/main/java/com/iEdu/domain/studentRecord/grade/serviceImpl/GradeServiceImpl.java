@@ -38,6 +38,9 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static com.iEdu.global.common.utils.Converter.convertToSemesterEnum;
+import static com.iEdu.global.common.utils.RoleValidator.*;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -60,9 +63,7 @@ public class GradeServiceImpl implements GradeService {
                 Sort.by(Sort.Order.desc("year"), Sort.Order.desc("semester"))
         );
         // ROLE_STUDENT 아닌 경우 예외 처리
-        if (loginUser.getRole() != Member.MemberRole.ROLE_STUDENT) {
-            throw new ServiceException(ReturnCode.NOT_AUTHORIZED);
-        }
+        validateStudentRole(loginUser);
         Page<Grade> gradePage = gradeRepository.findAllByMemberId(loginUser.getId(), sortedPageable);
         return gradePage.map(grade -> convertToGradeDto(grade, loginUser.getAccountId()));
     }
@@ -90,9 +91,7 @@ public class GradeServiceImpl implements GradeService {
     @Transactional
     public GradeDto getMyFilterGrade(Integer year, Integer semester, LoginUserDto loginUser){
         // ROLE_STUDENT 아닌 경우 예외 처리
-        if (loginUser.getRole() != Member.MemberRole.ROLE_STUDENT) {
-            throw new ServiceException(ReturnCode.NOT_AUTHORIZED);
-        }
+        validateStudentRole(loginUser);
         Semester semesterEnum = convertToSemesterEnum(semester);
         Grade grade = gradeRepository
                 .findByMemberIdAndYearAndSemester(loginUser.getId(), year, semesterEnum)
@@ -105,12 +104,10 @@ public class GradeServiceImpl implements GradeService {
     @Transactional
     public List<GradeDto> getStudentsGrade(Integer year, Integer classId, Integer number, Integer semester, LoginUserDto loginUser){
         // ROLE_TEACHER 아닌 경우 예외 처리
-        if (loginUser.getRole() != Member.MemberRole.ROLE_TEACHER) {
-            throw new ServiceException(ReturnCode.NOT_AUTHORIZED);
-        }
+        validateTeacherRole(loginUser);
         Semester semesterEnum = convertToSemesterEnum(semester);
         List<Grade> grades = gradeQueryRepository.findAllByStudentInfoAndSemesterAndYear(
-                year, classId, number, semesterEnum, year
+                year, classId, number, semesterEnum
         );
         // 학급 전체 성적 데이터 기준으로 랭크 계산
         return grades.stream()
@@ -138,9 +135,7 @@ public class GradeServiceImpl implements GradeService {
     @Transactional
     public void createGrade(Long studentId, GradeForm gradeForm, LoginUserDto loginUser) {
         // ROLE_TEACHER 아닌 경우 예외 처리
-        if (loginUser.getRole() != Member.MemberRole.ROLE_TEACHER) {
-            throw new ServiceException(ReturnCode.NOT_AUTHORIZED);
-        }
+        validateTeacherRole(loginUser);
         Member student = memberRepository.findById(studentId)
                 .orElseThrow(() -> new ServiceException(ReturnCode.USER_NOT_FOUND));
         // 선생님 담당 과목 확인
@@ -203,9 +198,7 @@ public class GradeServiceImpl implements GradeService {
     @Transactional
     public void updateGrade(Long gradeId, GradeUpdateForm gradeUpdateForm, LoginUserDto loginUser){
         // ROLE_TEACHER 아닌 경우 예외 처리
-        if (loginUser.getRole() != Member.MemberRole.ROLE_TEACHER) {
-            throw new ServiceException(ReturnCode.NOT_AUTHORIZED);
-        }
+        validateTeacherRole(loginUser);
         Grade grade = gradeRepository.findById(gradeId)
                 .orElseThrow(() -> new ServiceException(ReturnCode.GRADE_NOT_FOUND));
         // 선생님 담당 과목 확인
@@ -255,9 +248,7 @@ public class GradeServiceImpl implements GradeService {
     @Transactional
     public void deleteGrade(Long gradeId, LoginUserDto loginUser){
         // ROLE_TEACHER 아닌 경우 예외 처리
-        if (loginUser.getRole() != Member.MemberRole.ROLE_TEACHER) {
-            throw new ServiceException(ReturnCode.NOT_AUTHORIZED);
-        }
+        validateTeacherRole(loginUser);
         Grade grade = gradeRepository.findById(gradeId)
                 .orElseThrow(() -> new ServiceException(ReturnCode.GRADE_NOT_FOUND));
         // 선생님 담당 과목 확인
@@ -319,33 +310,6 @@ public class GradeServiceImpl implements GradeService {
                 && grade.getSecondForeignLanguageScore() != null;
     }
 
-    // ROLE_PARENT/ROLE_TEACHER 아닌 경우 예외 처리
-    private void validateAccessToStudent(LoginUserDto loginUser, Long studentId) {
-        Member.MemberRole role = loginUser.getRole();
-        if (role != Member.MemberRole.ROLE_PARENT && role != Member.MemberRole.ROLE_TEACHER) {
-            throw new ServiceException(ReturnCode.NOT_AUTHORIZED);
-        }
-        // ROLE_PARENT인 경우 자녀인지 확인
-        if (role == Member.MemberRole.ROLE_PARENT) {
-            Member parent = loginUser.ConvertToMember();
-            boolean isMyChild = parent.getFollowList().stream()
-                    .map(MemberFollow::getFollowed)
-                    .anyMatch(child -> child != null && child.getId().equals(studentId));
-            if (!isMyChild) {
-                throw new ServiceException(ReturnCode.NOT_AUTHORIZED);
-            }
-        }
-    }
-
-    // 학기 Integer -> Enum 변환
-    private Semester convertToSemesterEnum(Integer semester) {
-        return switch (semester) {
-            case 1 -> Semester.FIRST_SEMESTER;
-            case 2 -> Semester.SECOND_SEMESTER;
-            default -> throw new ServiceException(ReturnCode.INVALID_SEMESTER);
-        };
-    }
-
     // Grade -> GradeDto 변환
     private GradeDto convertToGradeDto(Grade grade, Long studentAccountId) {
         Integer year = grade.getYear();
@@ -364,7 +328,6 @@ public class GradeServiceImpl implements GradeService {
         return GradeDto.builder()
                 .id(grade.getId())
                 .studentId(grade.getMember().getId())
-                .profileImageUrl(grade.getMember().getProfileImageUrl())
                 .year(year)
                 .semester(semester)
                 .gradeRank(gradeRankForYear)

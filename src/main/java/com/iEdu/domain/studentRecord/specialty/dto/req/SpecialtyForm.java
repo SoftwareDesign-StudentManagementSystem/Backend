@@ -1,5 +1,6 @@
 package com.iEdu.domain.studentRecord.specialty.dto.req;
 
+import com.iEdu.global.common.enums.Semester;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
@@ -14,8 +15,7 @@ import java.time.LocalDate;
 @NoArgsConstructor
 @AllArgsConstructor
 public class SpecialtyForm {
-    @NotBlank(message = "내용을 입력해주세요.")
+    private Integer year;
+    private Semester semester;
     private String content;
-
-    private LocalDate recordedDate;
 }

@@ -15,7 +15,6 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 public class AttendanceForm {
-    private Long studentId;
     private Integer year;
     private Semester semester;
     private LocalDate date;

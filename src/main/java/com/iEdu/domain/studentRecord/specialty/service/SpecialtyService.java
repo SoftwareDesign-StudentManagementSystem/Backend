@@ -3,20 +3,30 @@ package com.iEdu.domain.studentRecord.specialty.service;
 import com.iEdu.domain.account.auth.loginUser.LoginUserDto;
 import com.iEdu.domain.studentRecord.specialty.dto.req.SpecialtyForm;
 import com.iEdu.domain.studentRecord.specialty.dto.res.SpecialtyDto;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import java.util.List;
 
 public interface SpecialtyService {
+    // 본인의 모든 특기사항 조회 [학생 권한]
+    Page<SpecialtyDto> getMyAllSpecialty(Pageable pageable, LoginUserDto loginUser);
 
-    void createSpecialty(Long studentId, SpecialtyForm form, LoginUserDto loginUser);
+    // 학생의 모든 특기사항 조회 [학부모/선생님 권한]
+    Page<SpecialtyDto> getAllSpecialty(Long studentId, Pageable pageable, LoginUserDto loginUser);
 
-    void updateSpecialty(Long specialtyId, SpecialtyForm form, LoginUserDto loginUser);
+    // (학년/학기)로 본인 특기사항 조회 [학생 권한]
+    Page<SpecialtyDto> getMyFilterSpecialty(Integer year, Integer semester, Pageable pageable, LoginUserDto loginUser);
 
-    // 특기사항 학년/학기별 조회 [학부모/선생님 권한]
+    // (학년/학기)로 학생 특기사항 조회 [학부모/선생님 권한]
+    Page<SpecialtyDto> getFilterSpecialty(Long studentId, Integer year, Integer semester, Pageable pageable, LoginUserDto loginUser);
 
+    // 학생 특기사항 생성 [선생님 권한]
+    void createSpecialty(Long studentId, SpecialtyForm specialtyForm, LoginUserDto loginUser);
+
+    // 학생 특기사항 수정 [선생님 권한]
+    void updateSpecialty(Long specialtyId, SpecialtyForm specialtyForm, LoginUserDto loginUser);
+
+    // 학생 특기사항 삭제 [선생님 권한]
     void deleteSpecialty(Long specialtyId, LoginUserDto loginUser);
-
-    List<SpecialtyDto> getAllSpecialties(Long studentId, LoginUserDto loginUser);
-
-    SpecialtyDto getSpecialty(Long specialtyId, LoginUserDto loginUser);
 }
