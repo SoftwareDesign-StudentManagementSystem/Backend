@@ -12,6 +12,7 @@ import java.util.List;
 @Builder
 public class AttendanceDto {
     private Long id;
+    private Long studentId;
     private Integer year;
     private Semester semester;
     private LocalDate date;

@@ -27,6 +27,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.stream.Collectors;
 
+import static com.iEdu.global.common.utils.RoleValidator.validateAdminRole;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -71,9 +73,7 @@ public class AdminServiceImpl implements AdminService {
     @Transactional
     public Member adminSignup(MemberForm memberForm, LoginUserDto loginUser){
         // ROLE_ADMIN이 아닌 경우 예외 처리
-        if (loginUser.getRole() != Member.MemberRole.ROLE_ADMIN) {
-            throw new ServiceException(ReturnCode.NOT_AUTHORIZED);
-        }
+        validateAdminRole(loginUser);
         if (memberRepository.existsByAccountId((memberForm.getAccountId()))) {
             throw new ServiceException(ReturnCode.MEMBER_ALREADY_EXISTS);
         }
@@ -103,10 +103,9 @@ public class AdminServiceImpl implements AdminService {
     @Override
     @Transactional
     public Page<MemberDto> getMemberByRole(String role, Pageable pageable, LoginUserDto loginUser){
+        checkPageSize(pageable.getPageSize());
         // ROLE_ADMIN이 아닌 경우 예외 처리
-        if (loginUser.getRole() != Member.MemberRole.ROLE_ADMIN) {
-            throw new ServiceException(ReturnCode.NOT_AUTHORIZED);
-        }
+        validateAdminRole(loginUser);
         // 문자열 role을 Enum으로 변환
         Member.MemberRole memberRole;
         try {
@@ -123,9 +122,7 @@ public class AdminServiceImpl implements AdminService {
     @Transactional
     public MemberDto getMemberInfo(Long memberId, LoginUserDto loginUser) {
         // ROLE_ADMIN이 아닌 경우 예외 처리
-        if (loginUser.getRole() != Member.MemberRole.ROLE_ADMIN) {
-            throw new ServiceException(ReturnCode.NOT_AUTHORIZED);
-        }
+        validateAdminRole(loginUser);
         Member member = memberRepository.findById(memberId)
                 .orElseThrow(() -> new ServiceException(ReturnCode.USER_NOT_FOUND));
         return memberConvertToMemberDto(member);
@@ -136,9 +133,7 @@ public class AdminServiceImpl implements AdminService {
     @Transactional
     public DetailMemberDto getMemberDetailInfo(Long memberId, LoginUserDto loginUser) {
         // ROLE_ADMIN이 아닌 경우 예외 처리
-        if (loginUser.getRole() != Member.MemberRole.ROLE_ADMIN) {
-            throw new ServiceException(ReturnCode.NOT_AUTHORIZED);
-        }
+        validateAdminRole(loginUser);
         Member member = memberRepository.findById(memberId)
                 .orElseThrow(() -> new ServiceException(ReturnCode.USER_NOT_FOUND));
         return memberConvertToDetailMemberDto(member);
@@ -149,9 +144,7 @@ public class AdminServiceImpl implements AdminService {
     @Transactional
     public void adminUpdateMemberInfo(MemberForm memberForm, Long memberId, LoginUserDto loginUser) {
         // ROLE_ADMIN이 아닌 경우 예외 처리
-        if (loginUser.getRole() != Member.MemberRole.ROLE_ADMIN) {
-            throw new ServiceException(ReturnCode.NOT_AUTHORIZED);
-        }
+        validateAdminRole(loginUser);
         Member member = memberRepository.findById(memberId)
                 .orElseThrow(() -> new ServiceException(ReturnCode.USER_NOT_FOUND));
         if (memberForm.getAccountId() != null) {
@@ -203,11 +196,9 @@ public class AdminServiceImpl implements AdminService {
     @Override
     @Transactional
     public Page<MemberDto> searchMemberInfo(Pageable pageable, String keyword, LoginUserDto loginUser) {
-        // ROLE_ADMIN이 아닌 경우 예외 처리
-        if (loginUser.getRole() != Member.MemberRole.ROLE_ADMIN) {
-            throw new ServiceException(ReturnCode.NOT_AUTHORIZED);
-        }
         checkPageSize(pageable.getPageSize());
+        // ROLE_ADMIN이 아닌 경우 예외 처리
+        validateAdminRole(loginUser);
         Page<Member> members = memberRepository.findByKeyword(pageable, keyword);
         return members.map(this::memberConvertToMemberDto);
     }
@@ -217,9 +208,7 @@ public class AdminServiceImpl implements AdminService {
     @Transactional
     public void deleteUserProfileImage(Long memberId, LoginUserDto loginUser){
         // ROLE_ADMIN이 아닌 경우 예외 처리
-        if (loginUser.getRole() != Member.MemberRole.ROLE_ADMIN) {
-            throw new ServiceException(ReturnCode.NOT_AUTHORIZED);
-        }
+        validateAdminRole(loginUser);
         Member member = memberRepository.findById(memberId)
                 .orElseThrow(() -> new ServiceException(ReturnCode.USER_NOT_FOUND));
         if(member.getProfileImageUrl() != null){
@@ -233,9 +222,7 @@ public class AdminServiceImpl implements AdminService {
     @Transactional
     public void removeFollowed(Long studentId, Long parentId, LoginUserDto loginUser){
         // ROLE_ADMIN이 아닌 경우 예외 처리
-        if (loginUser.getRole() != Member.MemberRole.ROLE_ADMIN) {
-            throw new ServiceException(ReturnCode.NOT_AUTHORIZED);
-        }
+        validateAdminRole(loginUser);
         Member followed = memberRepository.findById(studentId)
                 .orElseThrow(() -> new ServiceException(ReturnCode.USER_NOT_FOUND));
         Member follow = memberRepository.findById(parentId)
@@ -248,9 +235,7 @@ public class AdminServiceImpl implements AdminService {
     // 회원 삭제하기 [관리자 권한]
     public void removeMember(Long memberId, LoginUserDto loginUser){
         // ROLE_ADMIN이 아닌 경우 예외 처리
-        if (loginUser.getRole() != Member.MemberRole.ROLE_ADMIN) {
-            throw new ServiceException(ReturnCode.NOT_AUTHORIZED);
-        }
+        validateAdminRole(loginUser);
         Member member = memberRepository.findById(memberId)
                 .orElseThrow(() -> new ServiceException(ReturnCode.USER_NOT_FOUND));
         memberService.deleteMember(LoginUserDto.ConvertToLoginUserDto(member));
@@ -264,7 +249,7 @@ public class AdminServiceImpl implements AdminService {
         }
     }
 
-    // Member를 MemberDto로 변환
+    // Member -> MemberDto 변환
     private MemberDto memberConvertToMemberDto(Member member) {
         return MemberDto.builder()
                 .id(member.getId())
@@ -279,7 +264,7 @@ public class AdminServiceImpl implements AdminService {
                 .build();
     }
 
-    // Member를 DetailMemberDto로 변환
+    // Member -> DetailMemberDto 변환
     private DetailMemberDto memberConvertToDetailMemberDto(Member member) {
         return DetailMemberDto.builder()
                 .id(member.getId())

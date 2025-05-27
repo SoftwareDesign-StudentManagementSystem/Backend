@@ -6,127 +6,162 @@ import com.iEdu.domain.account.member.repository.MemberRepository;
 import com.iEdu.domain.studentRecord.specialty.dto.req.SpecialtyForm;
 import com.iEdu.domain.studentRecord.specialty.dto.res.SpecialtyDto;
 import com.iEdu.domain.studentRecord.specialty.entity.Specialty;
+import com.iEdu.domain.studentRecord.specialty.entity.SpecialtyPage;
 import com.iEdu.domain.studentRecord.specialty.repository.SpecialtyRepository;
 import com.iEdu.domain.studentRecord.specialty.service.SpecialtyService;
+import com.iEdu.global.common.enums.Semester;
 import com.iEdu.global.exception.ReturnCode;
 import com.iEdu.global.exception.ServiceException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
+import static com.iEdu.global.common.utils.Converter.convertToSemesterEnum;
+import static com.iEdu.global.common.utils.RoleValidator.*;
 
 @Service
 @RequiredArgsConstructor
 public class SpecialtyServiceImpl implements SpecialtyService {
-
     private final SpecialtyRepository specialtyRepository;
     private final MemberRepository memberRepository;
 
-    /**
-     * 학생의 특기사항 전체 조회
-     */
+    // 본인의 모든 특기사항 조회 [학생 권한]
     @Override
     @Transactional(readOnly = true)
-    public List<SpecialtyDto> getAllSpecialties(Long studentId, LoginUserDto loginUser) {
-        Member.MemberRole role = loginUser.getRole();
-        if (role == Member.MemberRole.ROLE_TEACHER) {
-            return convertToDtoList(
-                    specialtyRepository.findAllByMemberIdOrderByIdDesc(studentId)
-            );
-        }
-        if (role == Member.MemberRole.ROLE_PARENT) {
-            boolean isFollowed = loginUser.getFollowList().stream()
-                    .anyMatch(f -> f.getFollow().getId().equals(studentId));
-            if (!isFollowed) {
-                throw new ServiceException(ReturnCode.NOT_AUTHORIZED);
-            }
-            return convertToDtoList(
-                    specialtyRepository.findAllByMemberIdOrderByIdDesc(studentId)
-            );
-        }
-        throw new ServiceException(ReturnCode.NOT_AUTHORIZED);
+    public Page<SpecialtyDto> getMyAllSpecialty(Pageable pageable, LoginUserDto loginUser) {
+        checkPageSize(pageable.getPageSize());
+        // 정렬: year 내림차순, semester(SECOND_SEMESTER 우선), createdAt 내림차순
+        Pageable sortedPageable = PageRequest.of(
+                pageable.getPageNumber(),
+                pageable.getPageSize(),
+                Sort.by(Sort.Order.desc("year"), Sort.Order.desc("semester"), Sort.Order.desc("createdAt"))
+        );
+        // ROLE_STUDENT 아닌 경우 예외 처리
+        validateStudentRole(loginUser);
+        Page<Specialty> specialtyPage = specialtyRepository.findByMemberId(loginUser.getId(), sortedPageable);
+        return specialtyPage.map(this::convertToSpecialtyDto);
     }
 
-    /**
-     * 특기사항 등록 - 선생님 권한만
-     */
+    // 학생의 모든 특기사항 조회 [학부모/선생님 권한]
+    @Override
+    @Transactional(readOnly = true)
+    public Page<SpecialtyDto> getAllSpecialty(Long studentId, Pageable pageable, LoginUserDto loginUser) {
+        checkPageSize(pageable.getPageSize());
+        Pageable sortedPageable = PageRequest.of(
+                pageable.getPageNumber(),
+                pageable.getPageSize(),
+                Sort.by(Sort.Order.desc("year"), Sort.Order.desc("semester"), Sort.Order.desc("createdAt"))
+        );
+        // ROLE_PARENT/ROLE_TEACHER 아닌 경우 예외 처리
+        validateAccessToStudent(loginUser, studentId);
+        Page<Specialty> specialtyPage = specialtyRepository.findByMemberId(studentId, sortedPageable);
+        return specialtyPage.map(this::convertToSpecialtyDto);
+    }
+
+    // (학년/학기)로 본인 특기사항 조회 [학생 권한]
+    @Override
+    @Transactional(readOnly = true)
+    public Page<SpecialtyDto> getMyFilterSpecialty(Integer year, Integer semester, Pageable pageable, LoginUserDto loginUser) {
+        checkPageSize(pageable.getPageSize());
+        // 정렬 조건: createdAt 내림차순
+        Pageable sortedPageable = PageRequest.of(
+                pageable.getPageNumber(),
+                pageable.getPageSize(),
+                Sort.by(Sort.Direction.DESC, "createdAt")
+        );
+        // ROLE_STUDENT 아닌 경우 예외 처리
+        validateStudentRole(loginUser);
+        Semester semesterEnum = convertToSemesterEnum(semester);
+        Page<Specialty> specialtyPage = specialtyRepository.findByMemberIdAndYearAndSemester(
+                loginUser.getId(), year, semesterEnum, sortedPageable
+        );
+        return specialtyPage.map(this::convertToSpecialtyDto);
+    }
+
+    // (학년/학기)로 학생 특기사항 조회 [학부모/선생님 권한]
+    @Override
+    @Transactional(readOnly = true)
+    public Page<SpecialtyDto> getFilterSpecialty(Long studentId, Integer year, Integer semester, Pageable pageable, LoginUserDto loginUser) {
+        checkPageSize(pageable.getPageSize());
+        // 정렬: year 내림차순, semester(SECOND_SEMESTER 우선), createdAt 내림차순
+        Pageable sortedPageable = PageRequest.of(
+                pageable.getPageNumber(),
+                pageable.getPageSize(),
+                Sort.by(Sort.Direction.DESC, "createdAt")
+        );
+        // ROLE_PARENT/ROLE_TEACHER 아닌 경우 예외 처리
+        validateAccessToStudent(loginUser, studentId);
+        Semester semesterEnum = convertToSemesterEnum(semester);
+        Page<Specialty> specialtyPage = specialtyRepository.findByMemberIdAndYearAndSemester(
+                studentId, year, semesterEnum, sortedPageable
+        );
+        return specialtyPage.map(this::convertToSpecialtyDto);
+    }
+
+    // 학생 특기사항 생성 [선생님 권한]
     @Override
     @Transactional
-    public void createSpecialty(Long studentId, SpecialtyForm form, LoginUserDto loginUser) {
+    public void createSpecialty(Long studentId, SpecialtyForm specialtyForm, LoginUserDto loginUser) {
+        // ROLE_TEACHER 아닌 경우 예외 처리
         validateTeacherRole(loginUser);
         Member student = memberRepository.findById(studentId)
                 .orElseThrow(() -> new ServiceException(ReturnCode.USER_NOT_FOUND));
         Specialty specialty = Specialty.builder()
                 .member(student)
-                .content(form.getContent())
+                .year(specialtyForm.getYear())
+                .semester(specialtyForm.getSemester())
+                .content(specialtyForm.getContent())
                 .build();
         specialtyRepository.save(specialty);
     }
 
-    /**
-     * 특기사항 수정 - 선생님 권한만
-     */
+    // 학생 특기사항 수정 [선생님 권한]
     @Override
     @Transactional
-    public void updateSpecialty(Long specialtyId, SpecialtyForm form, LoginUserDto loginUser) {
+    public void updateSpecialty(Long specialtyId, SpecialtyForm specialtyForm, LoginUserDto loginUser) {
+        // ROLE_TEACHER 아닌 경우 예외 처리
         validateTeacherRole(loginUser);
         Specialty specialty = specialtyRepository.findById(specialtyId)
-                .orElseThrow(() -> new ServiceException(ReturnCode.POST_NOT_FOUND));
-        specialty.setContent(form.getContent());
+                .orElseThrow(() -> new ServiceException(ReturnCode.SPECIALTY_NOT_FOUND));
+        specialty.setYear(specialtyForm.getYear());
+        specialty.setSemester(specialtyForm.getSemester());
+        specialty.setContent(specialtyForm.getContent());
     }
 
-    /**
-     * 특기사항 삭제 - 선생님 권한만
-     */
+    // 학생 특기사항 삭제 [선생님 권한]
     @Override
     @Transactional
     public void deleteSpecialty(Long specialtyId, LoginUserDto loginUser) {
+        // ROLE_TEACHER 아닌 경우 예외 처리
         validateTeacherRole(loginUser);
         Specialty specialty = specialtyRepository.findById(specialtyId)
-                .orElseThrow(() -> new ServiceException(ReturnCode.POST_NOT_FOUND));
+                .orElseThrow(() -> new ServiceException(ReturnCode.SPECIALTY_NOT_FOUND));
         specialtyRepository.delete(specialty);
     }
 
-    // 특기사항 학년/학기별 조회 [학부모/선생님 권한]
+    // ----------------- 헬퍼 메서드 -----------------
 
-    /**
-     * 단건 조회 - 권한 제한 없음
-     */
-    @Override
-    @Transactional(readOnly = true)
-    public SpecialtyDto getSpecialty(Long specialtyId, LoginUserDto loginUser) {
-        if (loginUser.getRole() != Member.MemberRole.ROLE_TEACHER) {
-            throw new ServiceException(ReturnCode.NOT_AUTHORIZED);
-        }
-        Specialty specialty = specialtyRepository.findById(specialtyId)
-                .orElseThrow(() -> new ServiceException(ReturnCode.POST_NOT_FOUND));
-
-        return convertToDto(specialty);
-    }
-    /**
-     * 권한 체크: 선생님만 허용
-     */
-    private void validateTeacherRole(LoginUserDto loginUser) {
-        if (loginUser.getRole() != Member.MemberRole.ROLE_TEACHER) {
-            throw new ServiceException(ReturnCode.NOT_AUTHORIZED);
+    // 요청 페이지 수 제한
+    private void checkPageSize(int pageSize) {
+        int maxPageSize = SpecialtyPage.getMaxPageSize();
+        if (pageSize > maxPageSize) {
+            throw new ServiceException(ReturnCode.PAGE_REQUEST_FAIL);
         }
     }
 
-    /**
-     * Specialty → DTO 변환
-     */
-    private SpecialtyDto convertToDto(Specialty specialty) {
+    // Specialty → SpecialtyDto 변환
+    private SpecialtyDto convertToSpecialtyDto(Specialty specialty) {
         return SpecialtyDto.builder()
                 .id(specialty.getId())
-                .memberId(specialty.getMember().getId())
+                .studentId(specialty.getMember().getId())
+                .year(specialty.getYear())
+                .semester(specialty.getSemester())
                 .content(specialty.getContent())
+                .date(specialty.getCreatedAt().toLocalDate())
                 .build();
-    }
-
-    private List<SpecialtyDto> convertToDtoList(List<Specialty> specialties) {
-        return specialties.stream()
-                .map(this::convertToDto)
-                .toList();
     }
 }

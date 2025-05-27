@@ -1,6 +1,7 @@
 package com.iEdu.domain.studentRecord.feedback.dto.res;
 
 import com.iEdu.domain.studentRecord.feedback.entity.FeedbackCategory;
+import com.iEdu.global.common.enums.Semester;
 import lombok.*;
 
 import java.time.LocalDate;
@@ -10,6 +11,10 @@ import java.time.LocalDate;
 @Builder
 public class FeedbackDto {
     private Long id;
+    private Long studentId;
+    private Integer year;
+    private Semester semester;
     private FeedbackCategory category;  // 피드백 카테고리
     private String content;             // 피드백 내용
+    private LocalDate date;
 }

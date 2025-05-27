@@ -29,7 +29,7 @@ public class Feedback extends BaseEntity {
     @Enumerated(EnumType.STRING)
     private FeedbackCategory category;
 
-    @Column(nullable = false)
+    @Column(length = 1000)
     private String content;
 
     private Boolean visibleToStudent;

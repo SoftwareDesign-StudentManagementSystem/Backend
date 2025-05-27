@@ -21,7 +21,7 @@ public class GradeQueryRepositoryImpl implements GradeQueryRepository {
     @Override
     public List<Grade> findAllByStudentInfoAndSemesterAndYear(
             Integer studentYear, Integer classId, Integer number,
-            Semester semester, Integer gradeYear) {
+            Semester semester) {
 
         QGrade grade = QGrade.grade;
 
@@ -31,8 +31,7 @@ public class GradeQueryRepositoryImpl implements GradeQueryRepository {
                         grade.member.year.eq(studentYear),
                         grade.member.classId.eq(classId),
                         eqNumber(grade, number),
-                        grade.semester.eq(semester),
-                        grade.year.eq(gradeYear)
+                        grade.semester.eq(semester)
                 )
                 .fetch();
     }

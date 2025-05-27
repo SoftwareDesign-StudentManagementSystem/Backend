@@ -1,4 +1,4 @@
-package com.iEdu.domain.studentRecord.specialty.dto.res;
+package com.iEdu.domain.studentRecord.counsel.dto.req;
 
 import com.iEdu.global.common.enums.Semester;
 import lombok.*;
@@ -8,12 +8,11 @@ import java.time.LocalDate;
 @Getter
 @Setter
 @Builder
+@NoArgsConstructor
 @AllArgsConstructor
-public class SpecialtyDto {
-    private Long id; // 특기사항 ID
-    private Long studentId; // 작성 대상 학생의 멤버 ID
+public class CounselForm {
     private Integer year;
     private Semester semester;
     private String content;
-    private LocalDate date;
+    private LocalDate nextCounselDate;
 }

@@ -10,6 +10,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -55,4 +56,11 @@ public interface MemberRepository extends JpaRepository<Member, Long>, QuerydslP
 
     // 역할별로 멤버ID 오름차순 정렬 조회
     Page<Member> findByRoleOrderByIdAsc(Member.MemberRole role, Pageable pageable);
+
+    // 학년/반/번호로 학생 조회
+    @Query("SELECT m FROM Member m WHERE m.role = 'ROLE_STUDENT' AND m.year = :year AND m.classId = :classId" +
+            " AND (:number IS NULL OR m.number = :number)")
+    List<Member> findStudentsByYearClassNumber(@Param("year") Integer year,
+                                               @Param("classId") Integer classId,
+                                               @Param("number") Integer number);
 }

@@ -9,7 +9,6 @@ import lombok.Data;
 public class GradeDto {
     private Long id;
     private Long studentId;
-    private String profileImageUrl;
     private Integer year;
     private Semester semester;
     private String gradeRank;
