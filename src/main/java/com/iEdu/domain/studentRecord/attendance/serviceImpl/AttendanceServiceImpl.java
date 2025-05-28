@@ -71,41 +71,57 @@ public class AttendanceServiceImpl implements AttendanceService {
         return attendancePage.map(this::convertToAttendanceDto);
     }
 
-    // (학년/학기)로 본인 출결 조회 [학생 권한]
+    // (학년/학기/월)로 본인 출결 조회 [학생 권한]
     @Override
     @Transactional(readOnly = true)
-    public Page<AttendanceDto> getMyFilterAttendance(Integer year, Integer semester, Pageable pageable, LoginUserDto loginUser) {
+    public Page<AttendanceDto> getMyFilterAttendance(Integer year, Integer semester, Integer month, Pageable pageable, LoginUserDto loginUser) {
         checkPageSize(pageable.getPageSize());
-        // 정렬 조건 추가: date(오름차순)
-        Pageable sortedPageable = PageRequest.of(
-                pageable.getPageNumber(),
-                pageable.getPageSize(),
-                Sort.by(Sort.Direction.ASC, "date")
-        );
         // ROLE_STUDENT 아닌 경우 예외 처리
         validateStudentRole(loginUser);
         Semester semesterEnum = convertToSemesterEnum(semester);
-        Page<Attendance> attendancePage = attendanceRepository
-                .findAllByMemberIdAndYearAndSemester(loginUser.getId(), year, semesterEnum, sortedPageable);
-        return attendancePage.map(this::convertToAttendanceDto);
-    }
-
-    // (학년/학기)로 학생 출결 조회 [학부모/선생님 권한]
-    @Override
-    @Transactional(readOnly = true)
-    public Page<AttendanceDto> getFilterAttendance(Long studentId, Integer year, Integer semester, Pageable pageable, LoginUserDto loginUser) {
-        checkPageSize(pageable.getPageSize());
         // 정렬 조건 추가: date(오름차순)
         Pageable sortedPageable = PageRequest.of(
                 pageable.getPageNumber(),
                 pageable.getPageSize(),
                 Sort.by(Sort.Direction.ASC, "date")
         );
+        Page<Attendance> attendancePage;
+        if (month != null) {
+            attendancePage = attendanceRepository.findAllByMemberIdAndYearAndSemesterAndMonth(
+                    loginUser.getId(), year, semesterEnum, month, sortedPageable
+            );
+        } else {
+            attendancePage = attendanceRepository.findAllByMemberIdAndYearAndSemester(
+                    loginUser.getId(), year, semesterEnum, sortedPageable
+            );
+        }
+        return attendancePage.map(this::convertToAttendanceDto);
+    }
+
+    // (학년/학기/월)로 학생 출결 조회 [학부모/선생님 권한]
+    @Override
+    @Transactional(readOnly = true)
+    public Page<AttendanceDto> getFilterAttendance(Long studentId, Integer year, Integer semester, Integer month, Pageable pageable, LoginUserDto loginUser) {
+        checkPageSize(pageable.getPageSize());
         // ROLE_PARENT/ROLE_TEACHER 아닌 경우 예외 처리
         validateAccessToStudent(loginUser, studentId);
         Semester semesterEnum = convertToSemesterEnum(semester);
-        Page<Attendance> attendancePage = attendanceRepository
-                .findAllByMemberIdAndYearAndSemester(studentId, year, semesterEnum, sortedPageable);
+        // 정렬 조건 추가: date(오름차순)
+        Pageable sortedPageable = PageRequest.of(
+                pageable.getPageNumber(),
+                pageable.getPageSize(),
+                Sort.by(Sort.Direction.ASC, "date")
+        );
+        Page<Attendance> attendancePage;
+        if (month != null) {
+            attendancePage = attendanceRepository.findAllByMemberIdAndYearAndSemesterAndMonth(
+                    studentId, year, semesterEnum, month, sortedPageable
+            );
+        } else {
+            attendancePage = attendanceRepository.findAllByMemberIdAndYearAndSemester(
+                    studentId, year, semesterEnum, sortedPageable
+            );
+        }
         return attendancePage.map(this::convertToAttendanceDto);
     }
 

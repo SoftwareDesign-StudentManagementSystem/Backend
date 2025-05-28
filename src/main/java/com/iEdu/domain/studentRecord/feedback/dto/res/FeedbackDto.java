@@ -12,6 +12,7 @@ import java.time.LocalDate;
 public class FeedbackDto {
     private Long id;
     private Long studentId;
+    private String teacherName;
     private Integer year;
     private Semester semester;
     private FeedbackCategory category;  // 피드백 카테고리

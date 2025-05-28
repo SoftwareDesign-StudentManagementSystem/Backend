@@ -43,27 +43,29 @@ public class ApiV1AttendanceController {
         return ApiResponse.of(IEduPage.of(attendanceService.getAllAttendance(studentId, pageable, loginUser)));
     }
 
-    // (학년/학기)로 본인 출결 조회 [학생 권한]
+    // (학년/학기/월)로 본인 출결 조회 [학생 권한]
     @Operation(summary = "(학년/학기)로 본인 출결 조회 [학생 권한]")
     @GetMapping("/filter")
     public ApiResponse<AttendanceDto> getMyFilterAttendance(@ModelAttribute AttendancePage request,
                                                             @RequestParam(value = "year") Integer year,
                                                             @RequestParam(value = "semester") Integer semester,
+                                                            @RequestParam(value = "month", required = false) Integer month,
                                                             @LoginUser LoginUserDto loginUser){
         Pageable pageable = PageRequest.of(request.getPage(), request.getSize());
-        return ApiResponse.of(IEduPage.of(attendanceService.getMyFilterAttendance(year, semester, pageable, loginUser)));
+        return ApiResponse.of(IEduPage.of(attendanceService.getMyFilterAttendance(year, semester, month, pageable, loginUser)));
     }
 
-    // (학년/학기)로 학생 출결 조회 [학부모/선생님 권한]
+    // (학년/학기/월)로 학생 출결 조회 [학부모/선생님 권한]
     @Operation(summary = "(학년/학기)로 학생 출결 조회 [학부모/선생님 권한]")
     @GetMapping("/filter/{studentId}")
     public ApiResponse<AttendanceDto> getFilterAttendance(@ModelAttribute AttendancePage request,
                                                           @PathVariable("studentId") Long studentId,
                                                           @RequestParam(value = "year") Integer year,
                                                           @RequestParam(value = "semester") Integer semester,
+                                                          @RequestParam(value = "month", required = false) Integer month,
                                                           @LoginUser LoginUserDto loginUser){
         Pageable pageable = PageRequest.of(request.getPage(), request.getSize());
-        return ApiResponse.of(IEduPage.of(attendanceService.getFilterAttendance(studentId, year, semester, pageable, loginUser)));
+        return ApiResponse.of(IEduPage.of(attendanceService.getFilterAttendance(studentId, year, semester, month, pageable, loginUser)));
     }
 
     // 학생 출결 생성 [선생님 권한]

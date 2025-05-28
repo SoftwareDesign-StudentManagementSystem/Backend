@@ -28,14 +28,6 @@ import java.util.List;
 public class ApiV1CounselController {
     private final CounselService counselService;
 
-    // 본인의 모든 상담 조회 [학생 권한]
-    @Operation(summary = "본인의 모든 상담 조회 [학생 권한]")
-    @GetMapping
-    public ApiResponse<CounselDto> getMyAllCounsel(@ModelAttribute CounselPage request, @LoginUser LoginUserDto loginUser) {
-        Pageable pageable = PageRequest.of(request.getPage(), request.getSize());
-        return ApiResponse.of(IEduPage.of(counselService.getMyAllCounsel(pageable, loginUser)));
-    }
-
     // 학생의 모든 상담 조회 [학부모/선생님 권한]
     @Operation(summary = "학생의 모든 상담 조회 [학부모/선생님 권한]")
     @GetMapping("/{studentId}")
@@ -44,17 +36,6 @@ public class ApiV1CounselController {
                                                  @LoginUser LoginUserDto loginUser) {
         Pageable pageable = PageRequest.of(request.getPage(), request.getSize());
         return ApiResponse.of(IEduPage.of(counselService.getAllCounsel(studentId, pageable, loginUser)));
-    }
-
-    // (학년/학기)로 본인 상담 조회 [학생 권한]
-    @Operation(summary = "(학년/학기)로 본인 상담 조회 [학생 권한]")
-    @GetMapping("/filter")
-    public ApiResponse<CounselDto> getMyFilterCounsel(@ModelAttribute CounselPage request,
-                                                      @RequestParam(value = "year") Integer year,
-                                                      @RequestParam(value = "semester") Integer semester,
-                                                      @LoginUser LoginUserDto loginUser) {
-        Pageable pageable = PageRequest.of(request.getPage(), request.getSize());
-        return ApiResponse.of(IEduPage.of(counselService.getMyFilterCounsel(year, semester, pageable, loginUser)));
     }
 
     // (학년/반/번호/학기)로 학생들 상담 조회 [선생님 권한]

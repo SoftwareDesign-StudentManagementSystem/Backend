@@ -29,32 +29,14 @@ import java.util.List;
 public class ApiV1SpecialtyController {
     private final SpecialtyService specialtyService;
 
-    // 본인의 모든 특기사항 조회 [학생 권한]
-    @Operation(summary = "본인의 모든 특기사항 조회 [학생 권한]")
-    @GetMapping
-    public ApiResponse<SpecialtyDto> getMyAllSpecialty(@ModelAttribute SpecialtyPage request, @LoginUser LoginUserDto loginUser) {
-        Pageable pageable = PageRequest.of(request.getPage(), request.getSize());
-        return ApiResponse.of(IEduPage.of(specialtyService.getMyAllSpecialty(pageable, loginUser)));
-    }
-
     // 학생의 모든 특기사항 조회 [학부모/선생님 권한]
+    @Operation(summary = "학생의 모든 특기사항 조회 [학부모/선생님 권한]")
     @GetMapping("/{studentId}")
     public ApiResponse<SpecialtyDto> getAllSpecialty(@ModelAttribute SpecialtyPage request,
                                                        @PathVariable("studentId") Long studentId,
                                                        @LoginUser LoginUserDto loginUser) {
         Pageable pageable = PageRequest.of(request.getPage(), request.getSize());
         return ApiResponse.of(IEduPage.of(specialtyService.getAllSpecialty(studentId, pageable, loginUser)));
-    }
-
-    // (학년/학기)로 본인 특기사항 조회 [학생 권한]
-    @Operation(summary = "(학년/학기)로 본인 특기사항 조회 [학생 권한]")
-    @GetMapping("/filter")
-    public ApiResponse<SpecialtyDto> getMyFilterSpecialty(@ModelAttribute SpecialtyPage request,
-                                                          @RequestParam(value = "year") Integer year,
-                                                          @RequestParam(value = "semester") Integer semester,
-                                                          @LoginUser LoginUserDto loginUser) {
-        Pageable pageable = PageRequest.of(request.getPage(), request.getSize());
-        return ApiResponse.of(IEduPage.of(specialtyService.getMyFilterSpecialty(year, semester, pageable, loginUser)));
     }
 
     // (학년/학기)로 학생 특기사항 조회 [학부모/선생님 권한]
@@ -70,6 +52,7 @@ public class ApiV1SpecialtyController {
     }
 
     // 학생 특기사항 생성 [선생님 권한]
+    @Operation(summary = "학생 특기사항 생성 [선생님 권한]")
     @PostMapping("/{studentId}")
     public ApiResponse<String> createSpecialty(@PathVariable("studentId") Long studentId,
                                                @RequestBody @Valid SpecialtyForm specialtyForm,
@@ -79,6 +62,7 @@ public class ApiV1SpecialtyController {
     }
 
     // 학생 특기사항 수정 [선생님 권한]
+    @Operation(summary = "학생 특기사항 수정 [선생님 권한]")
     @PutMapping("/{specialtyId}")
     public ApiResponse<String> updateSpecialty(@PathVariable("specialtyId") Long specialtyId,
                                                @RequestBody @Valid SpecialtyForm specialtyForm,
@@ -88,6 +72,7 @@ public class ApiV1SpecialtyController {
     }
 
     // 학생 특기사항 삭제 [선생님 권한]
+    @Operation(summary = "학생 특기사항 삭제 [선생님 권한]")
     @DeleteMapping("/{specialtyId}")
     public ApiResponse<String> deleteSpecialty(@PathVariable("specialtyId") Long specialtyId,
                                                @LoginUser LoginUserDto loginUser) {

@@ -75,13 +75,13 @@ public class NotificationServiceImpl implements NotificationService {
     }
 
     // Notification을 NotificationDto로 변환
-    private NotificationDto convertToNotificationDto(Notification notification){
-        return new NotificationDto(
-                notification.getId(),
-                notification.getContent(),
-                notification.getIsRead(),
-                notification.getObjectId(),
-                notification.getTargetObject()
-        );
+    public NotificationDto convertToNotificationDto(Notification notification) {
+        return NotificationDto.builder()
+                .id(notification.getId())
+                .content(notification.getContent())
+                .isRead(notification.getIsRead())
+                .objectId(notification.getObjectId())
+                .targetObject(notification.getTargetObject())
+                .build();
     }
 }

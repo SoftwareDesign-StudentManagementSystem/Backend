@@ -1,9 +1,13 @@
 package com.iEdu.domain.studentRecord.feedback.serviceImpl;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.iEdu.domain.account.auth.loginUser.LoginUserDto;
 import com.iEdu.domain.account.member.entity.Member;
 import com.iEdu.domain.account.member.entity.MemberFollow;
 import com.iEdu.domain.account.member.repository.MemberRepository;
+import com.iEdu.domain.account.member.service.MemberService;
+import com.iEdu.domain.notification.entity.Notification;
 import com.iEdu.domain.studentRecord.feedback.dto.req.FeedbackForm;
 import com.iEdu.domain.studentRecord.feedback.dto.res.FeedbackDto;
 import com.iEdu.domain.studentRecord.feedback.entity.Feedback;
@@ -19,8 +23,11 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 import static com.iEdu.global.common.utils.Converter.convertToSemesterEnum;
 import static com.iEdu.global.common.utils.RoleValidator.*;
@@ -31,6 +38,9 @@ import static com.iEdu.global.common.utils.RoleValidator.*;
 public class FeedbackServiceImpl implements FeedbackService {
     private final FeedbackRepository feedbackRepository;
     private final MemberRepository memberRepository;
+    private final MemberService memberService;
+    private final KafkaTemplate kafkaTemplate;
+    private final ObjectMapper objectMapper;
 
     // 본인의 모든 피드백 조회 [학생 권한]
     @Override
@@ -144,6 +154,7 @@ public class FeedbackServiceImpl implements FeedbackService {
                 .orElseThrow(() -> new ServiceException(ReturnCode.USER_NOT_FOUND));
         Feedback feedback = Feedback.builder()
                 .member(student)
+                .teacherName(loginUser.getName())
                 .year(feedbackForm.getYear())
                 .semester(feedbackForm.getSemester())
                 .content(feedbackForm.getContent())
@@ -151,6 +162,9 @@ public class FeedbackServiceImpl implements FeedbackService {
                 .visibleToParent(feedbackForm.getVisibleToParent())
                 .build();
         feedbackRepository.save(feedback);
+
+        // 피드백 알림 생성 & Kafka 이벤트 생성
+        sendFeedbackNotification(feedback, student, "새로운 피드백이 등록되었습니다.");
     }
 
     // 학생 피드백 수정 [선생님 권한]
@@ -166,6 +180,9 @@ public class FeedbackServiceImpl implements FeedbackService {
         feedback.setContent(feedbackForm.getContent());
         feedback.setVisibleToStudent(feedbackForm.getVisibleToStudent());
         feedback.setVisibleToParent(feedbackForm.getVisibleToParent());
+
+        // 피드백 알림 수정 & 이벤트 생성
+        sendFeedbackNotification(feedback, feedback.getMember(), "피드백이 수정되었습니다.");
     }
 
     // 학생 피드백 삭제 [선생님 권한]
@@ -189,11 +206,46 @@ public class FeedbackServiceImpl implements FeedbackService {
         }
     }
 
+    // 피드백 알림 생성 & 이벤트 생성
+    private void sendFeedbackNotification(Feedback feedback, Member student, String message) {
+        try {
+            // 학생에게 알림
+            if (Boolean.TRUE.equals(feedback.getVisibleToStudent())) {
+                Notification studentNotification = Notification.builder()
+                        .receiverId(student.getId())
+                        .objectId(feedback.getId())
+                        .content(feedback.getYear() + "학년 " +
+                                feedback.getSemester().toKoreanString() + " " + message)
+                        .targetObject(Notification.TargetObject.Feedback)
+                        .build();
+                kafkaTemplate.send("feedback-topic", objectMapper.writeValueAsString(studentNotification));
+            }
+
+            // 학부모에게 알림
+            if (Boolean.TRUE.equals(feedback.getVisibleToParent())) {
+                List<Member> parentList = memberService.findParentsByStudentId(student.getId());
+                for (Member parent : parentList) {
+                    Notification parentNotification = Notification.builder()
+                            .receiverId(parent.getId())
+                            .objectId(feedback.getId())
+                            .content("자녀의 " + feedback.getYear() + "학년 " +
+                                    feedback.getSemester().toKoreanString() + " " + message)
+                            .targetObject(Notification.TargetObject.Feedback)
+                            .build();
+                    kafkaTemplate.send("feedback-topic", objectMapper.writeValueAsString(parentNotification));
+                }
+            }
+        } catch (JsonProcessingException e) {
+            log.error("Failed to serialize Feedback Notification: {}", e.getMessage());
+        }
+    }
+
     // Feedback -> FeedbackDto 변환
     private FeedbackDto convertToFeedbackDto(Feedback feedback) {
         return FeedbackDto.builder()
                 .id(feedback.getId())
                 .studentId(feedback.getMember().getId())
+                .teacherName(feedback.getTeacherName())
                 .year(feedback.getYear())
                 .semester(feedback.getSemester())
                 .category(feedback.getCategory())

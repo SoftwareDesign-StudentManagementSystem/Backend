@@ -8,6 +8,7 @@ import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 
 @Data
+@Builder
 @AllArgsConstructor
 @NoArgsConstructor
 public class NotificationDto {
