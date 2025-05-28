@@ -343,7 +343,7 @@ public class MemberServiceImpl implements MemberService {
         Notification notification = Notification.builder()
                 .receiverId(followRec.getId())
                 .objectId(memberFollowReq.getId())
-                .content(loginUser.getName() + " 학부모님이 팔로우를 요청하였습니다")
+                .content(loginUser.getName() + " 학부모님이 팔로우를 요청하였습니다.")
                 .targetObject(Notification.TargetObject.Follow)
                 .build();
         try {
@@ -389,7 +389,7 @@ public class MemberServiceImpl implements MemberService {
         Notification notification = Notification.builder()
                 .receiverId(memberId)
                 .objectId(memberFollow.getId())
-                .content(loginUser.getName() + " 학생이 팔로우 요청을 수락하였습니다")
+                .content(loginUser.getName() + " 학생이 팔로우 요청을 수락하였습니다.")
                 .targetObject(Notification.TargetObject.Follow)
                 .build();
         try {

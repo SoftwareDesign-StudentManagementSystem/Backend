@@ -1,8 +1,12 @@
 package com.iEdu.domain.studentRecord.counsel.serviceImpl;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.iEdu.domain.account.auth.loginUser.LoginUserDto;
 import com.iEdu.domain.account.member.entity.Member;
 import com.iEdu.domain.account.member.repository.MemberRepository;
+import com.iEdu.domain.account.member.service.MemberService;
+import com.iEdu.domain.notification.entity.Notification;
 import com.iEdu.domain.studentRecord.counsel.dto.req.CounselForm;
 import com.iEdu.domain.studentRecord.counsel.dto.res.CounselDto;
 import com.iEdu.domain.studentRecord.counsel.entity.Counsel;
@@ -14,10 +18,12 @@ import com.iEdu.global.common.enums.Semester;
 import com.iEdu.global.exception.ReturnCode;
 import com.iEdu.global.exception.ServiceException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,12 +33,16 @@ import java.util.stream.Collectors;
 import static com.iEdu.global.common.utils.Converter.convertToSemesterEnum;
 import static com.iEdu.global.common.utils.RoleValidator.*;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class CounselServiceImpl implements CounselService {
     private final CounselRepository counselRepository;
     private final MemberRepository memberRepository;
+    private final MemberService memberService;
     private final CounselQueryRepository counselQueryRepository;
+    private final KafkaTemplate<String, String> kafkaTemplate;
+    private final ObjectMapper objectMapper;
 
     // 학생의 모든 상담 조회 [학부모/선생님 권한]
     @Override
@@ -103,6 +113,22 @@ public class CounselServiceImpl implements CounselService {
                 .nextCounselDate(counselForm.getNextCounselDate())
                 .build();
         counselRepository.save(counsel);
+
+        // 상담 알림 생성 & Kafka 이벤트 생성
+        try {
+            List<Member> parentList = memberService.findParentsByStudentId(student.getId());
+            for (Member parent : parentList) {
+                Notification notification = Notification.builder()
+                        .receiverId(parent.getId())
+                        .objectId(counsel.getId())
+                        .content("자녀의 " + counsel.getYear() + "학년 " + counsel.getSemester().toKoreanString() + " 상담내역이 등록되었습니다.")
+                        .targetObject(Notification.TargetObject.Counsel)
+                        .build();
+                kafkaTemplate.send("counsel-topic", objectMapper.writeValueAsString(notification));
+            }
+        } catch (JsonProcessingException e) {
+            log.error("Failed to serialize Notification: {}", e.getMessage());
+        }
     }
 
     // 학생 상담 수정 [선생님 권한]
@@ -117,6 +143,22 @@ public class CounselServiceImpl implements CounselService {
         counsel.setSemester(counselForm.getSemester());
         counsel.setContent(counselForm.getContent());
         counsel.setNextCounselDate(counselForm.getNextCounselDate());
+
+        // 상담 알림 수정 & Kafka 이벤트 생성
+        try {
+            List<Member> parentList = memberService.findParentsByStudentId(counsel.getMember().getId());
+            for (Member parent : parentList) {
+                Notification notification = Notification.builder()
+                        .receiverId(parent.getId())
+                        .objectId(counsel.getId())
+                        .content("자녀의 " + counsel.getYear() + "학년 " + counsel.getSemester().toKoreanString() + " 상담내역이 수정되었습니다.")
+                        .targetObject(Notification.TargetObject.Counsel)
+                        .build();
+                kafkaTemplate.send("counsel-topic", objectMapper.writeValueAsString(notification));
+            }
+        } catch (JsonProcessingException e) {
+            log.error("Failed to serialize Notification: {}", e.getMessage());
+        }
     }
 
     // 학생 상담 삭제 [선생님 권한]

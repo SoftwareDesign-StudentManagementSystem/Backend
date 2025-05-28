@@ -7,6 +7,7 @@ import com.iEdu.domain.account.member.entity.Member;
 import com.iEdu.domain.account.member.entity.MemberFollow;
 import com.iEdu.domain.account.member.entity.MemberPage;
 import com.iEdu.domain.account.member.repository.MemberRepository;
+import com.iEdu.domain.account.member.service.MemberService;
 import com.iEdu.domain.notification.entity.Notification;
 import com.iEdu.domain.studentRecord.attendance.entity.Attendance;
 import com.iEdu.domain.studentRecord.grade.dto.req.GradeForm;
@@ -50,6 +51,7 @@ public class GradeServiceImpl implements GradeService {
     private final GradeQueryRepository gradeQueryRepository;
     private final KafkaTemplate<String, String> kafkaTemplate;
     private final ObjectMapper objectMapper;
+    private final MemberService memberService;
 
     // 본인의 모든 성적 조회 [학생 권한]
     @Override
@@ -175,18 +177,29 @@ public class GradeServiceImpl implements GradeService {
             default -> throw new ServiceException(ReturnCode.INVALID_SUBJECT);
         }
         gradeRepository.save(grade);
-        // 모든 과목 점수가 입력됐는지 확인
+        // 성적 알림 생성 & Kafka 이벤트 생성
         if (isAllSubjectsFilled(grade)) {
-            Notification notification = Notification.builder()
-                    .receiverId(studentId)
-                    .objectId(grade.getId())
-                    .content(year + "학년 " + semester.toKoreanString() + " 성적이 등록되었습니다")
-                    .targetObject(Notification.TargetObject.Grade)
-                    .build();
             try {
-                // 성적 생성 이벤트 생성
-                String message = objectMapper.writeValueAsString(notification);
-                kafkaTemplate.send("grade-topic", message);
+                // 1. 학생 알림 전송
+                Notification studentNotification = Notification.builder()
+                        .receiverId(studentId)
+                        .objectId(grade.getId())
+                        .content(year + "학년 " + semester.toKoreanString() + " 성적이 등록되었습니다.")
+                        .targetObject(Notification.TargetObject.Grade)
+                        .build();
+                kafkaTemplate.send("grade-topic", objectMapper.writeValueAsString(studentNotification));
+
+                // 2. 학부모 알림 전송
+                List<Member> parentList = memberService.findParentsByStudentId(studentId);
+                for (Member parent : parentList) {
+                    Notification parentNotification = Notification.builder()
+                            .receiverId(parent.getId())
+                            .objectId(grade.getId())
+                            .content("자녀의 " + year + "학년 " + semester.toKoreanString() + " 성적이 등록되었습니다.")
+                            .targetObject(Notification.TargetObject.Grade)
+                            .build();
+                    kafkaTemplate.send("grade-topic", objectMapper.writeValueAsString(parentNotification));
+                }
             } catch (JsonProcessingException e) {
                 log.error("Failed to serialize Notification: {}", e.getMessage());
             }
@@ -228,16 +241,28 @@ public class GradeServiceImpl implements GradeService {
             case 제2외국어 -> grade.setSecondForeignLanguageScore(newScore);
             default -> throw new ServiceException(ReturnCode.INVALID_SUBJECT);
         }
-        // 성적 수정 이벤트 생성
-        Notification notification = Notification.builder()
-                .receiverId(grade.getMember().getId())
-                .objectId(grade.getId())
-                .content(grade.getYear() + "학년 " + grade.getSemester().toKoreanString() + " " + subject + " 점수가 수정되었습니다")
-                .targetObject(Notification.TargetObject.Grade)
-                .build();
+        // 성적 알림 수정 & Kafka 이벤트 생성
         try {
-            String message = objectMapper.writeValueAsString(notification);
-            kafkaTemplate.send("grade-topic", message);
+            // 1. 학생 알림 Kafka 전송
+            Notification studentNotification = Notification.builder()
+                    .receiverId(grade.getMember().getId())
+                    .objectId(grade.getId())
+                    .content(grade.getYear() + "학년 " + grade.getSemester().toKoreanString() + " " + subject + " 점수가 수정되었습니다.")
+                    .targetObject(Notification.TargetObject.Grade)
+                    .build();
+            kafkaTemplate.send("grade-topic", objectMapper.writeValueAsString(studentNotification));
+
+            // 2. 학부모 알림 각각 Kafka 전송
+            List<Member> parentList = memberService.findParentsByStudentId(grade.getMember().getId());
+            for (Member parent : parentList) {
+                Notification parentNotification = Notification.builder()
+                        .receiverId(parent.getId())
+                        .objectId(grade.getId())
+                        .content("자녀의 " + grade.getYear() + "학년 " + grade.getSemester().toKoreanString() + " " + subject + " 점수가 수정되었습니다.")
+                        .targetObject(Notification.TargetObject.Grade)
+                        .build();
+                kafkaTemplate.send("grade-topic", objectMapper.writeValueAsString(parentNotification));
+            }
         } catch (JsonProcessingException e) {
             log.error("Failed to serialize Notification: {}", e.getMessage());
         }

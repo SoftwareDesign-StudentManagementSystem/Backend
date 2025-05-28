@@ -16,4 +16,7 @@ public interface NotificationService {
 
     // 알림 읽음 처리 [학부모/학생 권한]
     void markAsRead(NotificationForm notificationForm, LoginUserDto loginUser);
+
+    // Notification을 NotificationDto로 변환
+    NotificationDto convertToNotificationDto(Notification notification);
 }
