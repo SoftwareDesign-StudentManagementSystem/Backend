@@ -9,6 +9,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
+
 @Repository
 public interface AttendanceRepository extends JpaRepository<Attendance, Long> {
     // 로그인한 유저 혹은 학생의 출결 전체 조회
@@ -16,6 +18,9 @@ public interface AttendanceRepository extends JpaRepository<Attendance, Long> {
 
     // 특정 학년/학기의 출결 데이터 조회
     Page<Attendance> findAllByMemberIdAndYearAndSemester(Long memberId, Integer year, Semester semester, Pageable pageable);
+
+    // 특정 학년/학기의 출결 데이터 조회(보고서용)
+    List<Attendance> findByMemberIdAndYearAndSemesterOrderByDateAsc(Long memberId, Integer year, Semester semester);
 
     // 특정 학년/학기/월의 출결 데이터 조회
     @Query("SELECT a FROM Attendance a WHERE a.member.id = :memberId " +

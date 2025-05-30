@@ -336,7 +336,8 @@ public class GradeServiceImpl implements GradeService {
     }
 
     // Grade -> GradeDto 변환
-    private GradeDto convertToGradeDto(Grade grade, Long studentAccountId) {
+    @Override
+    public GradeDto convertToGradeDto(Grade grade, Long studentAccountId) {
         Integer year = grade.getYear();
         Semester semester = grade.getSemester();
 

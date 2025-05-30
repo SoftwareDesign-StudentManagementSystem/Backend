@@ -3,6 +3,7 @@ package com.iEdu.domain.studentRecord.attendance.service;
 import com.iEdu.domain.account.auth.loginUser.LoginUserDto;
 import com.iEdu.domain.studentRecord.attendance.dto.req.AttendanceForm;
 import com.iEdu.domain.studentRecord.attendance.dto.res.AttendanceDto;
+import com.iEdu.domain.studentRecord.attendance.entity.Attendance;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
@@ -27,4 +28,7 @@ public interface AttendanceService {
 
     // 학생 출결 삭제 [선생님 권힌]
     void deleteAttendance(Long attendanceId, LoginUserDto loginUser);
+
+    // Attendance -> AttendanceDto 변환
+    AttendanceDto convertToAttendanceDto(Attendance attendance);
 }

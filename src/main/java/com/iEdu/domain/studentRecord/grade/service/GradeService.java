@@ -4,6 +4,7 @@ import com.iEdu.domain.account.auth.loginUser.LoginUserDto;
 import com.iEdu.domain.studentRecord.grade.dto.req.GradeForm;
 import com.iEdu.domain.studentRecord.grade.dto.req.GradeUpdateForm;
 import com.iEdu.domain.studentRecord.grade.dto.res.GradeDto;
+import com.iEdu.domain.studentRecord.grade.entity.Grade;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
@@ -33,4 +34,7 @@ public interface GradeService {
 
     // 학생 성적 삭제 [선생님 권한]
     void deleteGrade(Long gradeId, LoginUserDto loginUser);
+
+    // Grade -> GradeDto 변환
+    GradeDto convertToGradeDto(Grade grade, Long studentAccountId);
 }

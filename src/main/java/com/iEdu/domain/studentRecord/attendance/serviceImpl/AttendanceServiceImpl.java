@@ -185,7 +185,8 @@ public class AttendanceServiceImpl implements AttendanceService {
     }
 
     // Attendance -> AttendanceDto 변환
-    private AttendanceDto convertToAttendanceDto(Attendance attendance) {
+    @Override
+    public AttendanceDto convertToAttendanceDto(Attendance attendance) {
         List<PeriodAttendanceDto> periodDtos = attendance.getPeriodAttendances().stream()
                 .map(pa -> new PeriodAttendanceDto(
                         pa.getAttendance().getId(),

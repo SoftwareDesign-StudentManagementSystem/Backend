@@ -163,7 +163,8 @@ public class SpecialtyServiceImpl implements SpecialtyService {
     }
 
     // Specialty → SpecialtyDto 변환
-    private SpecialtyDto convertToSpecialtyDto(Specialty specialty) {
+    @Override
+    public SpecialtyDto convertToSpecialtyDto(Specialty specialty) {
         return SpecialtyDto.builder()
                 .id(specialty.getId())
                 .studentId(specialty.getMember().getId())

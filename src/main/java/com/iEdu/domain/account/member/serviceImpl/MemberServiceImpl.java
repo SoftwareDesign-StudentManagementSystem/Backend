@@ -193,7 +193,7 @@ public class MemberServiceImpl implements MemberService {
                 s3Service.deleteFile(imageUrl);
             }
             try {
-                imageUrl = s3Service.uploadFile(imageFile, "profile-image");
+                imageUrl = s3Service.uploadImageFile(imageFile, "profile-image");
             } catch (IOException e) {
                 throw new ServiceException(ReturnCode.INTERNAL_ERROR);
             }
@@ -241,7 +241,7 @@ public class MemberServiceImpl implements MemberService {
                 s3Service.deleteFile(imageUrl);
             }
             try {
-                imageUrl = s3Service.uploadFile(imageFile, "profile-image");
+                imageUrl = s3Service.uploadImageFile(imageFile, "profile-image");
             } catch (IOException e) {
                 throw new ServiceException(ReturnCode.INTERNAL_ERROR);
             }
