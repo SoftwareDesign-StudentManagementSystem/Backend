@@ -7,6 +7,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
+
 @Repository
 public interface FeedbackRepository extends JpaRepository<Feedback, Long> {
     // 피드백 조회
@@ -20,6 +22,9 @@ public interface FeedbackRepository extends JpaRepository<Feedback, Long> {
 
     // 특정 학년/학기의 피드백 데이터 조회
     Page<Feedback> findByMemberIdAndYearAndSemester(Long memberId, Integer year, Semester semester, Pageable pageable);
+
+    // 특정 학년/학기의 피드백 데이터 조회(보고서용)
+    List<Feedback> findByMemberIdAndYearAndSemester(Long studentId, Integer year, Semester semester);
 
     // 특정 학년/학기의 피드백 데이터 조회 및 학생 권한 확인
     Page<Feedback> findByMemberIdAndYearAndSemesterAndVisibleToStudentTrue(

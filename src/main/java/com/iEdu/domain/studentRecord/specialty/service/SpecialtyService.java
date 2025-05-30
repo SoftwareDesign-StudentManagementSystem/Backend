@@ -3,6 +3,7 @@ package com.iEdu.domain.studentRecord.specialty.service;
 import com.iEdu.domain.account.auth.loginUser.LoginUserDto;
 import com.iEdu.domain.studentRecord.specialty.dto.req.SpecialtyForm;
 import com.iEdu.domain.studentRecord.specialty.dto.res.SpecialtyDto;
+import com.iEdu.domain.studentRecord.specialty.entity.Specialty;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
@@ -23,4 +24,7 @@ public interface SpecialtyService {
 
     // 학생 특기사항 삭제 [선생님 권한]
     void deleteSpecialty(Long specialtyId, LoginUserDto loginUser);
+
+    // Specialty → SpecialtyDto 변환
+    SpecialtyDto convertToSpecialtyDto(Specialty specialty);
 }

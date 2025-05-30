@@ -3,6 +3,7 @@ package com.iEdu.domain.studentRecord.feedback.service;
 import com.iEdu.domain.account.auth.loginUser.LoginUserDto;
 import com.iEdu.domain.studentRecord.feedback.dto.req.FeedbackForm;
 import com.iEdu.domain.studentRecord.feedback.dto.res.FeedbackDto;
+import com.iEdu.domain.studentRecord.feedback.entity.Feedback;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
@@ -27,4 +28,7 @@ public interface FeedbackService {
 
     // 학생 피드백 삭제 [선생님 권한]
     void deleteFeedback(Long feedbackId, LoginUserDto loginUser);
+
+    // Feedback -> FeedbackDto 변환
+    FeedbackDto convertToFeedbackDto(Feedback feedback);
 }

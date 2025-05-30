@@ -54,7 +54,7 @@ dependencies {
 
 	// aws s3
 	implementation(platform("software.amazon.awssdk:bom:2.24.0"))
-	implementation("software.amazon.awssdk:s3")
+	implementation("software.amazon.awssdk:s3:2.31.53")
 	implementation("com.vladmihalcea:hibernate-types-60:2.21.1")
 	implementation("io.github.cdimascio:dotenv-java:2.2.0")
 
@@ -74,6 +74,17 @@ dependencies {
 	annotationProcessor("com.querydsl:querydsl-apt:5.0.0:jakarta")
 	annotationProcessor("jakarta.annotation:jakarta.annotation-api")
 	annotationProcessor("jakarta.persistence:jakarta.persistence-api")
+
+	// PDF 생성용 OpenPDF
+	implementation("com.github.librepdf:openpdf:1.3.30")
+
+	// iText 7 핵심 PDF 생성 라이브러리
+	implementation("com.itextpdf:kernel:7.2.5")
+	implementation("com.itextpdf:layout:7.2.5")
+	implementation("com.itextpdf:io:7.2.5")
+
+	// Apache POI
+	implementation("org.apache.poi:poi-ooxml:5.2.5")
 }
 
 tasks.withType<Test> {

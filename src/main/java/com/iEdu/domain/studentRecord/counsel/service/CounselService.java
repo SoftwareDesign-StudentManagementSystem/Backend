@@ -3,6 +3,7 @@ package com.iEdu.domain.studentRecord.counsel.service;
 import com.iEdu.domain.account.auth.loginUser.LoginUserDto;
 import com.iEdu.domain.studentRecord.counsel.dto.req.CounselForm;
 import com.iEdu.domain.studentRecord.counsel.dto.res.CounselDto;
+import com.iEdu.domain.studentRecord.counsel.entity.Counsel;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
@@ -26,4 +27,7 @@ public interface CounselService {
 
     // 학생 상담 삭제 [선생님 권한]
     void deleteCounsel(Long counselId, LoginUserDto loginUser);
+
+    // Counsel -> CounselDto 변환
+    CounselDto convertToCounselDto(Counsel counsel);
 }

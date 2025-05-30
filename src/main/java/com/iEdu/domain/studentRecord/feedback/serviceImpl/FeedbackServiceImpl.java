@@ -11,6 +11,7 @@ import com.iEdu.domain.notification.entity.Notification;
 import com.iEdu.domain.studentRecord.feedback.dto.req.FeedbackForm;
 import com.iEdu.domain.studentRecord.feedback.dto.res.FeedbackDto;
 import com.iEdu.domain.studentRecord.feedback.entity.Feedback;
+import com.iEdu.domain.studentRecord.feedback.entity.FeedbackCategory;
 import com.iEdu.domain.studentRecord.feedback.entity.FeedbackPage;
 import com.iEdu.domain.studentRecord.feedback.repository.FeedbackRepository;
 import com.iEdu.domain.studentRecord.feedback.service.FeedbackService;
@@ -157,6 +158,7 @@ public class FeedbackServiceImpl implements FeedbackService {
                 .teacherName(loginUser.getName())
                 .year(feedbackForm.getYear())
                 .semester(feedbackForm.getSemester())
+                .category(feedbackForm.getCategory())
                 .content(feedbackForm.getContent())
                 .visibleToStudent(feedbackForm.getVisibleToStudent())
                 .visibleToParent(feedbackForm.getVisibleToParent())
@@ -177,6 +179,7 @@ public class FeedbackServiceImpl implements FeedbackService {
                 .orElseThrow(() -> new ServiceException(ReturnCode.FEEDBACK_NOT_FOUND));
         feedback.setYear(feedbackForm.getYear());
         feedback.setSemester(feedbackForm.getSemester());
+        feedback.setCategory(feedbackForm.getCategory());
         feedback.setContent(feedbackForm.getContent());
         feedback.setVisibleToStudent(feedbackForm.getVisibleToStudent());
         feedback.setVisibleToParent(feedbackForm.getVisibleToParent());
@@ -241,14 +244,15 @@ public class FeedbackServiceImpl implements FeedbackService {
     }
 
     // Feedback -> FeedbackDto 변환
-    private FeedbackDto convertToFeedbackDto(Feedback feedback) {
+    @Override
+    public FeedbackDto convertToFeedbackDto(Feedback feedback) {
         return FeedbackDto.builder()
                 .id(feedback.getId())
                 .studentId(feedback.getMember().getId())
                 .teacherName(feedback.getTeacherName())
                 .year(feedback.getYear())
                 .semester(feedback.getSemester())
-                .category(feedback.getCategory())
+                .category(feedback.getCategory() != null ? feedback.getCategory() : FeedbackCategory.기타)
                 .content(feedback.getContent())
                 .date(feedback.getCreatedAt().toLocalDate())  // BaseEntity에 createdDate가 있다고 가정
                 .build();

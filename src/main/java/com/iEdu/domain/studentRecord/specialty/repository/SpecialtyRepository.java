@@ -14,6 +14,9 @@ public interface SpecialtyRepository extends JpaRepository<Specialty, Long> {
     // 본인의 모든 특기사항 조회
     Page<Specialty> findByMemberId(Long memberId, Pageable pageable);
 
-    // (학년/학기)로 본인 또는 학생 특기사항 조회
+    // (학년/학기)로 학생 특기사항 조회
     Page<Specialty> findByMemberIdAndYearAndSemester(Long memberId, Integer year, Semester semester, Pageable pageable);
+
+    // (학년/학기)로 학생 특기사항 조회(보고서용)
+    List<Specialty> findByMemberIdAndYearAndSemester(Long studentId, Integer year, Semester semester);
 }

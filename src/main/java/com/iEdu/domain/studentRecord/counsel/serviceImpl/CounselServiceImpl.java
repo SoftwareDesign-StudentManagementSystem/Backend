@@ -183,7 +183,8 @@ public class CounselServiceImpl implements CounselService {
     }
 
     // Counsel -> CounselDto 변환
-    private CounselDto convertToCounselDto(Counsel counsel) {
+    @Override
+    public CounselDto convertToCounselDto(Counsel counsel) {
         return CounselDto.builder()
                 .id(counsel.getId())
                 .studentId(counsel.getMember().getId())
