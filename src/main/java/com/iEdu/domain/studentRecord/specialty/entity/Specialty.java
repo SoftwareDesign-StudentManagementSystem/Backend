@@ -18,6 +18,8 @@ public class Specialty extends BaseEntity {
     @JoinColumn(name = "member_id", nullable = false)
     private Member member;
 
+    private String teacherName;
+
     private Integer year;
 
     @Enumerated(EnumType.STRING)

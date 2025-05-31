@@ -23,6 +23,8 @@ public class Counsel extends BaseEntity {
     @JoinColumn(name = "student_id", nullable = false)
     private Member member;
 
+    private String teacherName;
+
     private Integer year;
 
     @Enumerated(EnumType.STRING)

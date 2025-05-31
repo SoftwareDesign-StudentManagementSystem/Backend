@@ -107,6 +107,7 @@ public class CounselServiceImpl implements CounselService {
                 .orElseThrow(() -> new ServiceException(ReturnCode.USER_NOT_FOUND));
         Counsel counsel = Counsel.builder()
                 .member(student)
+                .teacherName(loginUser.getName())
                 .year(counselForm.getYear())
                 .semester(counselForm.getSemester())
                 .content(counselForm.getContent())
@@ -188,6 +189,7 @@ public class CounselServiceImpl implements CounselService {
         return CounselDto.builder()
                 .id(counsel.getId())
                 .studentId(counsel.getMember().getId())
+                .teacherName(counsel.getTeacherName())
                 .year(counsel.getYear())
                 .semester(counsel.getSemester())
                 .content(counsel.getContent())

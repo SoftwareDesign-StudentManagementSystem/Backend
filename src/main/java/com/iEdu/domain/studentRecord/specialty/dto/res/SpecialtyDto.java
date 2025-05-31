@@ -12,6 +12,7 @@ import java.time.LocalDate;
 public class SpecialtyDto {
     private Long id; // 특기사항 ID
     private Long studentId; // 작성 대상 학생의 멤버 ID
+    private String teacherName;
     private Integer year;
     private Semester semester;
     private String content;

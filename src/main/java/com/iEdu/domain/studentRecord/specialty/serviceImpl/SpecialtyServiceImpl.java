@@ -87,6 +87,7 @@ public class SpecialtyServiceImpl implements SpecialtyService {
                 .orElseThrow(() -> new ServiceException(ReturnCode.USER_NOT_FOUND));
         Specialty specialty = Specialty.builder()
                 .member(student)
+                .teacherName(loginUser.getName())
                 .year(specialtyForm.getYear())
                 .semester(specialtyForm.getSemester())
                 .content(specialtyForm.getContent())
@@ -168,6 +169,7 @@ public class SpecialtyServiceImpl implements SpecialtyService {
         return SpecialtyDto.builder()
                 .id(specialty.getId())
                 .studentId(specialty.getMember().getId())
+                .teacherName(specialty.getTeacherName())
                 .year(specialty.getYear())
                 .semester(specialty.getSemester())
                 .content(specialty.getContent())
