@@ -102,7 +102,7 @@ public class AdminServiceImpl implements AdminService {
     // 역할별 회원 조회 [관리자 권한]
     @Override
     @Transactional
-    public Page<MemberDto> getMemberByRole(String role, Pageable pageable, LoginUserDto loginUser){
+    public Page<DetailMemberDto> getMemberByRole(String role, Pageable pageable, LoginUserDto loginUser){
         checkPageSize(pageable.getPageSize());
         // ROLE_ADMIN이 아닌 경우 예외 처리
         validateAdminRole(loginUser);
@@ -114,7 +114,7 @@ public class AdminServiceImpl implements AdminService {
             throw new ServiceException(ReturnCode.INVALID_ROLE);
         }
         Page<Member> members = memberRepository.findByRoleOrderByIdAsc(memberRole, pageable);
-        return members.map(this::memberConvertToMemberDto);
+        return members.map(this::memberConvertToDetailMemberDto);
     }
 
     // 다른 멤버의 회원정보 조회 [관리자 권한]
