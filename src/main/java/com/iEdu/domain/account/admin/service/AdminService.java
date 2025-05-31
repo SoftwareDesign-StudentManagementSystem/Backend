@@ -16,7 +16,7 @@ public interface AdminService {
     Member adminSignup(MemberForm memberForm, LoginUserDto loginUser);
 
     // 역할별 회원 조회 [관리자 권한]
-    Page<MemberDto> getMemberByRole(String role, Pageable pageable, LoginUserDto loginUser);
+    Page<DetailMemberDto> getMemberByRole(String role, Pageable pageable, LoginUserDto loginUser);
 
     // 다른 멤버의 회원정보 조회 [관리자 권한]
     MemberDto getMemberInfo(Long memberId, LoginUserDto loginUser);

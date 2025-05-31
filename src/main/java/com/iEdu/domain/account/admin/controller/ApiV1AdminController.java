@@ -39,7 +39,7 @@ public class ApiV1AdminController {
     // 역할별 회원 조회 [관리자 권한]
     @Operation(summary = "역할별 회원 조회 [관리자 권한]")
     @GetMapping
-    public ApiResponse<MemberDto> getMemberByRole(@ModelAttribute MemberPage request, @RequestParam(value = "role") String role,
+    public ApiResponse<DetailMemberDto> getMemberByRole(@ModelAttribute MemberPage request, @RequestParam(value = "role") String role,
                                                   @LoginUser LoginUserDto loginUser) {
         Pageable pageable = PageRequest.of(request.getPage(), request.getSize());
 

@@ -6,6 +6,7 @@ import lombok.Getter;
 public enum ReturnCode {
     SUCCESS(000, "SUECCESS_001", "요청에 성공하였습니다."),
     INTERNAL_SERVER_ERROR(500, "INTERNAL_SERVER_ERROR", "서버 내부 오류가 발생했습니다."),
+    NOT_AUTHORIZED(401, "NOTIFICATION_003", "권한이 없습니다."),
 
     // Page 관련 에러
     PAGE_REQUEST_FAIL(401, "PAGE_001", "적절하지 않은 페이지 요청입니다."),
@@ -144,7 +145,6 @@ public enum ReturnCode {
     // 알림 관련 에러
     NOTIFICATION_NOT_FOUND(404, "NOTIFICATION_001", "해당 알림을 찾을 수 없습니다."),
     MAP_TO_JSON_FAILED(500, "NOTIFICATION_002", "맵을 JSON으로 변환하는데 실패했습니다."),
-    NOT_AUTHORIZED(401, "NOTIFICATION_003", "권한이 없습니다."),
     NAVI_VALIDATE_ERROR(400, "NOTIFICATION_004", "navigationData에 필수 키가 없습니다"),
     ARGS_VALIDATE_ERROR(400, "NOTIFICATION_005", "메시지 인자가 부족합니다."),
 
