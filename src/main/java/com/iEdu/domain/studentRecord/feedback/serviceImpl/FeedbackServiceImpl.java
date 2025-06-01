@@ -158,6 +158,7 @@ public class FeedbackServiceImpl implements FeedbackService {
                 .teacherName(loginUser.getName())
                 .year(feedbackForm.getYear())
                 .semester(feedbackForm.getSemester())
+                .date(feedbackForm.getDate())
                 .category(feedbackForm.getCategory())
                 .content(feedbackForm.getContent())
                 .visibleToStudent(feedbackForm.getVisibleToStudent())
@@ -179,6 +180,7 @@ public class FeedbackServiceImpl implements FeedbackService {
                 .orElseThrow(() -> new ServiceException(ReturnCode.FEEDBACK_NOT_FOUND));
         feedback.setYear(feedbackForm.getYear());
         feedback.setSemester(feedbackForm.getSemester());
+        feedback.setDate(feedbackForm.getDate());
         feedback.setCategory(feedbackForm.getCategory());
         feedback.setContent(feedbackForm.getContent());
         feedback.setVisibleToStudent(feedbackForm.getVisibleToStudent());
@@ -254,7 +256,7 @@ public class FeedbackServiceImpl implements FeedbackService {
                 .semester(feedback.getSemester())
                 .category(feedback.getCategory() != null ? feedback.getCategory() : FeedbackCategory.기타)
                 .content(feedback.getContent())
-                .date(feedback.getCreatedAt().toLocalDate())  // BaseEntity에 createdDate가 있다고 가정
+                .date(feedback.getDate())
                 .build();
     }
 }

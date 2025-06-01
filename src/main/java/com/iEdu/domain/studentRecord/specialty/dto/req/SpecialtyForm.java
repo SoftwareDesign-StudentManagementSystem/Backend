@@ -17,5 +17,6 @@ import java.time.LocalDate;
 public class SpecialtyForm {
     private Integer year;
     private Semester semester;
+    private LocalDate date;
     private String content;
 }

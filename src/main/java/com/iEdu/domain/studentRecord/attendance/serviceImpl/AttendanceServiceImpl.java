@@ -156,6 +156,7 @@ public class AttendanceServiceImpl implements AttendanceService {
                 .orElseThrow(() -> new ServiceException(ReturnCode.ATTENDANCE_NOT_FOUND));
         attendance.setYear(attendanceForm.getYear());
         attendance.setSemester(attendanceForm.getSemester());
+        attendance.setDate(attendanceForm.getDate());
         attendance.getPeriodAttendances().clear();
         for (PeriodAttendance pa : attendanceForm.getPeriodAttendances()) {
             pa.setAttendance(attendance);

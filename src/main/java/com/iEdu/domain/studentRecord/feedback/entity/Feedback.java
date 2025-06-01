@@ -28,6 +28,8 @@ public class Feedback extends BaseEntity {
     @Column(length = 15)
     private Semester semester;
 
+    private LocalDate date;
+
     @Enumerated(EnumType.STRING)
     private FeedbackCategory category;
 

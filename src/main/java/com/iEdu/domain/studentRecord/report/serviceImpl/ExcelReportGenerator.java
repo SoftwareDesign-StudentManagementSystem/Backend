@@ -116,7 +116,7 @@ public class ExcelReportGenerator implements ReportGenerator {
 
     private void writeCounselSection(Sheet sheet, List<Member> students, Integer year, Semester semester) {
         Row header = sheet.createRow(0);
-        String[] columns = {"날짜", "학생 이름", "학년", "반", "번호", "학기", "내용", "다음 상담예정일"};
+        String[] columns = {"날짜", "학생 이름", "학년", "반", "번호", "학기", "선생님 이름", "내용", "다음 상담예정일"};
         for (int i = 0; i < columns.length; i++) {
             header.createCell(i).setCellValue(columns[i]);
         }
@@ -133,15 +133,16 @@ public class ExcelReportGenerator implements ReportGenerator {
                 row.createCell(3).setCellValue(student.getClassId());
                 row.createCell(4).setCellValue(student.getNumber());
                 row.createCell(5).setCellValue(semester.toKoreanString());
-                row.createCell(6).setCellValue(dto.getContent());
-                row.createCell(7).setCellValue(dto.getNextCounselDate() != null ? dto.getNextCounselDate().toString() : "");
+                row.createCell(6).setCellValue(dto.getTeacherName());
+                row.createCell(7).setCellValue(dto.getContent());
+                row.createCell(8).setCellValue(dto.getNextCounselDate() != null ? dto.getNextCounselDate().toString() : "");
             }
         }
     }
 
     private void writeSpecialtySection(Sheet sheet, List<Member> students, Integer year, Semester semester) {
         Row header = sheet.createRow(0);
-        String[] columns = {"날짜", "학생 이름", "학년", "반", "번호", "학기", "내용"};
+        String[] columns = {"날짜", "학생 이름", "학년", "반", "번호", "학기", "선생님 이름", "내용"};
         for (int i = 0; i < columns.length; i++) {
             header.createCell(i).setCellValue(columns[i]);
         }
@@ -157,7 +158,8 @@ public class ExcelReportGenerator implements ReportGenerator {
                 row.createCell(3).setCellValue(student.getClassId());
                 row.createCell(4).setCellValue(student.getNumber());
                 row.createCell(5).setCellValue(semester.toKoreanString());
-                row.createCell(6).setCellValue(dto.getContent());            }
+                row.createCell(6).setCellValue(dto.getTeacherName());
+                row.createCell(7).setCellValue(dto.getContent());            }
         }
     }
 
