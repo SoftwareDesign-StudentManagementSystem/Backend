@@ -7,7 +7,7 @@ import lombok.Getter;
 public class FeedbackPage {
     // 기본 page, size
     private int page = 0;
-    private int size = 15;
+    private int size = 24;
     @Getter
-    private static final int maxPageSize = 15;
+    private static final int maxPageSize = 24;
 }

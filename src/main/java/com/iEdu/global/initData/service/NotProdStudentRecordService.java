@@ -6,8 +6,15 @@ import com.iEdu.domain.account.member.repository.MemberRepository;
 import com.iEdu.domain.studentRecord.attendance.dto.req.AttendanceForm;
 import com.iEdu.domain.studentRecord.attendance.entity.PeriodAttendance;
 import com.iEdu.domain.studentRecord.attendance.service.AttendanceService;
+import com.iEdu.domain.studentRecord.counsel.dto.req.CounselForm;
+import com.iEdu.domain.studentRecord.counsel.service.CounselService;
+import com.iEdu.domain.studentRecord.feedback.dto.req.FeedbackForm;
+import com.iEdu.domain.studentRecord.feedback.entity.FeedbackCategory;
+import com.iEdu.domain.studentRecord.feedback.service.FeedbackService;
 import com.iEdu.domain.studentRecord.grade.dto.req.GradeForm;
 import com.iEdu.domain.studentRecord.grade.service.GradeService;
+import com.iEdu.domain.studentRecord.specialty.dto.req.SpecialtyForm;
+import com.iEdu.domain.studentRecord.specialty.service.SpecialtyService;
 import com.iEdu.global.common.enums.Semester;
 import com.iEdu.global.initData.utils.NotProdUtils;
 import lombok.RequiredArgsConstructor;
@@ -26,6 +33,9 @@ import java.util.stream.Collectors;
 public class NotProdStudentRecordService {
     private final GradeService gradeService;
     private final AttendanceService attendanceService;
+    private final FeedbackService feedbackService;
+    private final CounselService counselService;
+    private final SpecialtyService specialtyService;
     private final MemberRepository memberRepository;
     private final NotProdUtils notProdUtils;
 
@@ -51,6 +61,7 @@ public class NotProdStudentRecordService {
                         LoginUserDto loginUser = LoginUserDto.ConvertToLoginUserDto(teacher);
 
                         for (Semester semester : Semester.values()) {
+                            if (semester == Semester.ALL) continue; // ALL 제외
                             GradeForm gradeForm = GradeForm.builder()
                                     .year(finalGrade)
                                     .semester(semester)
@@ -88,6 +99,7 @@ public class NotProdStudentRecordService {
                 int baseYear = 2025 - (teacherYear - targetYear);  // 출결 대상 학년이 있었던 실제 연도
 
                 for (Semester semester : Semester.values()) {
+                    if (semester == Semester.ALL) continue; // ALL 제외
                     List<LocalDate> schoolDays = notProdUtils.getSchoolDaysForSemester(baseYear, semester);
 
                     for (Member student : students) {
@@ -117,5 +129,187 @@ public class NotProdStudentRecordService {
             }
         }
         System.out.println("-- 약 178,500개의 출결 데이터 생성 완료! --");
+    }
+
+    // 피드백 가데이터 생성
+    public void createFeedbackData() {
+        List<Member> teacherList = memberRepository.findAll().stream()
+                .filter(m -> m.getRole() == Member.MemberRole.ROLE_TEACHER)
+                .toList();
+        List<Member> studentList = memberRepository.findAll().stream()
+                .filter(m -> m.getRole() == Member.MemberRole.ROLE_STUDENT)
+                .toList();
+        for (Member teacher : teacherList) {
+            Integer teacherYear = teacher.getYear();
+            Integer teacherClassId = teacher.getClassId();
+
+            // 본인 반 학생만 필터링
+            List<Member> students = studentList.stream()
+                    .filter(s -> Objects.equals(s.getYear(), teacherYear) &&
+                            Objects.equals(s.getClassId(), teacherClassId))
+                    .toList();
+            LoginUserDto loginUser = LoginUserDto.ConvertToLoginUserDto(teacher);
+            for (int targetYear = 1; targetYear <= teacherYear; targetYear++) {
+                int baseYear = 2025 - (teacherYear - targetYear);
+
+                for (Semester semester : Semester.values()) {
+                    if (semester == Semester.ALL) continue;
+                    List<LocalDate> schoolDays = notProdUtils.getSchoolDaysForSemester(baseYear, semester);
+                    if (schoolDays.size() < 4) continue; // 예외 처리
+                    LocalDate gradeDate = schoolDays.get(0);
+                    LocalDate attitudeDate = schoolDays.get(1);
+                    LocalDate attendanceDate = schoolDays.get(2);
+                    LocalDate behaviorDate = schoolDays.get(3);
+
+                    for (Member student : students) {
+                        feedbackService.createFeedback(student.getId(),
+                                FeedbackForm.builder()
+                                        .year(targetYear)
+                                        .semester(semester)
+                                        .date(gradeDate)
+                                        .category(FeedbackCategory.성적)
+                                        .content("학기 초에 비해 꾸준한 노력으로 성적이 향상되고 있습니다. 앞으로도 현재의 학습 태도를 유지하면 좋은 결과를 기대할 수 있습니다.")
+                                        .visibleToStudent(true)
+                                        .visibleToParent(true)
+                                        .build(),
+                                loginUser);
+                        feedbackService.createFeedback(student.getId(),
+                                FeedbackForm.builder()
+                                        .year(targetYear)
+                                        .semester(semester)
+                                        .date(attitudeDate)
+                                        .category(FeedbackCategory.태도)
+                                        .content("항상 성실한 자세로 수업에 임하며, 발표나 질문에도 적극적인 모습이 인상적입니다. 친구들에게도 좋은 영향을 주는 태도를 유지해주길 바랍니다.")
+                                        .visibleToStudent(true)
+                                        .visibleToParent(false)
+                                        .build(),
+                                loginUser);
+                        feedbackService.createFeedback(student.getId(),
+                                FeedbackForm.builder()
+                                        .year(targetYear)
+                                        .semester(semester)
+                                        .date(attendanceDate)
+                                        .category(FeedbackCategory.출결)
+                                        .content("출결이 매우 우수하며, 지각 없이 항상 제시간에 등교하는 모습이 모범적입니다. 건강 관리도 잘 하고 있는 듯하여 칭찬합니다.")
+                                        .visibleToStudent(false)
+                                        .visibleToParent(true)
+                                        .build(),
+                                loginUser);
+                        feedbackService.createFeedback(student.getId(),
+                                FeedbackForm.builder()
+                                        .year(targetYear)
+                                        .semester(semester)
+                                        .date(behaviorDate)
+                                        .category(FeedbackCategory.행동)
+                                        .content("친구들과의 관계가 원만하며, 배려심이 깊어 또래 친구들에게 좋은 영향을 주고 있습니다. 학교생활 전반에서 모범이 되는 태도입니다.")
+                                        .visibleToStudent(false)
+                                        .visibleToParent(false)
+                                        .build(),
+                                loginUser);
+                    }
+                }
+            }
+        }
+        System.out.println("-- 총 8,400개의 피드백 데이터 생성 완료! --");
+    }
+
+    // 상담 가데이터 생성
+    public void createCounselData() {
+        List<Member> teacherList = memberRepository.findAll().stream()
+                .filter(m -> m.getRole() == Member.MemberRole.ROLE_TEACHER)
+                .toList();
+        List<Member> studentList = memberRepository.findAll().stream()
+                .filter(m -> m.getRole() == Member.MemberRole.ROLE_STUDENT)
+                .toList();
+        String[] contents = new String[]{
+                "최근 수학과 과학 과목에서 성적이 다소 하락한 원인에 대해 스스로 부족한 예습·복습 시간을 지적함. 특히 수학의 함수 단원에서 개념 이해가 부족하다고 판단됨.",
+                "아직 명확한 진로를 결정하지 못해 고민하고 있으며, 최근 다양한 진로 체험 활동에 관심을 가지기 시작함."
+        };
+        for (Member teacher : teacherList) {
+            Integer teacherYear = teacher.getYear();
+            Integer teacherClassId = teacher.getClassId();
+
+            // 본인 반 학생만 필터링
+            List<Member> students = studentList.stream()
+                    .filter(s -> Objects.equals(s.getYear(), teacherYear) &&
+                            Objects.equals(s.getClassId(), teacherClassId))
+                    .toList();
+            LoginUserDto loginUser = LoginUserDto.ConvertToLoginUserDto(teacher);
+            for (int targetYear = 1; targetYear <= teacherYear; targetYear++) {
+                int baseYear = 2025 - (teacherYear - targetYear);
+
+                for (Semester semester : Semester.values()) {
+                    if (semester == Semester.ALL) continue;
+                    List<LocalDate> schoolDays = notProdUtils.getSchoolDaysForSemester(baseYear, semester);
+                    if (schoolDays.size() < 2) continue;
+
+                    LocalDate firstDate = schoolDays.get(0);
+                    LocalDate secondDate = schoolDays.get(1);
+                    for (Member student : students) {
+                        for (int i = 0; i < 2; i++) {
+                            LocalDate date = (i == 0) ? firstDate : secondDate;
+                            LocalDate nextCounselDate = date.plusDays(7);
+                            CounselForm form = new CounselForm();
+                            form.setYear(targetYear);
+                            form.setSemester(semester);
+                            form.setDate(date);
+                            form.setNextCounselDate(nextCounselDate);
+                            form.setContent(contents[i]);
+                            counselService.createCounsel(student.getId(), form, loginUser);
+                        }
+                    }
+                }
+            }
+        }
+        System.out.println("-- 총 4,200개의 상담 데이터 생성 완료! --");
+    }
+
+    // 특기사항 가데이터 생성
+    public void createSpecialtyData() {
+        List<Member> teacherList = memberRepository.findAll().stream()
+                .filter(m -> m.getRole() == Member.MemberRole.ROLE_TEACHER)
+                .toList();
+        List<Member> studentList = memberRepository.findAll().stream()
+                .filter(m -> m.getRole() == Member.MemberRole.ROLE_STUDENT)
+                .toList();
+        String[] contents = new String[]{
+                "조용하고 차분한 성격으로 학업에 대한 집중력이 뛰어나며, 특히 과학 및 정보 과목에서 뛰어난 문제 해결 능력을 보임.",
+                "자기 주도적인 학습 태도가 뛰어나며, 학습 계획을 스스로 세우고 실천하는 데에 있어 꾸준한 모습을 보임."
+        };
+        for (Member teacher : teacherList) {
+            Integer teacherYear = teacher.getYear();
+            Integer teacherClassId = teacher.getClassId();
+
+            // 본인 반 학생만 필터링
+            List<Member> students = studentList.stream()
+                    .filter(s -> Objects.equals(s.getYear(), teacherYear) &&
+                            Objects.equals(s.getClassId(), teacherClassId))
+                    .toList();
+            LoginUserDto loginUser = LoginUserDto.ConvertToLoginUserDto(teacher);
+            for (int targetYear = 1; targetYear <= teacherYear; targetYear++) {
+                int baseYear = 2025 - (teacherYear - targetYear);
+
+                for (Semester semester : Semester.values()) {
+                    if (semester == Semester.ALL) continue;
+                    List<LocalDate> schoolDays = notProdUtils.getSchoolDaysForSemester(baseYear, semester);
+                    if (schoolDays.size() < 2) continue;
+
+                    LocalDate firstDate = schoolDays.get(0);
+                    LocalDate secondDate = schoolDays.get(1);
+                    for (Member student : students) {
+                        for (int i = 0; i < 2; i++) {
+                            LocalDate date = (i == 0) ? firstDate : secondDate;
+                            SpecialtyForm form = new SpecialtyForm();
+                            form.setYear(targetYear);
+                            form.setSemester(semester);
+                            form.setDate(date);
+                            form.setContent(contents[i]);
+                            specialtyService.createSpecialty(student.getId(), form, loginUser);
+                        }
+                    }
+                }
+            }
+        }
+        System.out.println("-- 총 4,200개의 특기사항 데이터 생성 완료! --");
     }
 }

@@ -63,6 +63,7 @@ public class MemberServiceImpl implements MemberService {
         String email = parentForm.getEmail();
         // 0. accountId 길이 검증 (11자리인지 확인)
         if (String.valueOf(accountId).length() != 11) {
+            log.error("잘못된 parentAccountId: {}", accountId);
             throw new ServiceException(ReturnCode.INVALID_ACCOUNT_ID);
         }
         // 1. 같은 accountId를 가진 학부모가 이미 존재하면 예외
@@ -426,15 +427,6 @@ public class MemberServiceImpl implements MemberService {
         MemberFollow memberFollow = memberFollowRepository.findByFollowAndFollowed(follow, followed)
                 .orElseThrow(() -> new ServiceException(ReturnCode.FOLLOW_NOT_FOUND));
         memberFollowRepository.delete(memberFollow);
-    }
-
-    // 회원ID로 회원이름 조회
-    @Override
-    @Transactional(readOnly = true)
-    public String getMemberNameById(Long memberId) {
-        Member member = memberRepository.findById(memberId)
-                .orElseThrow(() -> new ServiceException(ReturnCode.USER_NOT_FOUND));
-        return member.getName();
     }
 
     // 학생ID로 학부모ID 조회

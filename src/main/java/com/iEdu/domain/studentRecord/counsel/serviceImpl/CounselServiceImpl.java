@@ -110,6 +110,7 @@ public class CounselServiceImpl implements CounselService {
                 .teacherName(loginUser.getName())
                 .year(counselForm.getYear())
                 .semester(counselForm.getSemester())
+                .date(counselForm.getDate())
                 .content(counselForm.getContent())
                 .nextCounselDate(counselForm.getNextCounselDate())
                 .build();
@@ -142,6 +143,7 @@ public class CounselServiceImpl implements CounselService {
                 .orElseThrow(() -> new ServiceException(ReturnCode.COUNSEL_NOT_FOUND));
         counsel.setYear(counselForm.getYear());
         counsel.setSemester(counselForm.getSemester());
+        counsel.setDate(counselForm.getDate());
         counsel.setContent(counselForm.getContent());
         counsel.setNextCounselDate(counselForm.getNextCounselDate());
 
@@ -192,9 +194,9 @@ public class CounselServiceImpl implements CounselService {
                 .teacherName(counsel.getTeacherName())
                 .year(counsel.getYear())
                 .semester(counsel.getSemester())
+                .date(counsel.getDate())
                 .content(counsel.getContent())
                 .nextCounselDate(counsel.getNextCounselDate())
-                .date(counsel.getCreatedAt().toLocalDate())
                 .build();
     }
 }

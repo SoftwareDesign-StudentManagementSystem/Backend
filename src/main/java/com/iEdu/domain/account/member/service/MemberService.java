@@ -63,9 +63,6 @@ public interface MemberService {
     // 팔로우 취소하기 [학부모 권한]
     void cancelFollow(Long memberId, LoginUserDto loginUser);
 
-    // 회원ID로 회원이름 조회
-    String getMemberNameById(Long memberId);
-
     // 학생ID로 학부모ID 조회
     List<Member> findParentsByStudentId(Long studentId);
 }

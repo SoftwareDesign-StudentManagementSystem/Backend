@@ -14,6 +14,7 @@ import java.time.LocalDate;
 public class FeedbackForm {
     private Integer year;
     private Semester semester;
+    private LocalDate date;
     private FeedbackCategory category; // 피드백 카테고리
     private String content;          // 피드백 내용
     private Boolean visibleToStudent; // 학생에게 공개 여부

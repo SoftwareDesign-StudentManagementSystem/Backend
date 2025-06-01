@@ -1,9 +1,12 @@
 package com.iEdu.global.initData.service;
 
 import com.iEdu.domain.account.admin.service.AdminService;
+import com.iEdu.domain.account.auth.loginUser.LoginUserDto;
+import com.iEdu.domain.account.member.dto.req.FollowForm;
 import com.iEdu.domain.account.member.dto.req.MemberForm;
 import com.iEdu.domain.account.member.dto.req.ParentForm;
 import com.iEdu.domain.account.member.entity.Member;
+import com.iEdu.domain.account.member.repository.MemberRepository;
 import com.iEdu.domain.account.member.service.MemberService;
 import com.iEdu.global.initData.utils.NotProdUtils;
 import lombok.RequiredArgsConstructor;
@@ -19,11 +22,12 @@ import java.util.*;
 public class NotProdMemberService {
     private final AdminService adminService;
     private final MemberService memberService;
+    private final MemberRepository memberRepository;
     private final NotProdUtils notProdUtils;
     private final Random random = new Random();
 
     // 학생 가데이터 생성
-    public void createStudents(List<Long> studentIds, List<String> studentPasswords) {
+    public void createStudents(List<Long> studentIds, List<String> studentPasswords, List<Long> allStudentIds, List<String> allStudentPasswords) {
         int emailCounter = 1;
         Map<Integer, Set<Long>> gradeUsedSuffixMap = new HashMap<>();
         for (int grade = 1; grade <= 3; grade++) {
@@ -43,11 +47,12 @@ public class NotProdMemberService {
 
                     long studentSuffix;
                     do {
-                        studentSuffix = 1000 + random.nextInt(90000); // 5자리
+                        studentSuffix = 10000 + random.nextInt(90000); // 5자리
                     } while (gradeUsedSuffixMap.get(grade).contains(studentSuffix));
                     gradeUsedSuffixMap.get(grade).add(studentSuffix);
                     long accountId = Long.parseLong(gradePrefix + studentSuffix);
-
+                    allStudentIds.add(accountId);       // 모든 학생 ID 추가
+                    allStudentPasswords.add(password);  // 모든 학생 Password 추가
                     String email = "student" + (emailCounter++) + "@school.com";
                     String phone = notProdUtils.generateRandomPhone();
 
@@ -79,26 +84,68 @@ public class NotProdMemberService {
     }
 
     // 학부모 가데이터 생성
-    public void createParents(List<Long> studentIds, List<String> studentPasswords, List<Long> parentIds) {
-        for (int i = 0; i < 3; i++) {
+    public void createParents(List<Long> studentIds, List<Long> parentIds, List<Long> allStudentIds, List<String> allStudentPasswords, List<Long> allParentIds) {
+        for (int i = 0; i < allStudentIds.size(); i++) {
+            Long studentAccountId = allStudentIds.get(i);
+            String studentPassword = allStudentPasswords.get(i);
             String name = notProdUtils.generateRandomFullName(true);
             int randomTwoDigits = random.nextInt(90) + 10;
-            Long parentAccountId = Long.parseLong(studentIds.get(i) + String.valueOf(randomTwoDigits));
-            log.info("parentAccountId", parentAccountId);
+            Long parentAccountId = Long.parseLong(studentAccountId + String.valueOf(randomTwoDigits));
+
             ParentForm parentForm = ParentForm.builder()
                     .accountId(parentAccountId)
-                    .password(studentPasswords.get(i))
+                    .password(studentPassword)
                     .name(name)
                     .phone(notProdUtils.generateRandomPhone())
-                    .email("parent" + (i + 1) + "@school.com")
+                    .email("parent_" + (i+1) + "@school.com")
                     .birthday(notProdUtils.generateRandomBirthday(1970, 1995))
                     .schoolName("송도고등학교")
                     .gender(random.nextBoolean() ? Member.Gender.MALE : Member.Gender.FEMALE)
                     .build();
             memberService.signup(parentForm);
-            parentIds.add(parentAccountId);
+            allParentIds.add(parentAccountId);
+
+            // 1학년 1반 1번~3학년 1반 1번 학생 학부모만 별도 저장
+            if (studentAccountId.equals(studentIds.get(0)) ||
+                    studentAccountId.equals(studentIds.get(1)) ||
+                    studentAccountId.equals(studentIds.get(2))) {
+                parentIds.add(parentAccountId);
+            }
         }
-        System.out.println("-- 학부모 3명 회원가입 완료! --");
+        System.out.println("-- 총 525명의 학부모 계정 생성 완료! --");
+    }
+
+    // 학생/학부모 팔로우
+    public void followChild(List<Long> allStudentIds, List<Long> allParentIds) {
+        for (int i = 0; i < allStudentIds.size(); i++) {
+            Long studentId = allStudentIds.get(i);
+            Long parentId = allParentIds.get(i);
+            Optional<Member> optionalStudent = memberRepository.findByAccountId(studentId);
+            Optional<Member> optionalParent = memberRepository.findByAccountId(parentId);
+            if (optionalStudent.isEmpty() || optionalParent.isEmpty()) {
+                log.warn("학생 또는 학부모 정보가 없습니다. studentId: {}, parentId: {}", studentId, parentId);
+                continue;
+            }
+
+            Member student = optionalStudent.get();
+            Member parent = optionalParent.get();
+            LoginUserDto parentLogin = LoginUserDto.ConvertToLoginUserDto(parent);
+            LoginUserDto studentLogin = LoginUserDto.ConvertToLoginUserDto(student);
+
+            FollowForm followForm = new FollowForm();
+            followForm.setName(student.getName());
+            followForm.setYear(student.getYear());
+            followForm.setClassId(student.getClassId());
+            followForm.setNumber(student.getNumber());
+            followForm.setBirthday(student.getBirthday());
+            try {
+                memberService.followReq(followForm, parentLogin);
+                memberService.acceptFollowReq(parent.getId(), studentLogin);
+            } catch (Exception e) {
+                log.error("팔로우 처리 중 예외 발생 - studentId: {}, parentId: {}", studentId, parentId, e);
+            }
+        }
+        log.info("-- 총 {} 쌍의 학부모-자녀 팔로우 생성 완료! --", allStudentIds.size());
     }
 
     // 선생님 가데이터 생성

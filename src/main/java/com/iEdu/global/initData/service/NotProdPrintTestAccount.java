@@ -12,7 +12,8 @@ public class NotProdPrintTestAccount {
             List<Long> teacherIds,
             List<String> teacherPasswords,
             String adminAccountId,
-            String adminPassword
+            String adminPassword,
+            long executionTimeMillis
     ) {
         System.out.println("\n\n--- 학생/학부모 계정 정보 (1~3학년 1반 1번 학생/학부모) ---");
         for (int i = 0; i < studentIds.size(); i++) {
@@ -32,5 +33,11 @@ public class NotProdPrintTestAccount {
         System.out.println("\n\n--- 관리자 계정 정보 ---");
         System.out.println("계정 ID: " + adminAccountId);
         System.out.println("비밀번호: " + adminPassword);
+
+        // 실행 시간 출력 (시/분/초 단위로)
+        long seconds = executionTimeMillis / 1000 % 60;
+        long minutes = executionTimeMillis / (1000 * 60) % 60;
+        long hours = executionTimeMillis / (1000 * 60 * 60);
+        System.out.printf("\n\n=== 전체 더미 데이터 생성 시간: %02d시간 %02d분 %02d초 ===%n", hours, minutes, seconds);
     }
 }

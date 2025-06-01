@@ -90,6 +90,7 @@ public class SpecialtyServiceImpl implements SpecialtyService {
                 .teacherName(loginUser.getName())
                 .year(specialtyForm.getYear())
                 .semester(specialtyForm.getSemester())
+                .date(specialtyForm.getDate())
                 .content(specialtyForm.getContent())
                 .build();
         specialtyRepository.save(specialty);
@@ -122,6 +123,7 @@ public class SpecialtyServiceImpl implements SpecialtyService {
                 .orElseThrow(() -> new ServiceException(ReturnCode.SPECIALTY_NOT_FOUND));
         specialty.setYear(specialtyForm.getYear());
         specialty.setSemester(specialtyForm.getSemester());
+        specialty.setDate(specialtyForm.getDate());
         specialty.setContent(specialtyForm.getContent());
 
         // 특기사항 알림 수정 & Kafka 이벤트 생성
@@ -172,8 +174,8 @@ public class SpecialtyServiceImpl implements SpecialtyService {
                 .teacherName(specialty.getTeacherName())
                 .year(specialty.getYear())
                 .semester(specialty.getSemester())
+                .date(specialty.getDate())
                 .content(specialty.getContent())
-                .date(specialty.getCreatedAt().toLocalDate())
                 .build();
     }
 }

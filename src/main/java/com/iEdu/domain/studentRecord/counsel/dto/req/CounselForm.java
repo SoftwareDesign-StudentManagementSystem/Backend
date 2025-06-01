@@ -13,6 +13,7 @@ import java.time.LocalDate;
 public class CounselForm {
     private Integer year;
     private Semester semester;
+    private LocalDate date;
     private String content;
     private LocalDate nextCounselDate;
 }

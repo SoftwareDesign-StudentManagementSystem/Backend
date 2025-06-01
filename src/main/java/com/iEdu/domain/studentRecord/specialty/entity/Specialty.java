@@ -7,6 +7,8 @@ import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
 
+import java.time.LocalDate;
+
 @Entity
 @Getter
 @Setter
@@ -25,6 +27,8 @@ public class Specialty extends BaseEntity {
     @Enumerated(EnumType.STRING)
     @Column(length = 15)
     private Semester semester;
+
+    private LocalDate date;
 
     @Column(length = 1000)
     private String content;

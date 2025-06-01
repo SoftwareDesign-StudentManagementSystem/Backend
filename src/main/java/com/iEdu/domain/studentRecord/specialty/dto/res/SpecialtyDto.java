@@ -15,6 +15,6 @@ public class SpecialtyDto {
     private String teacherName;
     private Integer year;
     private Semester semester;
-    private String content;
     private LocalDate date;
+    private String content;
 }

@@ -15,7 +15,7 @@ public class FeedbackDto {
     private String teacherName;
     private Integer year;
     private Semester semester;
+    private LocalDate date;
     private FeedbackCategory category;  // 피드백 카테고리
     private String content;             // 피드백 내용
-    private LocalDate date;
 }

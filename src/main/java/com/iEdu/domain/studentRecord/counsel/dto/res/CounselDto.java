@@ -18,7 +18,7 @@ public class CounselDto {
     private String teacherName;
     private Integer year;
     private Semester semester;
+    private LocalDate date;
     private String content;
     private LocalDate nextCounselDate;
-    private LocalDate date;
 }

@@ -31,6 +31,8 @@ public class Counsel extends BaseEntity {
     @Column(length = 15)
     private Semester semester;
 
+    private LocalDate date;
+
     @Column(length = 1000)
     private String content;
 

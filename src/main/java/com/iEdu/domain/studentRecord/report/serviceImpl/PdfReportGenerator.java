@@ -147,8 +147,8 @@ public class PdfReportGenerator implements ReportGenerator {
     private void addCounselSection(Document doc, List<Member> students, Integer year, Semester semester,
                                    PdfFont fontBold, PdfFont fontRegular) {
         doc.add(new Paragraph("상담").setFont(fontBold).setFontSize(7));
-        Table table = new Table(8);
-        addTableHeaders(table, fontBold, "날짜", "학생 이름", "학년", "반", "번호", "학기", "내용", "다음 상담예정일");
+        Table table = new Table(9);
+        addTableHeaders(table, fontBold, "날짜", "학생 이름", "학년", "반", "번호", "학기", "선생님 이름", "내용", "다음 상담예정일");
 
         for (Member student : students) {
             List<Counsel> counsels = counselRepository.findByMemberIdAndYearAndSemester(student.getId(), year, semester);
@@ -160,6 +160,7 @@ public class PdfReportGenerator implements ReportGenerator {
                 table.addCell(new Paragraph(String.valueOf(student.getClassId())).setFont(fontRegular).setFontSize(7));
                 table.addCell(new Paragraph(String.valueOf(student.getNumber())).setFont(fontRegular).setFontSize(7));
                 table.addCell(new Paragraph(semester.toKoreanString()).setFont(fontRegular).setFontSize(7));
+                table.addCell(new Paragraph(dto.getTeacherName()).setFont(fontRegular).setFontSize(7));
                 table.addCell(new Paragraph(dto.getContent()).setFont(fontRegular).setFontSize(7));
                 table.addCell(new Paragraph(dto.getNextCounselDate() != null ? dto.getNextCounselDate().toString() : "").setFont(fontRegular).setFontSize(7));
             }
@@ -170,8 +171,8 @@ public class PdfReportGenerator implements ReportGenerator {
     private void addSpecialtySection(Document doc, List<Member> students, Integer year, Semester semester,
                                      PdfFont fontBold, PdfFont fontRegular) {
         doc.add(new Paragraph("특기사항").setFont(fontBold).setFontSize(7));
-        Table table = new Table(7);
-        addTableHeaders(table, fontBold, "날짜", "학생 이름", "학년", "반", "번호", "학기", "내용");
+        Table table = new Table(8);
+        addTableHeaders(table, fontBold, "날짜", "학생 이름", "학년", "반", "번호", "학기", "선생님 이름", "내용");
 
         for (Member student : students) {
             List<Specialty> specialties = specialtyRepository.findByMemberIdAndYearAndSemester(student.getId(), year, semester);
@@ -183,6 +184,7 @@ public class PdfReportGenerator implements ReportGenerator {
                 table.addCell(new Paragraph(String.valueOf(student.getClassId())).setFont(fontRegular).setFontSize(7));
                 table.addCell(new Paragraph(String.valueOf(student.getNumber())).setFont(fontRegular).setFontSize(7));
                 table.addCell(new Paragraph(semester.toKoreanString()).setFont(fontRegular).setFontSize(7));
+                table.addCell(new Paragraph(dto.getTeacherName()).setFont(fontRegular).setFontSize(7));
                 table.addCell(new Paragraph(dto.getContent()).setFont(fontRegular).setFontSize(7));
             }
         }

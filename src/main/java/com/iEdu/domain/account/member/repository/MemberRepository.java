@@ -24,9 +24,6 @@ public interface MemberRepository extends JpaRepository<Member, Long>, QuerydslP
     // 이메일&역할로 회원 존재여부 확인
     boolean existsByEmailAndRole(String email, Member.MemberRole role);
 
-    // 이메일로 회원 조회
-    Optional<Member> findByEmail(String email);
-
     // 계정ID로 회원 조회
     Optional<Member> findByAccountId(Long accountId);
 
@@ -45,10 +42,6 @@ public interface MemberRepository extends JpaRepository<Member, Long>, QuerydslP
 
     // 학년&반으로 학생 조회
     Page<Member> findAllByYearAndClassIdAndRole(Integer year, Integer classId, Member.MemberRole role, Pageable pageable);
-
-    // 학년&반&번호로 학생 조회
-    Page<Member> findByYearAndClassIdAndNumberAndRole(
-            Integer year, Integer classId, Integer number, Member.MemberRole role, Pageable pageable);
 
     // 이름&학년&반&번호&생년월일로 학생 팔로우
     Optional<Member> findByNameAndYearAndClassIdAndNumberAndBirthday(
