@@ -168,7 +168,7 @@ public class NotProdStudentRecordService {
                                         .semester(semester)
                                         .date(gradeDate)
                                         .category(FeedbackCategory.성적)
-                                        .content("학기 초에 비해 꾸준한 노력으로 성적이 향상되고 있습니다. 앞으로도 현재의 학습 태도를 유지하면 좋은 결과를 기대할 수 있습니다.")
+                                        .content("학기 초에 비해 꾸준한 노력으로 성적이 향상되고 있습니다. 학습 태도를 유지하면 좋을 것 같습니다.")
                                         .visibleToStudent(true)
                                         .visibleToParent(true)
                                         .build(),
@@ -179,7 +179,7 @@ public class NotProdStudentRecordService {
                                         .semester(semester)
                                         .date(attitudeDate)
                                         .category(FeedbackCategory.태도)
-                                        .content("항상 성실한 자세로 수업에 임하며, 발표나 질문에도 적극적인 모습이 인상적입니다. 친구들에게도 좋은 영향을 주는 태도를 유지해주길 바랍니다.")
+                                        .content("항상 성실한 자세로 수업에 임하며, 발표나 질문에도 적극적인 모습이 인상적입니다.")
                                         .visibleToStudent(true)
                                         .visibleToParent(false)
                                         .build(),
@@ -190,7 +190,7 @@ public class NotProdStudentRecordService {
                                         .semester(semester)
                                         .date(attendanceDate)
                                         .category(FeedbackCategory.출결)
-                                        .content("출결이 매우 우수하며, 지각 없이 항상 제시간에 등교하는 모습이 모범적입니다. 건강 관리도 잘 하고 있는 듯하여 칭찬합니다.")
+                                        .content("출결이 매우 우수하며, 지각 없이 항상 제시간에 등교하는 모습이 모범적입니다.")
                                         .visibleToStudent(false)
                                         .visibleToParent(true)
                                         .build(),
@@ -201,7 +201,7 @@ public class NotProdStudentRecordService {
                                         .semester(semester)
                                         .date(behaviorDate)
                                         .category(FeedbackCategory.행동)
-                                        .content("친구들과의 관계가 원만하며, 배려심이 깊어 또래 친구들에게 좋은 영향을 주고 있습니다. 학교생활 전반에서 모범이 되는 태도입니다.")
+                                        .content("친구들과의 관계가 원만하며, 배려심이 깊어 또래 친구들에게 좋은 영향을 주고 있습니다.")
                                         .visibleToStudent(false)
                                         .visibleToParent(false)
                                         .build(),
@@ -222,8 +222,8 @@ public class NotProdStudentRecordService {
                 .filter(m -> m.getRole() == Member.MemberRole.ROLE_STUDENT)
                 .toList();
         String[] contents = new String[]{
-                "최근 수학과 과학 과목에서 성적이 다소 하락한 원인에 대해 스스로 부족한 예습·복습 시간을 지적함. 특히 수학의 함수 단원에서 개념 이해가 부족하다고 판단됨.",
-                "아직 명확한 진로를 결정하지 못해 고민하고 있으며, 최근 다양한 진로 체험 활동에 관심을 가지기 시작함."
+                "최근 수학과 과학 과목에서 성적이 하락한 원인에 대해 부족한 예습·복습 시간을 지적함.",
+                "아직 진로를 결정하지 못해 고민하고 있으며, 최근 진로 체험 활동에 관심을 가지기 시작함."
         };
         for (Member teacher : teacherList) {
             Integer teacherYear = teacher.getYear();
