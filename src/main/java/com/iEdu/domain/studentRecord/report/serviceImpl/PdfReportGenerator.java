@@ -37,6 +37,7 @@ import com.itextpdf.layout.element.AreaBreak;
 import com.itextpdf.layout.element.Cell;
 import com.itextpdf.layout.element.Paragraph;
 import com.itextpdf.layout.element.Table;
+import com.itextpdf.layout.properties.UnitValue;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -227,11 +228,7 @@ public class PdfReportGenerator implements ReportGenerator {
     private void addGradeSection(Document doc, List<Member> students, Integer year, Semester semester,
                                  PdfFont fontBold, PdfFont fontRegular) {
         doc.add(new Paragraph("성적").setFont(fontBold).setFontSize(7));
-        float[] columnWidths = new float[] {
-                2f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f,
-                1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f
-        };
-        Table table = new Table(columnWidths);
+        Table table = new Table(23);
         table.setFontSize(7);
         String[] headers = {
                 "학생 이름", "학년", "반", "번호", "학기", "국어", "수학", "영어", "사회", "한국사", "윤리", "경제",
