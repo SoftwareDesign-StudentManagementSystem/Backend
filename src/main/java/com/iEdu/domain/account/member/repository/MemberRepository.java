@@ -48,7 +48,7 @@ public interface MemberRepository extends JpaRepository<Member, Long>, QuerydslP
 
     // 이름&학년&반&번호&생년월일로 학생 팔로우
     Optional<Member> findByNameAndYearAndClassIdAndNumberAndBirthday(
-            String name, Integer year, Integer classId, Integer number, LocalDate birthday);
+            String name, Integer year, Integer classId, Integer number, String birthday);
 
     // 역할별로 멤버ID 오름차순 정렬 조회
     Page<Member> findByRoleOrderByIdAsc(Member.MemberRole role, Pageable pageable);

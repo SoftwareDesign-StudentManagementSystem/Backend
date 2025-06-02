@@ -24,11 +24,14 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.util.List;
+import java.util.Set;
 
 import static com.iEdu.global.common.utils.Converter.convertToSemesterEnum;
 import static com.iEdu.global.common.utils.RoleValidator.*;
@@ -42,6 +45,7 @@ public class FeedbackServiceImpl implements FeedbackService {
     private final MemberService memberService;
     private final KafkaTemplate kafkaTemplate;
     private final ObjectMapper objectMapper;
+    private final RedisTemplate<String, Object> redisTemplate;
 
     // 본인의 모든 피드백 조회 [학생 권한]
     @Override
@@ -93,15 +97,23 @@ public class FeedbackServiceImpl implements FeedbackService {
     @Transactional(readOnly = true)
     public Page<FeedbackDto> getMyFilterFeedback(Integer year, Integer semester, Pageable pageable, LoginUserDto loginUser) {
         checkPageSize(pageable.getPageSize());
+        // ROLE_STUDENT 아닌 경우 예외 처리
+        validateStudentRole(loginUser);
+        Semester semesterEnum = convertToSemesterEnum(semester);
+        // 공통 캐시 키 생성
+        String cacheKey = String.format("feedback:%d:%d:%s:%d:%d",
+                loginUser.getId(), year, semesterEnum, pageable.getPageNumber(), pageable.getPageSize());
+        // Redis 캐시 조회
+        Page<FeedbackDto> cached = (Page<FeedbackDto>) redisTemplate.opsForValue().get(cacheKey);
+        if (cached != null) {
+            return cached;
+        }
         // 정렬 조건: createdAt 내림차순
         Pageable sortedPageable = PageRequest.of(
                 pageable.getPageNumber(),
                 pageable.getPageSize(),
                 Sort.by(Sort.Direction.DESC, "createdAt")
         );
-        // ROLE_STUDENT 아닌 경우 예외 처리
-        validateStudentRole(loginUser);
-        Semester semesterEnum = convertToSemesterEnum(semester);
         // visibleToStudent == true 조건 포함
         Page<Feedback> feedbackPage = feedbackRepository
                 .findByMemberIdAndYearAndSemesterAndVisibleToStudentTrue(
@@ -110,7 +122,9 @@ public class FeedbackServiceImpl implements FeedbackService {
                         semesterEnum,
                         sortedPageable
                 );
-        return feedbackPage.map(this::convertToFeedbackDto);
+        Page<FeedbackDto> feedbackDtoPage = feedbackPage.map(this::convertToFeedbackDto);
+        redisTemplate.opsForValue().set(cacheKey, feedbackDtoPage, Duration.ofMinutes(10));
+        return feedbackDtoPage;
     }
 
     // (학년/학기)로 학생 피드백 조회 [학부모/선생님 권한]
@@ -118,15 +132,24 @@ public class FeedbackServiceImpl implements FeedbackService {
     @Transactional(readOnly = true)
     public Page<FeedbackDto> getFilterFeedback(Long studentId, Integer year, Integer semester, Pageable pageable, LoginUserDto loginUser) {
         checkPageSize(pageable.getPageSize());
+        // ROLE_PARENT/ROLE_TEACHER 아닌 경우 예외 처리
+        validateAccessToStudent(loginUser, studentId);
+        Semester semesterEnum = convertToSemesterEnum(semester);
+
+        String roleKey = loginUser.getRole().name(); // ROLE_TEACHER, ROLE_PARENT
+        String cacheKey = String.format("feedback:%d:%d:%s:%d:%d:%s",
+                studentId, year, semesterEnum, pageable.getPageNumber(), pageable.getPageSize(), roleKey);
+        // 캐시 조회
+        Page<FeedbackDto> cached = (Page<FeedbackDto>) redisTemplate.opsForValue().get(cacheKey);
+        if (cached != null) {
+            return cached;
+        }
         // 정렬: year 내림차순, semester(SECOND_SEMESTER 우선), createdAt 내림차순
         Pageable sortedPageable = PageRequest.of(
                 pageable.getPageNumber(),
                 pageable.getPageSize(),
                 Sort.by(Sort.Order.desc("createdAt"))
         );
-        // ROLE_PARENT/ROLE_TEACHER 아닌 경우 예외 처리
-        validateAccessToStudent(loginUser, studentId);
-        Semester semesterEnum = convertToSemesterEnum(semester);
         Page<Feedback> feedbackPage;
         if (loginUser.getRole() == Member.MemberRole.ROLE_TEACHER) {
             // 선생님은 모든 피드백 조회 가능
@@ -142,7 +165,9 @@ public class FeedbackServiceImpl implements FeedbackService {
             // 접근 권한 없음
             throw new ServiceException(ReturnCode.NOT_AUTHORIZED);
         }
-        return feedbackPage.map(this::convertToFeedbackDto);
+        Page<FeedbackDto> feedbackDtoPage = feedbackPage.map(this::convertToFeedbackDto);
+        redisTemplate.opsForValue().set(cacheKey, feedbackDtoPage, Duration.ofMinutes(10));
+        return feedbackDtoPage;
     }
 
     // 학생 피드백 생성 [선생님 권한]
@@ -178,6 +203,8 @@ public class FeedbackServiceImpl implements FeedbackService {
         validateTeacherRole(loginUser);
         Feedback feedback = feedbackRepository.findById(feedbackId)
                 .orElseThrow(() -> new ServiceException(ReturnCode.FEEDBACK_NOT_FOUND));
+        // 캐시 무효화
+        evictFeedbackCache(feedback);
         feedback.setYear(feedbackForm.getYear());
         feedback.setSemester(feedbackForm.getSemester());
         feedback.setDate(feedbackForm.getDate());
@@ -198,6 +225,8 @@ public class FeedbackServiceImpl implements FeedbackService {
         validateTeacherRole(loginUser);
         Feedback feedback = feedbackRepository.findById(feedbackId)
                 .orElseThrow(() -> new ServiceException(ReturnCode.FEEDBACK_NOT_FOUND));
+        // 캐시 무효화
+        evictFeedbackCache(feedback);
         feedbackRepository.delete(feedback);
     }
 
@@ -242,6 +271,21 @@ public class FeedbackServiceImpl implements FeedbackService {
             }
         } catch (JsonProcessingException e) {
             log.error("Failed to serialize Feedback Notification: {}", e.getMessage());
+        }
+    }
+
+    private void evictFeedbackCache(Feedback feedback) {
+        Long studentId = feedback.getMember().getId();
+        int year = feedback.getYear();
+        Semester semester = feedback.getSemester();
+
+        // 페이지 캐시를 다 삭제 (범위를 지정하지 못하므로 패턴 기반 삭제)
+        String baseKeyPattern = String.format("feedback:%d:%d:%s*", studentId, year, semester);
+
+        // Redis keys command는 scan과 함께 사용해야 안전 (keys는 성능 문제 있음)
+        Set<String> keysToDelete = redisTemplate.keys(baseKeyPattern);
+        if (keysToDelete != null && !keysToDelete.isEmpty()) {
+            redisTemplate.delete(keysToDelete);
         }
     }
 

@@ -17,16 +17,14 @@ import com.iEdu.global.exception.ReturnCode;
 import com.iEdu.global.exception.ServiceException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
+import org.springframework.data.domain.*;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -83,23 +81,27 @@ public class AttendanceServiceImpl implements AttendanceService {
         // ROLE_STUDENT 아닌 경우 예외 처리
         validateStudentRole(loginUser);
         Semester semesterEnum = convertToSemesterEnum(semester);
+        // 캐시 키 생성
+        String cacheKey = buildCacheKey(loginUser.getId(), year, semesterEnum, month);
+        // 캐시 조회
+        Page<AttendanceDto> cachedResult = (Page<AttendanceDto>) redisTemplate.opsForValue().get(cacheKey);
+        if (cachedResult != null) {
+            return cachedResult;
+        }
         // 정렬 조건 추가: date(오름차순)
         Pageable sortedPageable = PageRequest.of(
                 pageable.getPageNumber(),
                 pageable.getPageSize(),
                 Sort.by(Sort.Direction.ASC, "date")
         );
-        Page<Attendance> attendancePage;
-        if (month != null) {
-            attendancePage = attendanceRepository.findAllByMemberIdAndYearAndSemesterAndMonth(
-                    loginUser.getId(), year, semesterEnum, month, sortedPageable
-            );
-        } else {
-            attendancePage = attendanceRepository.findAllByMemberIdAndYearAndSemester(
-                    loginUser.getId(), year, semesterEnum, sortedPageable
-            );
-        }
-        return attendancePage.map(this::convertToAttendanceDto);
+        Page<Attendance> attendancePage = attendanceRepository
+                .findFilteredAttendancesByMemberAndYearAndSemesterAndOptionalMonth(
+                        loginUser.getId(), year, semesterEnum, month, sortedPageable
+                );
+        Page<AttendanceDto> resultPage = attendancePage.map(this::convertToAttendanceDto);
+        // 캐시에 저장 (10분 TTL)
+        redisTemplate.opsForValue().set(cacheKey, resultPage, Duration.ofMinutes(10));
+        return resultPage;
     }
 
     // (학년/학기/월)로 학생 출결 조회 [학부모/선생님 권한]
@@ -116,28 +118,18 @@ public class AttendanceServiceImpl implements AttendanceService {
         // 캐시 조회
         Page<AttendanceDto> cachedResult = (Page<AttendanceDto>) redisTemplate.opsForValue().get(cacheKey);
         if (cachedResult != null) {
-            log.info("Redis HIT: {}", cacheKey);
             return cachedResult;
-        } else {
-            log.info("Redis MISS: {}", cacheKey);
         }
         Pageable sortedPageable = PageRequest.of(
                 pageable.getPageNumber(),
                 pageable.getPageSize(),
                 Sort.by(Sort.Direction.ASC, "date")
         );
-        Page<Attendance> attendancePage;
-        if (month != null) {
-            attendancePage = attendanceRepository.findAllByMemberIdAndYearAndSemesterAndMonth(
-                    studentId, year, semesterEnum, month, sortedPageable
-            );
-        } else {
-            attendancePage = attendanceRepository.findAllByMemberIdAndYearAndSemester(
-                    studentId, year, semesterEnum, sortedPageable
-            );
-        }
+        Page<Attendance> attendancePage = attendanceRepository
+                .findFilteredAttendancesByMemberAndYearAndSemesterAndOptionalMonth(
+                        studentId, year, semesterEnum, month, sortedPageable
+                );
         Page<AttendanceDto> resultPage = attendancePage.map(this::convertToAttendanceDto);
-
         // 캐시에 저장 (10분 TTL)
         redisTemplate.opsForValue().set(cacheKey, resultPage, Duration.ofMinutes(10));
         return resultPage;
@@ -227,6 +219,7 @@ public class AttendanceServiceImpl implements AttendanceService {
     @Override
     public AttendanceDto convertToAttendanceDto(Attendance attendance) {
         List<PeriodAttendanceDto> periodDtos = attendance.getPeriodAttendances().stream()
+                .filter(pa -> pa.getState() != PeriodAttendance.State.출석)  // 출석 아닌 경우만
                 .map(pa -> new PeriodAttendanceDto(
                         pa.getAttendance().getId(),
                         pa.getState(),
@@ -243,4 +236,3 @@ public class AttendanceServiceImpl implements AttendanceService {
                 .build();
     }
 }
-

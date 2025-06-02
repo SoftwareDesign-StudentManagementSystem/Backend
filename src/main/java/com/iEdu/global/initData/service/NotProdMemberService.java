@@ -137,7 +137,7 @@ public class NotProdMemberService {
             followForm.setYear(student.getYear());
             followForm.setClassId(student.getClassId());
             followForm.setNumber(student.getNumber());
-            followForm.setBirthday(student.getBirthday());
+            followForm.setBirthday(LocalDate.parse(student.getBirthday()));
             try {
                 memberService.followReq(followForm, parentLogin);
                 memberService.acceptFollowReq(parent.getId(), studentLogin);

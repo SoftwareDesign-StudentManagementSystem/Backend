@@ -40,6 +40,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -103,7 +104,7 @@ public class MemberServiceImpl implements MemberService {
                 .name(parentForm.getName())
                 .phone(parentForm.getPhone())
                 .email(parentForm.getEmail())
-                .birthday(parentForm.getBirthday())
+                .birthday(String.valueOf(parentForm.getBirthday()))
                 .schoolName(parentForm.getSchoolName())
                 .gender(parentForm.getGender())
                 .build();
@@ -122,7 +123,19 @@ public class MemberServiceImpl implements MemberService {
     @Override
     @Transactional
     public DetailMemberDto getMyDetailInfo(LoginUserDto loginUser){
-        return loginUserConvertToDetailMemberDto(loginUser);
+        Long memberId = loginUser.getId();
+        String cacheKey = "myDetailInfo::" + memberId;
+
+        // Redis 조회
+        ValueOperations<String, Object> ops = redisTemplate.opsForValue();
+        Object cached = ops.get(cacheKey);
+        if (cached != null && cached instanceof DetailMemberDto) {
+            return (DetailMemberDto) cached;
+        }
+        DetailMemberDto dto = loginUserConvertToDetailMemberDto(loginUser);
+        // Redis 저장 (10분 TTL)
+        ops.set(cacheKey, dto, 10, TimeUnit.MINUTES);
+        return dto;
     }
 
     // 담당 학생들의 회원정보 조회 [선생님 권한]
@@ -256,8 +269,10 @@ public class MemberServiceImpl implements MemberService {
         // LoginUserDto를 Member 엔티티로 변환
         Member memberEntity = loginUser.ConvertToMember();
         memberRepository.save(memberEntity);
-
-        // 캐시 무효화 로직 시작
+        // 캐시 무효화 1: 본인 상세정보 캐시 삭제
+        String myDetailCacheKey = "myDetailInfo::" + loginUser.getId();
+        redisTemplate.delete(myDetailCacheKey);
+        // 캐시 무효화 2: 담임 선생님의 학생 목록 캐시 삭제
         Integer studentYear = loginUser.getYear();
         Integer studentClassId = loginUser.getClassId();
         if (studentYear != null && studentClassId != null) {
@@ -329,6 +344,9 @@ public class MemberServiceImpl implements MemberService {
         // LoginUserDto를 Member 엔티티로 변환
         Member memberEntity = loginUser.ConvertToMember();
         memberRepository.save(memberEntity);
+        // 캐시 무효화 1: 본인 상세정보 캐시 삭제
+        String myDetailCacheKey = "myDetailInfo::" + loginUser.getId();
+        redisTemplate.delete(myDetailCacheKey);
     }
 
     // 회원탈퇴
@@ -369,7 +387,7 @@ public class MemberServiceImpl implements MemberService {
                 followForm.getYear(),
                 followForm.getClassId(),
                 followForm.getNumber(),
-                followForm.getBirthday()
+                String.valueOf(followForm.getBirthday())
         ).orElseThrow(() -> new ServiceException(ReturnCode.USER_NOT_FOUND));
         // 기존 팔로우 여부 확인
         boolean already_follow = memberFollowRepository.existsByFollowAndFollowed(followReq, followRec);
@@ -608,7 +626,7 @@ public class MemberServiceImpl implements MemberService {
                 .name(member.getName())
                 .phone(member.getPhone())
                 .email(member.getEmail())
-                .birthday(member.getBirthday())
+                .birthday(LocalDate.parse(member.getBirthday()))
                 .profileImageUrl(member.getProfileImageUrl())
                 .schoolName(member.getSchoolName())
                 .year(member.getYear())

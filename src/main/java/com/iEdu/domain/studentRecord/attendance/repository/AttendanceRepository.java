@@ -34,4 +34,22 @@ public interface AttendanceRepository extends JpaRepository<Attendance, Long> {
             @Param("month") Integer month,
             Pageable pageable
     );
+
+    @Query("""
+    SELECT DISTINCT a FROM Attendance a
+    JOIN a.periodAttendances pa
+    WHERE a.member.id = :memberId
+    AND a.year = :year
+    AND a.semester = :semester
+    AND (:month IS NULL OR FUNCTION('MONTH', a.date) = :month)
+    AND pa.state <> '출석'
+""")
+    Page<Attendance> findFilteredAttendancesByMemberAndYearAndSemesterAndOptionalMonth(
+            @Param("memberId") Long memberId,
+            @Param("year") Integer year,
+            @Param("semester") Semester semester,
+            @Param("month") Integer month,
+            Pageable pageable
+    );
+
 }

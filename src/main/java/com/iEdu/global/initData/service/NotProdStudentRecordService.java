@@ -62,6 +62,7 @@ public class NotProdStudentRecordService {
 
                         for (Semester semester : Semester.values()) {
                             if (semester == Semester.ALL) continue; // ALL 제외
+                            if (finalGrade == studentGrade && semester == Semester.SECOND_SEMESTER) continue;
                             GradeForm gradeForm = GradeForm.builder()
                                     .year(finalGrade)
                                     .semester(semester)
@@ -97,16 +98,20 @@ public class NotProdStudentRecordService {
 
             for (int targetYear = 1; targetYear <= teacherYear; targetYear++) {
                 int baseYear = 2025 - (teacherYear - targetYear);  // 출결 대상 학년이 있었던 실제 연도
-
+                LocalDate today = LocalDate.now();
                 for (Semester semester : Semester.values()) {
                     if (semester == Semester.ALL) continue; // ALL 제외
+                    if (targetYear == teacherYear && semester != Semester.FIRST_SEMESTER) continue;
                     List<LocalDate> schoolDays = notProdUtils.getSchoolDaysForSemester(baseYear, semester);
 
                     for (Member student : students) {
                         // 출결 생성 시 년도는 targetYear(과거 학년)으로 세팅
                         for (LocalDate date : schoolDays) {
+                            // 현재 학년 1학기일 때, 오늘 이후 날짜는 출결 생성 안 함
+                            if (targetYear == teacherYear && semester == Semester.FIRST_SEMESTER && date.isAfter(today)) {
+                                continue;
+                            }
                             List<PeriodAttendance> periodAttendances = new ArrayList<>();
-
                             for (PeriodAttendance.Period period : PeriodAttendance.Period.values()) {
                                 PeriodAttendance.State state = notProdUtils.generateRandomState();
                                 periodAttendances.add(
@@ -154,6 +159,7 @@ public class NotProdStudentRecordService {
 
                 for (Semester semester : Semester.values()) {
                     if (semester == Semester.ALL) continue;
+                    if (targetYear == teacherYear && semester != Semester.FIRST_SEMESTER) continue;
                     List<LocalDate> schoolDays = notProdUtils.getSchoolDaysForSemester(baseYear, semester);
                     if (schoolDays.size() < 4) continue; // 예외 처리
                     LocalDate gradeDate = schoolDays.get(0);
@@ -240,6 +246,7 @@ public class NotProdStudentRecordService {
 
                 for (Semester semester : Semester.values()) {
                     if (semester == Semester.ALL) continue;
+                    if (targetYear == teacherYear && semester != Semester.FIRST_SEMESTER) continue;
                     List<LocalDate> schoolDays = notProdUtils.getSchoolDaysForSemester(baseYear, semester);
                     if (schoolDays.size() < 2) continue;
 
@@ -291,6 +298,7 @@ public class NotProdStudentRecordService {
 
                 for (Semester semester : Semester.values()) {
                     if (semester == Semester.ALL) continue;
+                    if (targetYear == teacherYear && semester != Semester.FIRST_SEMESTER) continue;
                     List<LocalDate> schoolDays = notProdUtils.getSchoolDaysForSemester(baseYear, semester);
                     if (schoolDays.size() < 2) continue;
 

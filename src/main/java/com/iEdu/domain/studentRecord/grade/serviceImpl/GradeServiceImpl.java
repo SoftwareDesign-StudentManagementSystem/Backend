@@ -99,10 +99,21 @@ public class GradeServiceImpl implements GradeService {
         // ROLE_STUDENT 아닌 경우 예외 처리
         validateStudentRole(loginUser);
         Semester semesterEnum = convertToSemesterEnum(semester);
+        Long studentId = loginUser.getId();
+        String cacheKey = "grade:" + studentId + ":" + year + ":" + semesterEnum;
+        // Redis에서 캐시 조회
+        GradeDto cachedGradeDto = (GradeDto) redisTemplate.opsForValue().get(cacheKey);
+        if (cachedGradeDto != null) {
+            return cachedGradeDto;
+        }
+        // 캐시 없으면 DB 조회
         Grade grade = gradeRepository
                 .findByMemberIdAndYearAndSemester(loginUser.getId(), year, semesterEnum)
                 .orElseThrow(() -> new ServiceException(ReturnCode.GRADE_NOT_FOUND));
-        return convertToGradeDto(grade, loginUser.getAccountId());
+        GradeDto gradeDto = convertToGradeDto(grade, loginUser.getAccountId());
+        // 캐시에 저장 (10분 TTL)
+        redisTemplate.opsForValue().set(cacheKey, gradeDto, Duration.ofMinutes(10));
+        return gradeDto;
     }
 
     // (학년/반/번호/학기)로 학생들 성적 조회 [선생님 권한]

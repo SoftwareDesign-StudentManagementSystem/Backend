@@ -1,5 +1,6 @@
 package com.iEdu.domain.account.member.entity;
 
+import com.iEdu.global.common.utils.AESAttributeConverter;
 import com.iEdu.global.jpa.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
@@ -24,17 +25,21 @@ public class Member extends BaseEntity {
     @Column(length = 1000, nullable = false)
     private String password;
 
-    @Column(length = 20, nullable = false)
+    @Column(length = 255, nullable = false)
+    @Convert(converter = AESAttributeConverter.class)
     private String name;
 
-    @Column(length = 20)
+    @Column(length = 255)
+    @Convert(converter = AESAttributeConverter.class)
     private String phone;
 
-    @Column(length = 50)
+    @Column(length = 255)
+    @Convert(converter = AESAttributeConverter.class)
     private String email;
 
-    @Column
-    private LocalDate birthday;
+    @Column(length = 255)
+    @Convert(converter = AESAttributeConverter.class)
+    private String birthday;
 
     @Builder.Default
     @Column(length = 300)
@@ -95,4 +100,18 @@ public class Member extends BaseEntity {
     @Builder.Default
     @OneToMany(mappedBy = "followRec", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<MemberFollowReq> followRecList = new ArrayList<>();  // 팔로우 요청 받은 학부모 리스트
+
+    // --- AES 암호화/복호화 커스텀 getter/setter ---
+
+    // 기본 getter/setter만 두세요
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
+
+    // birthday만 따로 LocalDate 변환용 메서드 추가 가능
+    public LocalDate getBirthdayAsLocalDate() {
+        return birthday == null ? null : LocalDate.parse(birthday);
+    }
+    public void setBirthday(LocalDate birthday) {
+        this.birthday = birthday == null ? null : birthday.toString();
+    }
 }

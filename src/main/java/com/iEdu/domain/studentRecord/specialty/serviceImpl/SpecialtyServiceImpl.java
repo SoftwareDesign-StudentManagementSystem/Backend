@@ -22,11 +22,14 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.util.List;
+import java.util.Set;
 
 import static com.iEdu.global.common.utils.Converter.convertToSemesterEnum;
 import static com.iEdu.global.common.utils.RoleValidator.*;
@@ -40,6 +43,7 @@ public class SpecialtyServiceImpl implements SpecialtyService {
     private final MemberService memberService;
     private final KafkaTemplate<String, String> kafkaTemplate;
     private final ObjectMapper objectMapper;
+    private final RedisTemplate<String, Object> redisTemplate;
 
     // 학생의 모든 특기사항 조회 [학부모/선생님 권한]
     @Override
@@ -71,10 +75,25 @@ public class SpecialtyServiceImpl implements SpecialtyService {
         // ROLE_PARENT/ROLE_TEACHER 아닌 경우 예외 처리
         validateAccessToStudent(loginUser, studentId);
         Semester semesterEnum = convertToSemesterEnum(semester);
+
+        // 캐시 키 구성
+        String roleKey = loginUser.getRole().name(); // ROLE_PARENT or ROLE_TEACHER
+        String cacheKey = String.format(
+                "specialty:%d:%d:%s:%d:%d:%s",
+                studentId, year, semesterEnum, pageable.getPageNumber(), pageable.getPageSize(), roleKey
+        );
+        // Redis 캐시 조회
+        Page<SpecialtyDto> cachedPage = (Page<SpecialtyDto>) redisTemplate.opsForValue().get(cacheKey);
+        if (cachedPage != null) {
+            return cachedPage;
+        }
         Page<Specialty> specialtyPage = specialtyRepository.findByMemberIdAndYearAndSemester(
                 studentId, year, semesterEnum, sortedPageable
         );
-        return specialtyPage.map(this::convertToSpecialtyDto);
+        Page<SpecialtyDto> resultPage = specialtyPage.map(this::convertToSpecialtyDto);
+        // 캐시에 저장 (TTL: 10분)
+        redisTemplate.opsForValue().set(cacheKey, resultPage, Duration.ofMinutes(10));
+        return resultPage;
     }
 
     // 학생 특기사항 생성 [선생님 권한]
@@ -125,6 +144,8 @@ public class SpecialtyServiceImpl implements SpecialtyService {
         specialty.setSemester(specialtyForm.getSemester());
         specialty.setDate(specialtyForm.getDate());
         specialty.setContent(specialtyForm.getContent());
+        // 캐시 무효화
+        evictSpecialtyCache(specialty);
 
         // 특기사항 알림 수정 & Kafka 이벤트 생성
         try {
@@ -153,6 +174,8 @@ public class SpecialtyServiceImpl implements SpecialtyService {
         Specialty specialty = specialtyRepository.findById(specialtyId)
                 .orElseThrow(() -> new ServiceException(ReturnCode.SPECIALTY_NOT_FOUND));
         specialtyRepository.delete(specialty);
+        // 캐시 무효화
+        evictSpecialtyCache(specialty);
     }
 
     // ----------------- 헬퍼 메서드 -----------------
@@ -162,6 +185,18 @@ public class SpecialtyServiceImpl implements SpecialtyService {
         int maxPageSize = SpecialtyPage.getMaxPageSize();
         if (pageSize > maxPageSize) {
             throw new ServiceException(ReturnCode.PAGE_REQUEST_FAIL);
+        }
+    }
+
+    public void evictSpecialtyCache(Specialty specialty) {
+        Long studentId = specialty.getMember().getId();
+        int year = specialty.getYear();
+        Semester semester = specialty.getSemester();
+
+        String pattern = String.format("specialty:%d:%d:%s:*", studentId, year, semester);
+        Set<String> keys = redisTemplate.keys(pattern);
+        if (keys != null && !keys.isEmpty()) {
+            redisTemplate.delete(keys);
         }
     }
 

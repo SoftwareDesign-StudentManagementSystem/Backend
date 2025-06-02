@@ -16,15 +16,19 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
 import java.util.List;
+import java.util.Set;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class NotificationServiceImpl implements NotificationService {
     private final NotificationRepository notificationRepository;
+    private final RedisTemplate<String, Object> redisTemplate;
 
     // 알림 생성 [선생님 권한]
     @Override
@@ -43,8 +47,23 @@ public class NotificationServiceImpl implements NotificationService {
             throw new ServiceException(ReturnCode.NOT_AUTHORIZED);
         }
         checkPageSize(pageable.getPageSize());
+        // 캐시 키 생성 (사용자 ID, 역할, 페이지 번호, 페이지 크기 포함)
+        String cacheKey = String.format("notification:%d:%s:%d:%d",
+                loginUser.getId(),
+                loginUser.getRole().name(),
+                pageable.getPageNumber(),
+                pageable.getPageSize()
+        );
+        // Redis에서 캐시 조회
+        Page<NotificationDto> cachedPage = (Page<NotificationDto>) redisTemplate.opsForValue().get(cacheKey);
+        if (cachedPage != null) {
+            return cachedPage;
+        }
         Page<Notification> notificationPage = notificationRepository.findByReceiverIdOrderByCreatedAtDesc(loginUser.getId(), pageable);
-        return notificationPage.map(this::convertToNotificationDto);
+        Page<NotificationDto> resultPage = notificationPage.map(this::convertToNotificationDto);
+        // 캐시에 저장 (TTL 10분)
+        redisTemplate.opsForValue().set(cacheKey, resultPage, Duration.ofMinutes(10));
+        return resultPage;
     }
 
     // 알림 읽음 처리 [학부모/학생 권한]
@@ -64,13 +83,25 @@ public class NotificationServiceImpl implements NotificationService {
         }
         notifications.forEach(n -> n.setIsRead(true));
         notificationRepository.saveAll(notifications);
+        // 캐시 무효화
+        evictNotificationCache(loginUser.getId());
     }
+
+    // ----------------- 헬퍼 메서드 -----------------
 
     // 요청 페이지 수 제한
     private void checkPageSize(int pageSize) {
         int maxPageSize = MemberPage.getMaxPageSize();
         if (pageSize > maxPageSize) {
             throw new ServiceException(ReturnCode.PAGE_REQUEST_FAIL);
+        }
+    }
+
+    public void evictNotificationCache(Long userId) {
+        String pattern = "notification:" + userId + ":*";
+        Set<String> keys = redisTemplate.keys(pattern);
+        if (keys != null && !keys.isEmpty()) {
+            redisTemplate.delete(keys);
         }
     }
 

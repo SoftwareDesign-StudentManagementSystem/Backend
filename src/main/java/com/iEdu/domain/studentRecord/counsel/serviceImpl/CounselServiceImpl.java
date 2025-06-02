@@ -23,11 +23,14 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import static com.iEdu.global.common.utils.Converter.convertToSemesterEnum;
@@ -43,6 +46,7 @@ public class CounselServiceImpl implements CounselService {
     private final CounselQueryRepository counselQueryRepository;
     private final KafkaTemplate<String, String> kafkaTemplate;
     private final ObjectMapper objectMapper;
+    private final RedisTemplate<String, Object> redisTemplate;
 
     // 학생의 모든 상담 조회 [학부모/선생님 권한]
     @Override
@@ -93,8 +97,23 @@ public class CounselServiceImpl implements CounselService {
         // ROLE_PARENT/ROLE_TEACHER 아닌 경우 예외 처리
         validateAccessToStudent(loginUser, studentId);
         Semester semesterEnum = convertToSemesterEnum(semester);
+
+        // 캐시 키 생성 (role 구분 포함)
+        String roleKey = loginUser.getRole().name(); // e.g., ROLE_TEACHER or ROLE_PARENT
+        String cacheKey = String.format(
+                "counsel:%d:%d:%s:%d:%d:%s",
+                studentId, year, semesterEnum, pageable.getPageNumber(), pageable.getPageSize(), roleKey
+        );
+        // Redis 캐시 조회
+        Page<CounselDto> cachedPage = (Page<CounselDto>) redisTemplate.opsForValue().get(cacheKey);
+        if (cachedPage != null) {
+            return cachedPage;
+        }
         Page<Counsel> counselPage = counselRepository.findByMemberIdAndYearAndSemester(studentId, year, semesterEnum, sortedPageable);
-        return counselPage.map(this::convertToCounselDto);
+        Page<CounselDto> resultPage = counselPage.map(this::convertToCounselDto);
+        // 캐시에 저장 (TTL: 10분)
+        redisTemplate.opsForValue().set(cacheKey, resultPage, Duration.ofMinutes(10));
+        return resultPage;
     }
 
     // 학생 상담 생성 [선생님 권한]
@@ -146,6 +165,8 @@ public class CounselServiceImpl implements CounselService {
         counsel.setDate(counselForm.getDate());
         counsel.setContent(counselForm.getContent());
         counsel.setNextCounselDate(counselForm.getNextCounselDate());
+        // 캐시 무효화
+        evictCounselCache(counsel);
 
         // 상담 알림 수정 & Kafka 이벤트 생성
         try {
@@ -173,6 +194,8 @@ public class CounselServiceImpl implements CounselService {
         Counsel counsel = counselRepository.findById(counselId)
                 .orElseThrow(() -> new ServiceException(ReturnCode.COUNSEL_NOT_FOUND));
         counselRepository.delete(counsel);
+        // 캐시 무효화
+        evictCounselCache(counsel);
     }
 
     // ----------------- 헬퍼 메서드 -----------------
@@ -182,6 +205,18 @@ public class CounselServiceImpl implements CounselService {
         int maxPageSize = CounselPage.getMaxPageSize();
         if (pageSize > maxPageSize) {
             throw new ServiceException(ReturnCode.PAGE_REQUEST_FAIL);
+        }
+    }
+
+    public void evictCounselCache(Counsel counsel) {
+        Long studentId = counsel.getMember().getId();
+        int year = counsel.getYear();
+        Semester semester = counsel.getSemester();
+        String baseKeyPattern = String.format("counsel:%d:%d:%s*", studentId, year, semester);
+
+        Set<String> keysToDelete = redisTemplate.keys(baseKeyPattern);
+        if (keysToDelete != null && !keysToDelete.isEmpty()) {
+            redisTemplate.delete(keysToDelete);
         }
     }
 
