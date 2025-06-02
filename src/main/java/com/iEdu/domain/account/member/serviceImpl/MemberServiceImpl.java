@@ -28,7 +28,10 @@ import com.querydsl.core.BooleanBuilder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.security.crypto.bcrypt.BCrypt;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -37,7 +40,11 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import static com.iEdu.global.common.utils.RoleValidator.*;
@@ -54,6 +61,7 @@ public class MemberServiceImpl implements MemberService {
     private final S3Service s3Service;
     private final KafkaTemplate<String, String> kafkaTemplate;
     private final ObjectMapper objectMapper;
+    private final RedisTemplate<String, Object> redisTemplate;
 
     // 학부모 회원가입
     @Override
@@ -119,20 +127,42 @@ public class MemberServiceImpl implements MemberService {
 
     // 담당 학생들의 회원정보 조회 [선생님 권한]
     @Override
-    @Transactional
-    public Page<MemberDto> getMyStudentInfo(Pageable pageable, LoginUserDto loginUser){
+    @Transactional(readOnly = true)
+    public Page<MemberDto> getMyStudentInfo(Pageable pageable, LoginUserDto loginUser) {
         checkPageSize(pageable.getPageSize());
-        // ROLE_TEACHER 아닌 경우 예외 처리
         validateTeacherRole(loginUser);
+
         Integer year = loginUser.getYear();
         Integer classId = loginUser.getClassId();
+        Long teacherId = loginUser.getId();
         if (classId == null) {
             throw new ServiceException(ReturnCode.CLASSID_NOT_FOUND);
         }
+        String cacheKey = "myStudents::" + teacherId + "::page::" + pageable.getPageNumber();
+
+        // Redis 조회
+        ValueOperations<String, Object> ops = redisTemplate.opsForValue();
+        Object cached = ops.get(cacheKey);
+        if (cached != null && cached instanceof Map) {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> cachedMap = (Map<String, Object>) cached;
+            List<MemberDto> content = (List<MemberDto>) cachedMap.get("content");
+            Long total = (Long) cachedMap.get("total");
+            return new PageImpl<>(content, pageable, total);
+        }
+
+        // DB 조회
         Page<Member> students = memberRepository.findAllByYearAndClassIdAndRole(
                 year, classId, Member.MemberRole.ROLE_STUDENT, pageable
         );
-        return students.map(this::memberConvertToMemberDto);
+        Page<MemberDto> dtoPage = students.map(this::memberConvertToMemberDto);
+
+        // Redis 저장 (10분 TTL)
+        Map<String, Object> cacheValue = new HashMap<>();
+        cacheValue.put("content", dtoPage.getContent());
+        cacheValue.put("total", dtoPage.getTotalElements());
+        ops.set(cacheKey, cacheValue, 10, TimeUnit.MINUTES);
+        return dtoPage;
     }
 
     // (학년/반/번호)로 학생 조회 [선생님 권한]
@@ -226,6 +256,22 @@ public class MemberServiceImpl implements MemberService {
         // LoginUserDto를 Member 엔티티로 변환
         Member memberEntity = loginUser.ConvertToMember();
         memberRepository.save(memberEntity);
+
+        // 캐시 무효화 로직 시작
+        Integer studentYear = loginUser.getYear();
+        Integer studentClassId = loginUser.getClassId();
+        if (studentYear != null && studentClassId != null) {
+            // 해당 연도, 반, 그리고 ROLE_TEACHER인 선생님 1명 조회
+            Member teacher = memberRepository.findByYearAndClassIdAndRole(studentYear, studentClassId, Member.MemberRole.ROLE_TEACHER)
+                    .orElse(null);
+            if (teacher != null) {
+                String keyPattern = "myStudents::" + teacher.getId() + "::page::*";
+                Set<String> keys = redisTemplate.keys(keyPattern);
+                if (keys != null && !keys.isEmpty()) {
+                    redisTemplate.delete(keys);
+                }
+            }
+        }
     }
 
     // 선생님 회원정보 수정 [선생님 권한]

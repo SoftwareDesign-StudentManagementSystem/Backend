@@ -21,6 +21,10 @@ spring:
         static: ap-northeast-2  # AWS 서울 리전
       s3:
         bucket: iedu-bucket-v-1 # S3 버킷명
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
 
 custom:
   jwt:
