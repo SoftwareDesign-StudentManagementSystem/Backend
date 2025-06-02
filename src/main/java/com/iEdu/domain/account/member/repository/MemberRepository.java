@@ -40,8 +40,11 @@ public interface MemberRepository extends JpaRepository<Member, Long>, QuerydslP
             "AND m.role = :role")
     Page<Member> findByKeywordAndRole(Pageable pageable, @Param("keyword") String keyword, @Param("role") Member.MemberRole role);
 
-    // 학년&반으로 학생 조회
+    // 학년&반으로 학생들 조회
     Page<Member> findAllByYearAndClassIdAndRole(Integer year, Integer classId, Member.MemberRole role, Pageable pageable);
+
+    // 학년&반으로 학생 조회
+    Optional<Member> findByYearAndClassIdAndRole(Integer year, Integer classId, Member.MemberRole role);
 
     // 이름&학년&반&번호&생년월일로 학생 팔로우
     Optional<Member> findByNameAndYearAndClassIdAndNumberAndBirthday(

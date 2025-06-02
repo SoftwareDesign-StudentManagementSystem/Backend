@@ -21,10 +21,13 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import static com.iEdu.global.common.utils.Converter.convertToSemesterEnum;
@@ -36,6 +39,7 @@ import static com.iEdu.global.common.utils.RoleValidator.*;
 public class AttendanceServiceImpl implements AttendanceService {
     private final MemberRepository memberRepository;
     private final AttendanceRepository attendanceRepository;
+    private final RedisTemplate<String, Object> redisTemplate;
 
     // 본인의 모든 출결 조회 [학생 권한]
     @Override
@@ -103,10 +107,20 @@ public class AttendanceServiceImpl implements AttendanceService {
     @Transactional(readOnly = true)
     public Page<AttendanceDto> getFilterAttendance(Long studentId, Integer year, Integer semester, Integer month, Pageable pageable, LoginUserDto loginUser) {
         checkPageSize(pageable.getPageSize());
-        // ROLE_PARENT/ROLE_TEACHER 아닌 경우 예외 처리
         validateAccessToStudent(loginUser, studentId);
         Semester semesterEnum = convertToSemesterEnum(semester);
-        // 정렬 조건 추가: date(오름차순)
+
+        // 캐시 키 생성 (학생ID, 연도, 학기, 월)
+        String cacheKey = buildCacheKey(studentId, year, semesterEnum, month);
+
+        // 캐시 조회
+        Page<AttendanceDto> cachedResult = (Page<AttendanceDto>) redisTemplate.opsForValue().get(cacheKey);
+        if (cachedResult != null) {
+            log.info("Redis HIT: {}", cacheKey);
+            return cachedResult;
+        } else {
+            log.info("Redis MISS: {}", cacheKey);
+        }
         Pageable sortedPageable = PageRequest.of(
                 pageable.getPageNumber(),
                 pageable.getPageSize(),
@@ -122,7 +136,11 @@ public class AttendanceServiceImpl implements AttendanceService {
                     studentId, year, semesterEnum, sortedPageable
             );
         }
-        return attendancePage.map(this::convertToAttendanceDto);
+        Page<AttendanceDto> resultPage = attendancePage.map(this::convertToAttendanceDto);
+
+        // 캐시에 저장 (10분 TTL)
+        redisTemplate.opsForValue().set(cacheKey, resultPage, Duration.ofMinutes(10));
+        return resultPage;
     }
 
     // 학생 출결 생성 [선생님 권한]
@@ -162,6 +180,9 @@ public class AttendanceServiceImpl implements AttendanceService {
             pa.setAttendance(attendance);
             attendance.getPeriodAttendances().add(pa);
         }
+        attendanceRepository.save(attendance);
+        // 캐시 무효화
+        evictAttendanceCache(attendance.getMember().getId());
     }
 
     // 학생 출결 삭제 [선생님 권한]
@@ -173,6 +194,8 @@ public class AttendanceServiceImpl implements AttendanceService {
         Attendance attendance = attendanceRepository.findById(attendanceId)
                 .orElseThrow(() -> new ServiceException(ReturnCode.ATTENDANCE_NOT_FOUND));
         attendanceRepository.delete(attendance);
+        // 캐시 무효화
+        evictAttendanceCache(attendance.getMember().getId());
     }
 
     // ----------------- 헬퍼 메서드 -----------------
@@ -182,6 +205,21 @@ public class AttendanceServiceImpl implements AttendanceService {
         int maxPageSize = AttendancePage.getMaxPageSize();
         if (pageSize > maxPageSize) {
             throw new ServiceException(ReturnCode.PAGE_REQUEST_FAIL);
+        }
+    }
+
+    // 출결 캐시 생성
+    private String buildCacheKey(Long studentId, Integer year, Semester semesterEnum, Integer month) {
+        return "attendance:" + studentId + ":" + year + ":" + semesterEnum + ":" + (month == null ? "all" : month);
+    }
+
+    // 출결 캐시 삭제
+    private void evictAttendanceCache(Long studentId) {
+        // Redis 키 패턴: attendance:studentId:*
+        String pattern = "attendance:" + studentId + ":*";
+        Set<String> keys = redisTemplate.keys(pattern);
+        if (keys != null && !keys.isEmpty()) {
+            redisTemplate.delete(keys);
         }
     }
 

@@ -28,10 +28,12 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -52,6 +54,8 @@ public class GradeServiceImpl implements GradeService {
     private final KafkaTemplate<String, String> kafkaTemplate;
     private final ObjectMapper objectMapper;
     private final MemberService memberService;
+    private final RedisTemplate<String, Object> redisTemplate;
+    private static final String CACHE_PREFIX = "grade:";
 
     // 본인의 모든 성적 조회 [학생 권한]
     @Override
@@ -122,14 +126,26 @@ public class GradeServiceImpl implements GradeService {
     @Override
     @Transactional
     public GradeDto getFilterGrade(Long studentId, Integer year, Integer semester, LoginUserDto loginUser){
-        Member student = memberRepository.getById(studentId);
-        // ROLE_PARENT/ROLE_TEACHER 아닌 경우 예외 처리
         validateAccessToStudent(loginUser, studentId);
         Semester semesterEnum = convertToSemesterEnum(semester);
+        String cacheKey = "grade:" + studentId + ":" + year + ":" + semesterEnum;
+
+        // Redis에서 캐시 조회
+        GradeDto cachedGradeDto = (GradeDto) redisTemplate.opsForValue().get(cacheKey);
+        if (cachedGradeDto != null) {
+            return cachedGradeDto;
+        }
+
+        // 캐시 없으면 DB 조회
+        Member student = memberRepository.getById(studentId);
         Grade grade = gradeRepository
                 .findByMemberIdAndYearAndSemester(studentId, year, semesterEnum)
                 .orElseThrow(() -> new ServiceException(ReturnCode.USER_NOT_FOUND));
-        return convertToGradeDto(grade, student.getAccountId());
+        GradeDto gradeDto = convertToGradeDto(grade, student.getAccountId());
+
+        // 캐시에 저장 (10분 TTL)
+        redisTemplate.opsForValue().set(cacheKey, gradeDto, Duration.ofMinutes(10));
+        return gradeDto;
     }
 
     // 학생 성적 생성 [선생님 권한]
@@ -241,6 +257,10 @@ public class GradeServiceImpl implements GradeService {
             case 제2외국어 -> grade.setSecondForeignLanguageScore(newScore);
             default -> throw new ServiceException(ReturnCode.INVALID_SUBJECT);
         }
+        // 캐시 무효화
+        String cacheKey = CACHE_PREFIX + grade.getMember().getId() + ":" + grade.getYear() + ":" + grade.getSemester();
+        redisTemplate.delete(cacheKey);
+
         // 성적 알림 수정 & Kafka 이벤트 생성
         try {
             // 1. 학생 알림 Kafka 전송
@@ -302,6 +322,9 @@ public class GradeServiceImpl implements GradeService {
             case 제2외국어 -> grade.setSecondForeignLanguageScore(null);
             default -> throw new ServiceException(ReturnCode.INVALID_SUBJECT);
         }
+        // 캐시 무효화
+        String cacheKey = CACHE_PREFIX + grade.getMember().getId() + ":" + grade.getYear() + ":" + grade.getSemester();
+        redisTemplate.delete(cacheKey);
     }
 
     // ----------------- 헬퍼 메서드 -----------------
@@ -432,11 +455,16 @@ public class GradeServiceImpl implements GradeService {
 
     // 전과목 평균 계산
     private double calculateTotalScore(Grade g) {
-        return g.getKoreanLanguageScore() + g.getMathematicsScore() + g.getEnglishScore()
-                + g.getSocialStudiesScore() + g.getHistoryScore() + g.getEthicsScore()
-                + g.getEconomicsScore() + g.getPhysicsScore() + g.getChemistryScore()
-                + g.getBiologyScore() + g.getEarthScienceScore() + g.getMusicScore()
-                + g.getArtScore() + g.getPhysicalEducationScore() + g.getTechnologyAndHomeEconomicScore()
-                + g.getComputerScienceScore() + g.getSecondForeignLanguageScore();
+        return safe(g.getKoreanLanguageScore()) + safe(g.getMathematicsScore()) + safe(g.getEnglishScore())
+                + safe(g.getSocialStudiesScore()) + safe(g.getHistoryScore()) + safe(g.getEthicsScore())
+                + safe(g.getEconomicsScore()) + safe(g.getPhysicsScore()) + safe(g.getChemistryScore())
+                + safe(g.getBiologyScore()) + safe(g.getEarthScienceScore()) + safe(g.getMusicScore())
+                + safe(g.getArtScore()) + safe(g.getPhysicalEducationScore()) + safe(g.getTechnologyAndHomeEconomicScore())
+                + safe(g.getComputerScienceScore()) + safe(g.getSecondForeignLanguageScore());
+    }
+
+    // NPE 방지
+    private double safe(Double d) {
+        return d == null ? 0.0 : d;
     }
 }
