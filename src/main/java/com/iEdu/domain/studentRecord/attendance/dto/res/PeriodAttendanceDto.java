@@ -9,7 +9,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 public class PeriodAttendanceDto {
-    private Long AttendanceId;
+    private Long attendanceId;
     private PeriodAttendance.State state;
     private PeriodAttendance.Period period;
 }

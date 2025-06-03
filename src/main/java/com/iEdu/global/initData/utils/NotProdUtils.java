@@ -112,7 +112,7 @@ public class NotProdUtils {
     // 출석 상태 랜덤 생성
     public PeriodAttendance.State generateRandomState() {
         double rand = Math.random();
-        if (rand < 0.9) return PeriodAttendance.State.출석;
+        if (rand < 0.95) return PeriodAttendance.State.출석;
         int pick = (int) (Math.random() * 3);
         return switch (pick) {
             case 0 -> PeriodAttendance.State.결석;

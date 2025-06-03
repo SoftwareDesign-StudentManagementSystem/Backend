@@ -1,6 +1,7 @@
 package com.iEdu.domain.studentRecord.counsel.serviceImpl;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.iEdu.domain.account.auth.loginUser.LoginUserDto;
 import com.iEdu.domain.account.member.entity.Member;
@@ -9,6 +10,7 @@ import com.iEdu.domain.account.member.service.MemberService;
 import com.iEdu.domain.notification.entity.Notification;
 import com.iEdu.domain.studentRecord.counsel.dto.req.CounselForm;
 import com.iEdu.domain.studentRecord.counsel.dto.res.CounselDto;
+import com.iEdu.domain.studentRecord.counsel.dto.res.CounselPageCacheDto;
 import com.iEdu.domain.studentRecord.counsel.entity.Counsel;
 import com.iEdu.domain.studentRecord.counsel.entity.CounselPage;
 import com.iEdu.domain.studentRecord.counsel.repository.CounselQueryRepository;
@@ -19,15 +21,15 @@ import com.iEdu.global.exception.ReturnCode;
 import com.iEdu.global.exception.ServiceException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
+import org.springframework.data.domain.*;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import static com.iEdu.global.common.utils.Converter.convertToSemesterEnum;
@@ -43,6 +45,7 @@ public class CounselServiceImpl implements CounselService {
     private final CounselQueryRepository counselQueryRepository;
     private final KafkaTemplate<String, String> kafkaTemplate;
     private final ObjectMapper objectMapper;
+    private final RedisTemplate<String, Object> redisTemplate;
 
     // 학생의 모든 상담 조회 [학부모/선생님 권한]
     @Override
@@ -84,17 +87,38 @@ public class CounselServiceImpl implements CounselService {
     @Transactional(readOnly = true)
     public Page<CounselDto> getFilterCounsel(Long studentId, Integer year, Integer semester, Pageable pageable, LoginUserDto loginUser) {
         checkPageSize(pageable.getPageSize());
-        // 정렬: year 내림차순, semester(SECOND_SEMESTER 우선), createdAt 내림차순
         Pageable sortedPageable = PageRequest.of(
                 pageable.getPageNumber(),
                 pageable.getPageSize(),
                 Sort.by(Sort.Order.desc("createdAt"))
         );
-        // ROLE_PARENT/ROLE_TEACHER 아닌 경우 예외 처리
         validateAccessToStudent(loginUser, studentId);
         Semester semesterEnum = convertToSemesterEnum(semester);
+        String roleKey = loginUser.getRole().name();
+        String cacheKey = String.format(
+                "counsel:%d:%d:%s:%d:%d:%s",
+                studentId, year, semesterEnum, pageable.getPageNumber(), pageable.getPageSize(), roleKey
+        );
+        Object cached = redisTemplate.opsForValue().get(cacheKey);
+        if (cached != null) {
+            JavaType type = objectMapper.getTypeFactory().constructType(CounselPageCacheDto.class);
+            CounselPageCacheDto cacheDto = objectMapper.convertValue(cached, type);
+            return new PageImpl<>(
+                    cacheDto.getContent(),
+                    PageRequest.of(cacheDto.getPageNumber(), cacheDto.getPageSize()),
+                    cacheDto.getTotalElements()
+            );
+        }
         Page<Counsel> counselPage = counselRepository.findByMemberIdAndYearAndSemester(studentId, year, semesterEnum, sortedPageable);
-        return counselPage.map(this::convertToCounselDto);
+        Page<CounselDto> resultPage = counselPage.map(this::convertToCounselDto);
+        CounselPageCacheDto cacheDto = CounselPageCacheDto.builder()
+                .content(resultPage.getContent())
+                .pageNumber(resultPage.getNumber())
+                .pageSize(resultPage.getSize())
+                .totalElements(resultPage.getTotalElements())
+                .build();
+        redisTemplate.opsForValue().set(cacheKey, cacheDto, Duration.ofMinutes(10));
+        return resultPage;
     }
 
     // 학생 상담 생성 [선생님 권한]
@@ -146,6 +170,8 @@ public class CounselServiceImpl implements CounselService {
         counsel.setDate(counselForm.getDate());
         counsel.setContent(counselForm.getContent());
         counsel.setNextCounselDate(counselForm.getNextCounselDate());
+        // 캐시 무효화
+        evictCounselCache(counsel);
 
         // 상담 알림 수정 & Kafka 이벤트 생성
         try {
@@ -173,6 +199,8 @@ public class CounselServiceImpl implements CounselService {
         Counsel counsel = counselRepository.findById(counselId)
                 .orElseThrow(() -> new ServiceException(ReturnCode.COUNSEL_NOT_FOUND));
         counselRepository.delete(counsel);
+        // 캐시 무효화
+        evictCounselCache(counsel);
     }
 
     // ----------------- 헬퍼 메서드 -----------------
@@ -182,6 +210,18 @@ public class CounselServiceImpl implements CounselService {
         int maxPageSize = CounselPage.getMaxPageSize();
         if (pageSize > maxPageSize) {
             throw new ServiceException(ReturnCode.PAGE_REQUEST_FAIL);
+        }
+    }
+
+    public void evictCounselCache(Counsel counsel) {
+        Long studentId = counsel.getMember().getId();
+        int year = counsel.getYear();
+        Semester semester = counsel.getSemester();
+        String baseKeyPattern = String.format("counsel:%d:%d:%s*", studentId, year, semester);
+
+        Set<String> keysToDelete = redisTemplate.keys(baseKeyPattern);
+        if (keysToDelete != null && !keysToDelete.isEmpty()) {
+            redisTemplate.delete(keysToDelete);
         }
     }
 

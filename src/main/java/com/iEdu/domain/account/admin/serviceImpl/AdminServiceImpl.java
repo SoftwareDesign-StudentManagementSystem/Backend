@@ -25,6 +25,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.stream.Collectors;
 
 import static com.iEdu.global.common.utils.RoleValidator.validateAdminRole;
@@ -54,7 +55,7 @@ public class AdminServiceImpl implements AdminService {
                 .name(memberForm.getName())
                 .phone(memberForm.getPhone())
                 .email(memberForm.getEmail())
-                .birthday(memberForm.getBirthday())
+                .birthday(String.valueOf(memberForm.getBirthday()))
                 .schoolName(memberForm.getSchoolName())
                 .year(memberForm.getYear())
                 .classId(memberForm.getClassId())
@@ -85,7 +86,7 @@ public class AdminServiceImpl implements AdminService {
                 .name(memberForm.getName())
                 .phone(memberForm.getPhone())
                 .email(memberForm.getEmail())
-                .birthday(memberForm.getBirthday())
+                .birthday(String.valueOf(memberForm.getBirthday()))
                 .schoolName(memberForm.getSchoolName())
                 .year(memberForm.getYear())
                 .classId(memberForm.getClassId())
@@ -272,7 +273,7 @@ public class AdminServiceImpl implements AdminService {
                 .name(member.getName())
                 .phone(member.getPhone())
                 .email(member.getEmail())
-                .birthday(member.getBirthday())
+                .birthday(LocalDate.parse(member.getBirthday()))
                 .profileImageUrl(member.getProfileImageUrl())
                 .schoolName(member.getSchoolName())
                 .year(member.getYear())

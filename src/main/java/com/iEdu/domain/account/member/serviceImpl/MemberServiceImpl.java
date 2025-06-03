@@ -1,6 +1,7 @@
 package com.iEdu.domain.account.member.serviceImpl;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.iEdu.domain.account.auth.loginUser.LoginUserDto;
 import com.iEdu.domain.account.auth.service.AuthService;
@@ -10,6 +11,7 @@ import com.iEdu.domain.account.member.dto.req.ParentForm;
 import com.iEdu.domain.account.member.dto.req.TeacherUpdateForm;
 import com.iEdu.domain.account.member.dto.res.DetailMemberDto;
 import com.iEdu.domain.account.member.dto.res.MemberDto;
+import com.iEdu.domain.account.member.dto.res.MemberPageCacheDto;
 import com.iEdu.domain.account.member.dto.res.SimpleMember;
 import com.iEdu.domain.account.member.entity.Member;
 import com.iEdu.domain.account.member.entity.MemberFollow;
@@ -27,8 +29,10 @@ import com.iEdu.global.s3.S3Service;
 import com.querydsl.core.BooleanBuilder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
@@ -40,6 +44,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.time.Duration;
+import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -60,8 +66,9 @@ public class MemberServiceImpl implements MemberService {
     private final AuthService authService;
     private final S3Service s3Service;
     private final KafkaTemplate<String, String> kafkaTemplate;
-    private final ObjectMapper objectMapper;
     private final RedisTemplate<String, Object> redisTemplate;
+    @Autowired
+    private final ObjectMapper objectMapper;
 
     // 학부모 회원가입
     @Override
@@ -103,7 +110,7 @@ public class MemberServiceImpl implements MemberService {
                 .name(parentForm.getName())
                 .phone(parentForm.getPhone())
                 .email(parentForm.getEmail())
-                .birthday(parentForm.getBirthday())
+                .birthday(String.valueOf(parentForm.getBirthday()))
                 .schoolName(parentForm.getSchoolName())
                 .gender(parentForm.getGender())
                 .build();
@@ -122,7 +129,19 @@ public class MemberServiceImpl implements MemberService {
     @Override
     @Transactional
     public DetailMemberDto getMyDetailInfo(LoginUserDto loginUser){
-        return loginUserConvertToDetailMemberDto(loginUser);
+        Long memberId = loginUser.getId();
+        String cacheKey = "myDetailInfo::" + memberId;
+
+        // Redis 조회
+        ValueOperations<String, Object> ops = redisTemplate.opsForValue();
+        Object cached = ops.get(cacheKey);
+        if (cached != null && cached instanceof DetailMemberDto) {
+            return (DetailMemberDto) cached;
+        }
+        DetailMemberDto dto = loginUserConvertToDetailMemberDto(loginUser);
+        // Redis 저장 (10분 TTL)
+        ops.set(cacheKey, dto, 10, TimeUnit.MINUTES);
+        return dto;
     }
 
     // 담당 학생들의 회원정보 조회 [선생님 권한]
@@ -130,6 +149,7 @@ public class MemberServiceImpl implements MemberService {
     @Transactional(readOnly = true)
     public Page<MemberDto> getMyStudentInfo(Pageable pageable, LoginUserDto loginUser) {
         checkPageSize(pageable.getPageSize());
+        // ROLE_TEACHER 아닌 경우 예외 처리
         validateTeacherRole(loginUser);
 
         Integer year = loginUser.getYear();
@@ -138,30 +158,36 @@ public class MemberServiceImpl implements MemberService {
         if (classId == null) {
             throw new ServiceException(ReturnCode.CLASSID_NOT_FOUND);
         }
-        String cacheKey = "myStudents::" + teacherId + "::page::" + pageable.getPageNumber();
-
-        // Redis 조회
-        ValueOperations<String, Object> ops = redisTemplate.opsForValue();
-        Object cached = ops.get(cacheKey);
-        if (cached != null && cached instanceof Map) {
-            @SuppressWarnings("unchecked")
-            Map<String, Object> cachedMap = (Map<String, Object>) cached;
-            List<MemberDto> content = (List<MemberDto>) cachedMap.get("content");
-            Long total = (Long) cachedMap.get("total");
-            return new PageImpl<>(content, pageable, total);
+        String cacheKey = String.format("myStudents:%d:%d:%d:%d",
+                teacherId,
+                pageable.getPageNumber(),
+                pageable.getPageSize(),
+                classId
+        );
+        // Redis 캐시 조회
+        Object cached = redisTemplate.opsForValue().get(cacheKey);
+        if (cached != null) {
+            JavaType type = objectMapper.getTypeFactory().constructType(MemberPageCacheDto.class);
+            MemberPageCacheDto cacheDto = objectMapper.convertValue(cached, type);
+            return new PageImpl<>(
+                    cacheDto.getContent(),
+                    PageRequest.of(cacheDto.getPageNumber(), cacheDto.getPageSize()),
+                    cacheDto.getTotalElements()
+            );
         }
-
-        // DB 조회
+        // DB에서 조회
         Page<Member> students = memberRepository.findAllByYearAndClassIdAndRole(
                 year, classId, Member.MemberRole.ROLE_STUDENT, pageable
         );
         Page<MemberDto> dtoPage = students.map(this::memberConvertToMemberDto);
-
-        // Redis 저장 (10분 TTL)
-        Map<String, Object> cacheValue = new HashMap<>();
-        cacheValue.put("content", dtoPage.getContent());
-        cacheValue.put("total", dtoPage.getTotalElements());
-        ops.set(cacheKey, cacheValue, 10, TimeUnit.MINUTES);
+        // 캐시에 저장
+        MemberPageCacheDto cacheDto = MemberPageCacheDto.builder()
+                .content(dtoPage.getContent())
+                .pageNumber(dtoPage.getNumber())
+                .pageSize(dtoPage.getSize())
+                .totalElements(dtoPage.getTotalElements())
+                .build();
+        redisTemplate.opsForValue().set(cacheKey, cacheDto, Duration.ofMinutes(10));
         return dtoPage;
     }
 
@@ -256,8 +282,10 @@ public class MemberServiceImpl implements MemberService {
         // LoginUserDto를 Member 엔티티로 변환
         Member memberEntity = loginUser.ConvertToMember();
         memberRepository.save(memberEntity);
-
-        // 캐시 무효화 로직 시작
+        // 캐시 무효화 1: 본인 상세정보 캐시 삭제
+        String myDetailCacheKey = "myDetailInfo::" + loginUser.getId();
+        redisTemplate.delete(myDetailCacheKey);
+        // 캐시 무효화 2: 담임 선생님의 학생 목록 캐시 삭제
         Integer studentYear = loginUser.getYear();
         Integer studentClassId = loginUser.getClassId();
         if (studentYear != null && studentClassId != null) {
@@ -329,6 +357,9 @@ public class MemberServiceImpl implements MemberService {
         // LoginUserDto를 Member 엔티티로 변환
         Member memberEntity = loginUser.ConvertToMember();
         memberRepository.save(memberEntity);
+        // 캐시 무효화 1: 본인 상세정보 캐시 삭제
+        String myDetailCacheKey = "myDetailInfo::" + loginUser.getId();
+        redisTemplate.delete(myDetailCacheKey);
     }
 
     // 회원탈퇴
@@ -369,7 +400,7 @@ public class MemberServiceImpl implements MemberService {
                 followForm.getYear(),
                 followForm.getClassId(),
                 followForm.getNumber(),
-                followForm.getBirthday()
+                String.valueOf(followForm.getBirthday())
         ).orElseThrow(() -> new ServiceException(ReturnCode.USER_NOT_FOUND));
         // 기존 팔로우 여부 확인
         boolean already_follow = memberFollowRepository.existsByFollowAndFollowed(followReq, followRec);
@@ -608,7 +639,7 @@ public class MemberServiceImpl implements MemberService {
                 .name(member.getName())
                 .phone(member.getPhone())
                 .email(member.getEmail())
-                .birthday(member.getBirthday())
+                .birthday(LocalDate.parse(member.getBirthday()))
                 .profileImageUrl(member.getProfileImageUrl())
                 .schoolName(member.getSchoolName())
                 .year(member.getYear())
