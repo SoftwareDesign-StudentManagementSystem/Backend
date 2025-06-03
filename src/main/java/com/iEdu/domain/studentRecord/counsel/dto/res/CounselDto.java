@@ -1,10 +1,7 @@
 package com.iEdu.domain.studentRecord.counsel.dto.res;
 
 import com.iEdu.global.common.enums.Semester;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.*;
 
 import java.time.LocalDate;
 
@@ -12,6 +9,7 @@ import java.time.LocalDate;
 @Setter
 @Builder
 @AllArgsConstructor
+@NoArgsConstructor
 public class CounselDto {
     private Long id;
     private Long studentId;

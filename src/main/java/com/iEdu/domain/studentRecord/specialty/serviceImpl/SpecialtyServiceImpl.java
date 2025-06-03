@@ -1,6 +1,7 @@
 package com.iEdu.domain.studentRecord.specialty.serviceImpl;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.iEdu.domain.account.auth.loginUser.LoginUserDto;
 import com.iEdu.domain.account.member.entity.Member;
@@ -9,6 +10,7 @@ import com.iEdu.domain.account.member.service.MemberService;
 import com.iEdu.domain.notification.entity.Notification;
 import com.iEdu.domain.studentRecord.specialty.dto.req.SpecialtyForm;
 import com.iEdu.domain.studentRecord.specialty.dto.res.SpecialtyDto;
+import com.iEdu.domain.studentRecord.specialty.dto.res.SpecialtyPageCacheDto;
 import com.iEdu.domain.studentRecord.specialty.entity.Specialty;
 import com.iEdu.domain.studentRecord.specialty.entity.SpecialtyPage;
 import com.iEdu.domain.studentRecord.specialty.repository.SpecialtyRepository;
@@ -18,10 +20,7 @@ import com.iEdu.global.exception.ReturnCode;
 import com.iEdu.global.exception.ServiceException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
+import org.springframework.data.domain.*;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
@@ -66,33 +65,40 @@ public class SpecialtyServiceImpl implements SpecialtyService {
     @Transactional(readOnly = true)
     public Page<SpecialtyDto> getFilterSpecialty(Long studentId, Integer year, Integer semester, Pageable pageable, LoginUserDto loginUser) {
         checkPageSize(pageable.getPageSize());
-        // 정렬: year 내림차순, semester(SECOND_SEMESTER 우선), createdAt 내림차순
         Pageable sortedPageable = PageRequest.of(
                 pageable.getPageNumber(),
                 pageable.getPageSize(),
                 Sort.by(Sort.Direction.DESC, "createdAt")
         );
-        // ROLE_PARENT/ROLE_TEACHER 아닌 경우 예외 처리
         validateAccessToStudent(loginUser, studentId);
         Semester semesterEnum = convertToSemesterEnum(semester);
-
-        // 캐시 키 구성
-        String roleKey = loginUser.getRole().name(); // ROLE_PARENT or ROLE_TEACHER
+        String roleKey = loginUser.getRole().name();
         String cacheKey = String.format(
                 "specialty:%d:%d:%s:%d:%d:%s",
                 studentId, year, semesterEnum, pageable.getPageNumber(), pageable.getPageSize(), roleKey
         );
-        // Redis 캐시 조회
-        Page<SpecialtyDto> cachedPage = (Page<SpecialtyDto>) redisTemplate.opsForValue().get(cacheKey);
-        if (cachedPage != null) {
-            return cachedPage;
+        // Redis에서 캐시 조회
+        Object cached = redisTemplate.opsForValue().get(cacheKey);
+        if (cached != null) {
+            JavaType type = objectMapper.getTypeFactory().constructType(SpecialtyPageCacheDto.class);
+            SpecialtyPageCacheDto cacheDto = objectMapper.convertValue(cached, type);
+            return new PageImpl<>(
+                    cacheDto.getContent(),
+                    PageRequest.of(cacheDto.getPageNumber(), cacheDto.getPageSize()),
+                    cacheDto.getTotalElements()
+            );
         }
         Page<Specialty> specialtyPage = specialtyRepository.findByMemberIdAndYearAndSemester(
                 studentId, year, semesterEnum, sortedPageable
         );
         Page<SpecialtyDto> resultPage = specialtyPage.map(this::convertToSpecialtyDto);
-        // 캐시에 저장 (TTL: 10분)
-        redisTemplate.opsForValue().set(cacheKey, resultPage, Duration.ofMinutes(10));
+        SpecialtyPageCacheDto cacheDto = SpecialtyPageCacheDto.builder()
+                .content(resultPage.getContent())
+                .pageNumber(resultPage.getNumber())
+                .pageSize(resultPage.getSize())
+                .totalElements(resultPage.getTotalElements())
+                .build();
+        redisTemplate.opsForValue().set(cacheKey, cacheDto, Duration.ofMinutes(10));
         return resultPage;
     }
 
@@ -193,7 +199,8 @@ public class SpecialtyServiceImpl implements SpecialtyService {
         int year = specialty.getYear();
         Semester semester = specialty.getSemester();
 
-        String pattern = String.format("specialty:%d:%d:%s:*", studentId, year, semester);
+        // 캐시 키 패턴에 roleKey, pageNumber, pageSize 전부 와일드카드 처리
+        String pattern = String.format("specialty:%d:%d:%s:*:*:*", studentId, year, semester.name());
         Set<String> keys = redisTemplate.keys(pattern);
         if (keys != null && !keys.isEmpty()) {
             redisTemplate.delete(keys);

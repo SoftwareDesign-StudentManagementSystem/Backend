@@ -1,5 +1,6 @@
 package com.iEdu.domain.studentRecord.attendance.entity;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.iEdu.global.jpa.BaseEntity;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -29,7 +30,6 @@ public class PeriodAttendance extends BaseEntity {
     @Enumerated(EnumType.STRING)
     @Column(length = 8)
     private Period period;
-
     public enum Period {
         PERIOD_1(1),
         PERIOD_2(2),

@@ -9,6 +9,8 @@ import java.time.LocalDate;
 @Getter
 @Setter
 @Builder
+@AllArgsConstructor
+@NoArgsConstructor
 public class FeedbackDto {
     private Long id;
     private Long studentId;

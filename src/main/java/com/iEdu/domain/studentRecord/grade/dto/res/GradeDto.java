@@ -1,11 +1,15 @@
 package com.iEdu.domain.studentRecord.grade.dto.res;
 
 import com.iEdu.global.common.enums.Semester;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 @Data
 @Builder
+@AllArgsConstructor
+@NoArgsConstructor
 public class GradeDto {
     private Long id;
     private Long studentId;

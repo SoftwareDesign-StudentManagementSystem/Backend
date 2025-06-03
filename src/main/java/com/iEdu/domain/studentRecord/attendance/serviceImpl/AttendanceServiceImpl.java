@@ -1,11 +1,16 @@
 package com.iEdu.domain.studentRecord.attendance.serviceImpl;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JavaType;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.iEdu.domain.account.auth.loginUser.LoginUserDto;
 import com.iEdu.domain.account.member.entity.Member;
 import com.iEdu.domain.account.member.entity.MemberFollow;
 import com.iEdu.domain.account.member.repository.MemberRepository;
 import com.iEdu.domain.studentRecord.attendance.dto.req.AttendanceForm;
 import com.iEdu.domain.studentRecord.attendance.dto.res.AttendanceDto;
+import com.iEdu.domain.studentRecord.attendance.dto.res.AttendancePageCacheDto;
 import com.iEdu.domain.studentRecord.attendance.dto.res.PeriodAttendanceDto;
 import com.iEdu.domain.studentRecord.attendance.entity.Attendance;
 import com.iEdu.domain.studentRecord.attendance.entity.AttendancePage;
@@ -17,6 +22,7 @@ import com.iEdu.global.exception.ReturnCode;
 import com.iEdu.global.exception.ServiceException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.*;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
@@ -38,6 +44,8 @@ public class AttendanceServiceImpl implements AttendanceService {
     private final MemberRepository memberRepository;
     private final AttendanceRepository attendanceRepository;
     private final RedisTemplate<String, Object> redisTemplate;
+    @Autowired
+    private final ObjectMapper objectMapper;
 
     // 본인의 모든 출결 조회 [학생 권한]
     @Override
@@ -76,19 +84,35 @@ public class AttendanceServiceImpl implements AttendanceService {
     // (학년/학기/월)로 본인 출결 조회 [학생 권한]
     @Override
     @Transactional(readOnly = true)
-    public Page<AttendanceDto> getMyFilterAttendance(Integer year, Integer semester, Integer month, Pageable pageable, LoginUserDto loginUser) {
+    public Page<AttendanceDto> getMyFilterAttendance(
+            Integer year, Integer semester, Integer month,
+            Pageable pageable, LoginUserDto loginUser
+    ) {
         checkPageSize(pageable.getPageSize());
-        // ROLE_STUDENT 아닌 경우 예외 처리
         validateStudentRole(loginUser);
         Semester semesterEnum = convertToSemesterEnum(semester);
+        String semesterStr = semesterEnum.name();
         // 캐시 키 생성
-        String cacheKey = buildCacheKey(loginUser.getId(), year, semesterEnum, month);
-        // 캐시 조회
-        Page<AttendanceDto> cachedResult = (Page<AttendanceDto>) redisTemplate.opsForValue().get(cacheKey);
-        if (cachedResult != null) {
-            return cachedResult;
+        String cacheKey = String.format("attendance:%d:%d:%s:%s:%d:%d",
+                loginUser.getId(),
+                year,
+                semesterStr,
+                month != null ? month.toString() : "all",
+                pageable.getPageNumber(),
+                pageable.getPageSize()
+        );
+        // Redis 캐시 조회
+        Object cached = redisTemplate.opsForValue().get(cacheKey);
+        if (cached != null) {
+            JavaType type = objectMapper.getTypeFactory().constructType(AttendancePageCacheDto.class);
+            AttendancePageCacheDto cacheDto = objectMapper.convertValue(cached, type);
+            return new PageImpl<>(
+                    cacheDto.getContent(),
+                    PageRequest.of(cacheDto.getPageNumber(), cacheDto.getPageSize()),
+                    cacheDto.getTotalElements()
+            );
         }
-        // 정렬 조건 추가: date(오름차순)
+        // DB 조회
         Pageable sortedPageable = PageRequest.of(
                 pageable.getPageNumber(),
                 pageable.getPageSize(),
@@ -96,30 +120,53 @@ public class AttendanceServiceImpl implements AttendanceService {
         );
         Page<Attendance> attendancePage = attendanceRepository
                 .findFilteredAttendancesByMemberAndYearAndSemesterAndOptionalMonth(
-                        loginUser.getId(), year, semesterEnum, month, sortedPageable
+                        loginUser.getId(), year, semesterStr, month, sortedPageable
                 );
         Page<AttendanceDto> resultPage = attendancePage.map(this::convertToAttendanceDto);
-        // 캐시에 저장 (10분 TTL)
-        redisTemplate.opsForValue().set(cacheKey, resultPage, Duration.ofMinutes(10));
+        // 캐시에 저장 (TTL 10분)
+        AttendancePageCacheDto cacheDto = AttendancePageCacheDto.builder()
+                .content(resultPage.getContent())
+                .pageNumber(resultPage.getNumber())
+                .pageSize(resultPage.getSize())
+                .totalElements(resultPage.getTotalElements())
+                .build();
+        redisTemplate.opsForValue().set(cacheKey, cacheDto, Duration.ofMinutes(10));
         return resultPage;
     }
 
     // (학년/학기/월)로 학생 출결 조회 [학부모/선생님 권한]
     @Override
     @Transactional(readOnly = true)
-    public Page<AttendanceDto> getFilterAttendance(Long studentId, Integer year, Integer semester, Integer month, Pageable pageable, LoginUserDto loginUser) {
+    public Page<AttendanceDto> getFilterAttendance(
+            Long studentId, Integer year, Integer semester, Integer month,
+            Pageable pageable, LoginUserDto loginUser
+    ) {
         checkPageSize(pageable.getPageSize());
+        // ROLE_PARENT/ROLE_TEACHER 아닌 경우 예외 처리
         validateAccessToStudent(loginUser, studentId);
         Semester semesterEnum = convertToSemesterEnum(semester);
-
-        // 캐시 키 생성 (학생ID, 연도, 학기, 월)
-        String cacheKey = buildCacheKey(studentId, year, semesterEnum, month);
-
-        // 캐시 조회
-        Page<AttendanceDto> cachedResult = (Page<AttendanceDto>) redisTemplate.opsForValue().get(cacheKey);
-        if (cachedResult != null) {
-            return cachedResult;
+        String semesterStr = semesterEnum.name();
+        // 캐시 키 생성
+        String cacheKey = String.format("attendance:%d:%d:%s:%s:%d:%d",
+                studentId,
+                year,
+                semesterStr,
+                month != null ? month.toString() : "all",
+                pageable.getPageNumber(),
+                pageable.getPageSize()
+        );
+        // Redis 캐시 조회
+        Object cached = redisTemplate.opsForValue().get(cacheKey);
+        if (cached != null) {
+            JavaType type = objectMapper.getTypeFactory().constructType(AttendancePageCacheDto.class);
+            AttendancePageCacheDto cacheDto = objectMapper.convertValue(cached, type);
+            return new PageImpl<>(
+                    cacheDto.getContent(),
+                    PageRequest.of(cacheDto.getPageNumber(), cacheDto.getPageSize()),
+                    cacheDto.getTotalElements()
+            );
         }
+        // DB 조회
         Pageable sortedPageable = PageRequest.of(
                 pageable.getPageNumber(),
                 pageable.getPageSize(),
@@ -127,11 +174,17 @@ public class AttendanceServiceImpl implements AttendanceService {
         );
         Page<Attendance> attendancePage = attendanceRepository
                 .findFilteredAttendancesByMemberAndYearAndSemesterAndOptionalMonth(
-                        studentId, year, semesterEnum, month, sortedPageable
+                        studentId, year, semesterStr, month, sortedPageable
                 );
         Page<AttendanceDto> resultPage = attendancePage.map(this::convertToAttendanceDto);
-        // 캐시에 저장 (10분 TTL)
-        redisTemplate.opsForValue().set(cacheKey, resultPage, Duration.ofMinutes(10));
+        // 캐시에 저장 (TTL 10분)
+        AttendancePageCacheDto cacheDto = AttendancePageCacheDto.builder()
+                .content(resultPage.getContent())
+                .pageNumber(resultPage.getNumber())
+                .pageSize(resultPage.getSize())
+                .totalElements(resultPage.getTotalElements())
+                .build();
+        redisTemplate.opsForValue().set(cacheKey, cacheDto, Duration.ofMinutes(10));
         return resultPage;
     }
 
@@ -198,11 +251,6 @@ public class AttendanceServiceImpl implements AttendanceService {
         if (pageSize > maxPageSize) {
             throw new ServiceException(ReturnCode.PAGE_REQUEST_FAIL);
         }
-    }
-
-    // 출결 캐시 생성
-    private String buildCacheKey(Long studentId, Integer year, Semester semesterEnum, Integer month) {
-        return "attendance:" + studentId + ":" + year + ":" + semesterEnum + ":" + (month == null ? "all" : month);
     }
 
     // 출결 캐시 삭제

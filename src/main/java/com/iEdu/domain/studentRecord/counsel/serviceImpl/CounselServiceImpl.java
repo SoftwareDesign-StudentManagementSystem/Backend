@@ -1,6 +1,7 @@
 package com.iEdu.domain.studentRecord.counsel.serviceImpl;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.iEdu.domain.account.auth.loginUser.LoginUserDto;
 import com.iEdu.domain.account.member.entity.Member;
@@ -9,6 +10,7 @@ import com.iEdu.domain.account.member.service.MemberService;
 import com.iEdu.domain.notification.entity.Notification;
 import com.iEdu.domain.studentRecord.counsel.dto.req.CounselForm;
 import com.iEdu.domain.studentRecord.counsel.dto.res.CounselDto;
+import com.iEdu.domain.studentRecord.counsel.dto.res.CounselPageCacheDto;
 import com.iEdu.domain.studentRecord.counsel.entity.Counsel;
 import com.iEdu.domain.studentRecord.counsel.entity.CounselPage;
 import com.iEdu.domain.studentRecord.counsel.repository.CounselQueryRepository;
@@ -19,10 +21,7 @@ import com.iEdu.global.exception.ReturnCode;
 import com.iEdu.global.exception.ServiceException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
+import org.springframework.data.domain.*;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
@@ -88,31 +87,37 @@ public class CounselServiceImpl implements CounselService {
     @Transactional(readOnly = true)
     public Page<CounselDto> getFilterCounsel(Long studentId, Integer year, Integer semester, Pageable pageable, LoginUserDto loginUser) {
         checkPageSize(pageable.getPageSize());
-        // 정렬: year 내림차순, semester(SECOND_SEMESTER 우선), createdAt 내림차순
         Pageable sortedPageable = PageRequest.of(
                 pageable.getPageNumber(),
                 pageable.getPageSize(),
                 Sort.by(Sort.Order.desc("createdAt"))
         );
-        // ROLE_PARENT/ROLE_TEACHER 아닌 경우 예외 처리
         validateAccessToStudent(loginUser, studentId);
         Semester semesterEnum = convertToSemesterEnum(semester);
-
-        // 캐시 키 생성 (role 구분 포함)
-        String roleKey = loginUser.getRole().name(); // e.g., ROLE_TEACHER or ROLE_PARENT
+        String roleKey = loginUser.getRole().name();
         String cacheKey = String.format(
                 "counsel:%d:%d:%s:%d:%d:%s",
                 studentId, year, semesterEnum, pageable.getPageNumber(), pageable.getPageSize(), roleKey
         );
-        // Redis 캐시 조회
-        Page<CounselDto> cachedPage = (Page<CounselDto>) redisTemplate.opsForValue().get(cacheKey);
-        if (cachedPage != null) {
-            return cachedPage;
+        Object cached = redisTemplate.opsForValue().get(cacheKey);
+        if (cached != null) {
+            JavaType type = objectMapper.getTypeFactory().constructType(CounselPageCacheDto.class);
+            CounselPageCacheDto cacheDto = objectMapper.convertValue(cached, type);
+            return new PageImpl<>(
+                    cacheDto.getContent(),
+                    PageRequest.of(cacheDto.getPageNumber(), cacheDto.getPageSize()),
+                    cacheDto.getTotalElements()
+            );
         }
         Page<Counsel> counselPage = counselRepository.findByMemberIdAndYearAndSemester(studentId, year, semesterEnum, sortedPageable);
         Page<CounselDto> resultPage = counselPage.map(this::convertToCounselDto);
-        // 캐시에 저장 (TTL: 10분)
-        redisTemplate.opsForValue().set(cacheKey, resultPage, Duration.ofMinutes(10));
+        CounselPageCacheDto cacheDto = CounselPageCacheDto.builder()
+                .content(resultPage.getContent())
+                .pageNumber(resultPage.getNumber())
+                .pageSize(resultPage.getSize())
+                .totalElements(resultPage.getTotalElements())
+                .build();
+        redisTemplate.opsForValue().set(cacheKey, cacheDto, Duration.ofMinutes(10));
         return resultPage;
     }
 

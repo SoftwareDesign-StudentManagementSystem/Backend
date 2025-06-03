@@ -1,10 +1,13 @@
 package com.iEdu.domain.notification.serviceImpl;
 
+import com.fasterxml.jackson.databind.JavaType;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.iEdu.domain.account.auth.loginUser.LoginUserDto;
 import com.iEdu.domain.account.member.entity.Member;
 import com.iEdu.domain.account.member.entity.MemberPage;
 import com.iEdu.domain.notification.dto.req.NotificationForm;
 import com.iEdu.domain.notification.dto.res.NotificationDto;
+import com.iEdu.domain.notification.dto.res.NotificationPageCacheDto;
 import com.iEdu.domain.notification.entity.Notification;
 import com.iEdu.domain.notification.repository.NotificationRepository;
 import com.iEdu.domain.notification.service.NotificationService;
@@ -14,7 +17,10 @@ import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
@@ -23,12 +29,16 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Set;
 
+import static com.iEdu.global.common.utils.RoleValidator.validateStudentOrParentRole;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class NotificationServiceImpl implements NotificationService {
     private final NotificationRepository notificationRepository;
     private final RedisTemplate<String, Object> redisTemplate;
+    @Autowired
+    private final ObjectMapper objectMapper;
 
     // 알림 생성 [선생님 권한]
     @Override
@@ -41,12 +51,10 @@ public class NotificationServiceImpl implements NotificationService {
     @Override
     @Transactional
     public Page<NotificationDto> getNotifications(Pageable pageable, LoginUserDto loginUser) {
-        // ROLE_STUDENT, ROLE_PARENT가 아닌 경우 예외 처리
-        if (loginUser.getRole() != Member.MemberRole.ROLE_STUDENT &&
-                loginUser.getRole() != Member.MemberRole.ROLE_PARENT) {
-            throw new ServiceException(ReturnCode.NOT_AUTHORIZED);
-        }
         checkPageSize(pageable.getPageSize());
+        // ROLE_STUDENT, ROLE_PARENT가 아닌 경우 예외 처리
+        validateStudentOrParentRole(loginUser);
+
         // 캐시 키 생성 (사용자 ID, 역할, 페이지 번호, 페이지 크기 포함)
         String cacheKey = String.format("notification:%d:%s:%d:%d",
                 loginUser.getId(),
@@ -55,14 +63,28 @@ public class NotificationServiceImpl implements NotificationService {
                 pageable.getPageSize()
         );
         // Redis에서 캐시 조회
-        Page<NotificationDto> cachedPage = (Page<NotificationDto>) redisTemplate.opsForValue().get(cacheKey);
-        if (cachedPage != null) {
-            return cachedPage;
+        Object cached = redisTemplate.opsForValue().get(cacheKey);
+        if (cached != null) {
+            JavaType type = objectMapper.getTypeFactory().constructType(NotificationPageCacheDto.class);
+            NotificationPageCacheDto cacheDto = objectMapper.convertValue(cached, type);
+            return new PageImpl<>(
+                    cacheDto.getContent(),
+                    PageRequest.of(cacheDto.getPageNumber(), cacheDto.getPageSize()),
+                    cacheDto.getTotalElements()
+            );
         }
-        Page<Notification> notificationPage = notificationRepository.findByReceiverIdOrderByCreatedAtDesc(loginUser.getId(), pageable);
+        // DB에서 조회
+        Page<Notification> notificationPage = notificationRepository
+                .findByReceiverIdOrderByCreatedAtDesc(loginUser.getId(), pageable);
         Page<NotificationDto> resultPage = notificationPage.map(this::convertToNotificationDto);
         // 캐시에 저장 (TTL 10분)
-        redisTemplate.opsForValue().set(cacheKey, resultPage, Duration.ofMinutes(10));
+        NotificationPageCacheDto cacheDto = NotificationPageCacheDto.builder()
+                .content(resultPage.getContent())
+                .pageNumber(resultPage.getNumber())
+                .pageSize(resultPage.getSize())
+                .totalElements(resultPage.getTotalElements())
+                .build();
+        redisTemplate.opsForValue().set(cacheKey, cacheDto, Duration.ofMinutes(10));
         return resultPage;
     }
 
@@ -71,10 +93,7 @@ public class NotificationServiceImpl implements NotificationService {
     @Transactional
     public void markAsRead(NotificationForm notificationForm, LoginUserDto loginUser) {
         // ROLE_STUDENT, ROLE_PARENT가 아닌 경우 예외 처리
-        if (loginUser.getRole() != Member.MemberRole.ROLE_STUDENT &&
-                loginUser.getRole() != Member.MemberRole.ROLE_PARENT) {
-            throw new ServiceException(ReturnCode.NOT_AUTHORIZED);
-        }
+        validateStudentOrParentRole(loginUser);
         // 본인 알림인지 확인
         List<Long> ids = notificationForm.getNotificationIdList();
         List<Notification> notifications = notificationRepository.findAllByIdInAndReceiverId(ids, loginUser.getId());

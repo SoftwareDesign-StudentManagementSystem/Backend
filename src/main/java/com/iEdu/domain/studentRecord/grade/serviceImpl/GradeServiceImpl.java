@@ -1,6 +1,7 @@
 package com.iEdu.domain.studentRecord.grade.serviceImpl;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.iEdu.domain.account.auth.loginUser.LoginUserDto;
 import com.iEdu.domain.account.member.entity.Member;
@@ -12,6 +13,7 @@ import com.iEdu.domain.notification.entity.Notification;
 import com.iEdu.domain.studentRecord.attendance.entity.Attendance;
 import com.iEdu.domain.studentRecord.grade.dto.req.GradeForm;
 import com.iEdu.domain.studentRecord.grade.dto.req.GradeUpdateForm;
+import com.iEdu.domain.studentRecord.grade.dto.res.GradeCacheDto;
 import com.iEdu.domain.studentRecord.grade.dto.res.GradeDto;
 import com.iEdu.domain.studentRecord.grade.dto.res.SubjectScore;
 import com.iEdu.domain.studentRecord.grade.entity.Grade;
@@ -34,10 +36,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -55,7 +54,6 @@ public class GradeServiceImpl implements GradeService {
     private final ObjectMapper objectMapper;
     private final MemberService memberService;
     private final RedisTemplate<String, Object> redisTemplate;
-    private static final String CACHE_PREFIX = "grade:";
 
     // 본인의 모든 성적 조회 [학생 권한]
     @Override
@@ -96,23 +94,30 @@ public class GradeServiceImpl implements GradeService {
     @Override
     @Transactional
     public GradeDto getMyFilterGrade(Integer year, Integer semester, LoginUserDto loginUser){
-        // ROLE_STUDENT 아닌 경우 예외 처리
         validateStudentRole(loginUser);
         Semester semesterEnum = convertToSemesterEnum(semester);
         Long studentId = loginUser.getId();
-        String cacheKey = "grade:" + studentId + ":" + year + ":" + semesterEnum;
+        // 캐시 키 생성
+        String cacheKey = String.format("grade:%d:%d:%s", studentId, year, semesterEnum.name());
         // Redis에서 캐시 조회
-        GradeDto cachedGradeDto = (GradeDto) redisTemplate.opsForValue().get(cacheKey);
-        if (cachedGradeDto != null) {
-            return cachedGradeDto;
+        Object cached = redisTemplate.opsForValue().get(cacheKey);
+        if (cached != null) {
+            JavaType type = objectMapper.getTypeFactory().constructType(GradeCacheDto.class);
+            GradeCacheDto cacheDto = objectMapper.convertValue(cached, type);
+            return cacheDto.getGradeDto();
         }
-        // 캐시 없으면 DB 조회
+        // DB에서 조회
         Grade grade = gradeRepository
-                .findByMemberIdAndYearAndSemester(loginUser.getId(), year, semesterEnum)
+                .findByMemberIdAndYearAndSemester(studentId, year, semesterEnum)
                 .orElseThrow(() -> new ServiceException(ReturnCode.GRADE_NOT_FOUND));
         GradeDto gradeDto = convertToGradeDto(grade, loginUser.getAccountId());
-        // 캐시에 저장 (10분 TTL)
-        redisTemplate.opsForValue().set(cacheKey, gradeDto, Duration.ofMinutes(10));
+        // 캐시에 저장
+        GradeCacheDto cacheDto = GradeCacheDto.builder()
+                .gradeDto(gradeDto)
+                .year(year)
+                .semester(semesterEnum)
+                .build();
+        redisTemplate.opsForValue().set(cacheKey, cacheDto, Duration.ofMinutes(10));
         return gradeDto;
     }
 
@@ -139,23 +144,27 @@ public class GradeServiceImpl implements GradeService {
     public GradeDto getFilterGrade(Long studentId, Integer year, Integer semester, LoginUserDto loginUser){
         validateAccessToStudent(loginUser, studentId);
         Semester semesterEnum = convertToSemesterEnum(semester);
-        String cacheKey = "grade:" + studentId + ":" + year + ":" + semesterEnum;
-
+        String cacheKey = String.format("grade:%d:%d:%s", studentId, year, semesterEnum.name());
         // Redis에서 캐시 조회
-        GradeDto cachedGradeDto = (GradeDto) redisTemplate.opsForValue().get(cacheKey);
-        if (cachedGradeDto != null) {
-            return cachedGradeDto;
+        Object cached = redisTemplate.opsForValue().get(cacheKey);
+        if (cached != null) {
+            JavaType type = objectMapper.getTypeFactory().constructType(GradeCacheDto.class);
+            GradeCacheDto cacheDto = objectMapper.convertValue(cached, type);
+            return cacheDto.getGradeDto();
         }
-
         // 캐시 없으면 DB 조회
         Member student = memberRepository.getById(studentId);
         Grade grade = gradeRepository
                 .findByMemberIdAndYearAndSemester(studentId, year, semesterEnum)
                 .orElseThrow(() -> new ServiceException(ReturnCode.USER_NOT_FOUND));
         GradeDto gradeDto = convertToGradeDto(grade, student.getAccountId());
-
         // 캐시에 저장 (10분 TTL)
-        redisTemplate.opsForValue().set(cacheKey, gradeDto, Duration.ofMinutes(10));
+        GradeCacheDto cacheDto = GradeCacheDto.builder()
+                .gradeDto(gradeDto)
+                .year(year)
+                .semester(semesterEnum)
+                .build();
+        redisTemplate.opsForValue().set(cacheKey, cacheDto, Duration.ofMinutes(10));
         return gradeDto;
     }
 
@@ -269,8 +278,7 @@ public class GradeServiceImpl implements GradeService {
             default -> throw new ServiceException(ReturnCode.INVALID_SUBJECT);
         }
         // 캐시 무효화
-        String cacheKey = CACHE_PREFIX + grade.getMember().getId() + ":" + grade.getYear() + ":" + grade.getSemester();
-        redisTemplate.delete(cacheKey);
+        evictGradeCache(grade.getMember().getId(), grade.getYear(), grade.getSemester());
 
         // 성적 알림 수정 & Kafka 이벤트 생성
         try {
@@ -334,8 +342,7 @@ public class GradeServiceImpl implements GradeService {
             default -> throw new ServiceException(ReturnCode.INVALID_SUBJECT);
         }
         // 캐시 무효화
-        String cacheKey = CACHE_PREFIX + grade.getMember().getId() + ":" + grade.getYear() + ":" + grade.getSemester();
-        redisTemplate.delete(cacheKey);
+        evictGradeCache(grade.getMember().getId(), grade.getYear(), grade.getSemester());
     }
 
     // ----------------- 헬퍼 메서드 -----------------
@@ -345,6 +352,16 @@ public class GradeServiceImpl implements GradeService {
         int maxPageSize = GradePage.getMaxPageSize();
         if (pageSize > maxPageSize) {
             throw new ServiceException(ReturnCode.PAGE_REQUEST_FAIL);
+        }
+    }
+
+    // 캐시 무효화
+    public void evictGradeCache(Long studentId, Integer year, Semester semester) {
+        // 패턴 기반으로 유연하게 키 삭제 (향후 키 확장 시 유리)
+        String pattern = String.format("grade:%d:%d:%s*", studentId, year, semester.name());
+        Set<String> keys = redisTemplate.keys(pattern);
+        if (keys != null && !keys.isEmpty()) {
+            redisTemplate.delete(keys);
         }
     }
 

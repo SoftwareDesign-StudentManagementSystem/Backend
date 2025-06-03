@@ -88,6 +88,9 @@ dependencies {
 
 	// flyway
 	implementation("org.flywaydb:flyway-core:9.22.0")
+
+	// Jackson - LocalDate, LocalDateTime 직렬화/역직렬화
+	implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310")
 }
 
 tasks.withType<Test> {
