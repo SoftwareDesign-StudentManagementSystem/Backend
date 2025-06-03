@@ -2,6 +2,7 @@ plugins {
 	java
 	id("org.springframework.boot") version "3.4.4"
 	id("io.spring.dependency-management") version "1.1.7"
+    id("org.sonarqube") version "6.2.0.5505"
 }
 
 group = "com"
@@ -120,3 +121,4 @@ sourceSets {
 tasks.named<Delete>("clean") {
 	delete(file(generated))
 }
+
