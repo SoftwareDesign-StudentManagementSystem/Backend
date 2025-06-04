@@ -141,12 +141,14 @@ volumes:
 #      - GF_AUTH_ANONYMOUS_ENABLED=true
 #      - GF_AUTH_BASIC_ENABLED=false
 #    volumes:
-#      - ./grafana:/etc/grafana/provisioning/
+#      - ./grafana/provisioning:/etc/grafana/provisioning
+#      - grafana-storage:/var/lib/grafana
 #    networks:
 #      - monitor-network
 #
 #volumes:
 #  redis-data:
+#  grafana-storage:
 #
 #networks:
 #  ec2-user_default:

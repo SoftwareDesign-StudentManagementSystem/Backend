@@ -11,7 +11,7 @@ spring:
       max-lifetime: 1800000       
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: none
     properties:
       hibernate:
         show-sql: false      # 운영 환경에서는 보통 false로 설정
