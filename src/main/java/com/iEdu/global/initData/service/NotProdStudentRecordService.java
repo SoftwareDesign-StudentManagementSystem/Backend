@@ -2,6 +2,7 @@ package com.iEdu.global.initData.service;
 
 import com.iEdu.domain.account.auth.loginUser.LoginUserDto;
 import com.iEdu.domain.account.member.entity.Member;
+import com.iEdu.domain.account.member.mapper.MemberMapper;
 import com.iEdu.domain.account.member.repository.MemberRepository;
 import com.iEdu.domain.studentRecord.attendance.dto.req.AttendanceForm;
 import com.iEdu.domain.studentRecord.attendance.entity.PeriodAttendance;
@@ -38,6 +39,7 @@ public class NotProdStudentRecordService {
     private final SpecialtyService specialtyService;
     private final MemberRepository memberRepository;
     private final NotProdUtils notProdUtils;
+    private final MemberMapper memberMapper;
 
     // 성적 가데이터 생성
     public void createGradeData() {
@@ -58,7 +60,7 @@ public class NotProdStudentRecordService {
 
                     for (int subjectIdx = 0; subjectIdx < subjectList.size(); subjectIdx++) {
                         Member teacher = teachersForGrade.get(subjectIdx);
-                        LoginUserDto loginUser = LoginUserDto.ConvertToLoginUserDto(teacher);
+                        LoginUserDto loginUser = memberMapper.toLoginUserDto(teacher);
 
                         for (Semester semester : Semester.values()) {
                             if (semester == Semester.ALL) continue; // ALL 제외
@@ -94,7 +96,7 @@ public class NotProdStudentRecordService {
                     .filter(s -> Objects.equals(s.getYear(), teacherYear) &&
                             Objects.equals(s.getClassId(), teacherClassId))
                     .toList();
-            LoginUserDto loginUser = LoginUserDto.ConvertToLoginUserDto(teacher);
+            LoginUserDto loginUser = memberMapper.toLoginUserDto(teacher);
 
             for (int targetYear = 1; targetYear <= teacherYear; targetYear++) {
                 int baseYear = 2025 - (teacherYear - targetYear);  // 출결 대상 학년이 있었던 실제 연도
@@ -153,7 +155,7 @@ public class NotProdStudentRecordService {
                     .filter(s -> Objects.equals(s.getYear(), teacherYear) &&
                             Objects.equals(s.getClassId(), teacherClassId))
                     .toList();
-            LoginUserDto loginUser = LoginUserDto.ConvertToLoginUserDto(teacher);
+            LoginUserDto loginUser = memberMapper.toLoginUserDto(teacher);
             for (int targetYear = 1; targetYear <= teacherYear; targetYear++) {
                 int baseYear = 2025 - (teacherYear - targetYear);
 
@@ -240,7 +242,7 @@ public class NotProdStudentRecordService {
                     .filter(s -> Objects.equals(s.getYear(), teacherYear) &&
                             Objects.equals(s.getClassId(), teacherClassId))
                     .toList();
-            LoginUserDto loginUser = LoginUserDto.ConvertToLoginUserDto(teacher);
+            LoginUserDto loginUser = memberMapper.toLoginUserDto(teacher);
             for (int targetYear = 1; targetYear <= teacherYear; targetYear++) {
                 int baseYear = 2025 - (teacherYear - targetYear);
 
@@ -292,7 +294,7 @@ public class NotProdStudentRecordService {
                     .filter(s -> Objects.equals(s.getYear(), teacherYear) &&
                             Objects.equals(s.getClassId(), teacherClassId))
                     .toList();
-            LoginUserDto loginUser = LoginUserDto.ConvertToLoginUserDto(teacher);
+            LoginUserDto loginUser = memberMapper.toLoginUserDto(teacher);
             for (int targetYear = 1; targetYear <= teacherYear; targetYear++) {
                 int baseYear = 2025 - (teacherYear - targetYear);
 

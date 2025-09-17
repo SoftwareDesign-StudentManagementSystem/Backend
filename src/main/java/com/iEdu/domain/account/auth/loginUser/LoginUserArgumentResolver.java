@@ -1,5 +1,6 @@
 package com.iEdu.domain.account.auth.loginUser;
 
+import com.iEdu.domain.account.member.mapper.MemberMapper;
 import com.iEdu.domain.account.member.repository.MemberRepository;
 import com.iEdu.global.exception.ReturnCode;
 import com.iEdu.global.exception.ServiceException;
@@ -18,6 +19,7 @@ import org.springframework.web.method.support.ModelAndViewContainer;
 @RequiredArgsConstructor
 public class LoginUserArgumentResolver implements HandlerMethodArgumentResolver {
     private final MemberRepository memberRepository;
+    private final MemberMapper memberMapper;
 
     @Override
     public boolean supportsParameter(MethodParameter parameter) {
@@ -33,7 +35,7 @@ public class LoginUserArgumentResolver implements HandlerMethodArgumentResolver 
             Long accountId = Long.parseLong(securityUser.getUsername()); // UserDetails의 getUsername()은 이메일을 반환
 
             return memberRepository.findByAccountId(accountId)
-                    .map(LoginUserDto::ConvertToLoginUserDto)
+                    .map(memberMapper::toLoginUserDto)
                     .orElseThrow(() -> new ServiceException(ReturnCode.USER_NOT_FOUND));
         }
         return null;

@@ -1,6 +1,5 @@
 package com.iEdu.domain.studentRecord.attendance.entity;
 
-import com.fasterxml.jackson.annotation.JsonFormat;
 import com.iEdu.global.jpa.BaseEntity;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;

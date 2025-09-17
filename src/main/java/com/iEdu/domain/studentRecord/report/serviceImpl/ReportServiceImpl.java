@@ -9,6 +9,7 @@ import com.iEdu.domain.studentRecord.report.service.ReportService;
 import com.iEdu.global.common.enums.ReportFormat;
 import com.iEdu.domain.studentRecord.report.service.ReportGenerator;
 import com.iEdu.global.common.enums.Semester;
+import com.iEdu.global.common.utils.RoleValidator;
 import com.iEdu.global.exception.ReturnCode;
 import com.iEdu.global.exception.ServiceException;
 import com.iEdu.global.s3.S3Service;
@@ -21,8 +22,6 @@ import java.time.LocalDate;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static com.iEdu.global.common.utils.RoleValidator.validateTeacherRole;
-
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -30,12 +29,13 @@ public class ReportServiceImpl implements ReportService {
     private final MemberRepository memberRepository;
     private final S3Service s3Service;
     private final Map<String, ReportGenerator> reportGenerators;
+    private final RoleValidator roleValidator;
 
     // 학생 보고서 생성 및 다운로드 [선생님 권한]
     @Override
     @Transactional
     public ReportDto generateReport(ReportForm form, LoginUserDto loginUser) {
-        validateTeacherRole(loginUser);
+        roleValidator.validateTeacherRole(loginUser);
         List<Member> students = form.getStudentIdList().stream()
                 .map(id -> memberRepository.findById(id)
                         .orElseThrow(() -> new ServiceException(ReturnCode.USER_NOT_FOUND)))

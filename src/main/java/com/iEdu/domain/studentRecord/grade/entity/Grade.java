@@ -2,7 +2,7 @@ package com.iEdu.domain.studentRecord.grade.entity;
 
 import com.iEdu.domain.account.member.entity.Member;
 import com.iEdu.global.common.enums.Semester;
-import com.iEdu.global.common.utils.AESUtil;
+import com.iEdu.global.common.utils.AesUtil;
 import com.iEdu.global.jpa.BaseEntity;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -171,7 +171,7 @@ public class Grade extends BaseEntity {
     private String encryptScore(Double score) {
         if (score == null) return null;
         try {
-            return AESUtil.encrypt(String.valueOf(score));
+            return AesUtil.encrypt(String.valueOf(score));
         } catch (Exception e) {
             throw new RuntimeException("점수 암호화 실패", e);
         }
@@ -180,7 +180,7 @@ public class Grade extends BaseEntity {
     private Double decryptScore(String encryptedScore) {
         if (encryptedScore == null) return null;
         try {
-            String decrypted = AESUtil.decrypt(encryptedScore);  // 복호화된 문자열
+            String decrypted = AesUtil.decrypt(encryptedScore);  // 복호화된 문자열
             return Double.valueOf(decrypted);
         } catch (Exception e) {
             throw new RuntimeException("점수 복호화 실패", e);
