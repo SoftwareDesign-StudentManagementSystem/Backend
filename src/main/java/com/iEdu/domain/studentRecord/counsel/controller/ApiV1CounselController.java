@@ -7,6 +7,7 @@ import com.iEdu.domain.studentRecord.counsel.dto.res.CounselDto;
 import com.iEdu.domain.studentRecord.counsel.entity.CounselPage;
 import com.iEdu.domain.studentRecord.counsel.service.CounselService;
 
+import com.iEdu.global.common.enums.Semester;
 import com.iEdu.global.common.response.ApiResponse;
 import com.iEdu.global.common.response.IEduPage;
 import com.iEdu.global.exception.ReturnCode;
@@ -44,7 +45,7 @@ public class ApiV1CounselController {
     public ApiResponse<List<CounselDto>> getStudentsCounsel(@RequestParam(value = "year") Integer year,
                                                             @RequestParam(value = "classId") Integer classId,
                                                             @RequestParam(value = "number", required = false) Integer number,
-                                                            @RequestParam(value = "semester") Integer semester,
+                                                            @RequestParam(value = "semester") Semester semester,
                                                             @LoginUser LoginUserDto loginUser) {
         return ApiResponse.of(counselService.getStudentsCounsel(year, classId, number, semester, loginUser));
     }
@@ -55,7 +56,7 @@ public class ApiV1CounselController {
     public ApiResponse<CounselDto> getFilterCounsel(@ModelAttribute CounselPage request,
                                                     @PathVariable("studentId") Long studentId,
                                                     @RequestParam(value = "year") Integer year,
-                                                    @RequestParam(value = "semester") Integer semester,
+                                                    @RequestParam(value = "semester") Semester semester,
                                                     @LoginUser LoginUserDto loginUser) {
         Pageable pageable = PageRequest.of(request.getPage(), request.getSize());
         return ApiResponse.of(IEduPage.of(counselService.getFilterCounsel(studentId, year, semester, pageable, loginUser)));

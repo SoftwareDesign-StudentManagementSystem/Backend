@@ -29,9 +29,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
-import static com.iEdu.global.common.utils.Converter.convertToSemesterEnum;
-import static com.iEdu.global.common.utils.RoleValidator.*;
-
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -95,10 +92,9 @@ public class FeedbackServiceImpl implements FeedbackService {
             value = "feedbackCache",
             key = "'student:' + #loginUser.id + ':year:' + #year + ':semester:' + #semester + ':' + #pageable.pageNumber + ':' + #pageable.pageSize"
     )
-    public Page<FeedbackDto> getMyFilterFeedback(Integer year, Integer semester, Pageable pageable, LoginUserDto loginUser) {
+    public Page<FeedbackDto> getMyFilterFeedback(Integer year, Semester semester, Pageable pageable, LoginUserDto loginUser) {
         checkPageSize(pageable.getPageSize());
         roleValidator.validateStudentRole(loginUser);
-        Semester semesterEnum = convertToSemesterEnum(semester);
 
         Pageable sortedPageable = PageRequest.of(
                 pageable.getPageNumber(),
@@ -106,7 +102,7 @@ public class FeedbackServiceImpl implements FeedbackService {
                 Sort.by(Sort.Direction.DESC, "createdAt")
         );
         return feedbackRepository.findByMemberIdAndYearAndSemesterAndVisibleToStudentTrue(
-                        loginUser.getId(), year, semesterEnum, sortedPageable
+                        loginUser.getId(), year, semester, sortedPageable
                 )
                 .map(this::convertToFeedbackDto);
     }
@@ -118,10 +114,9 @@ public class FeedbackServiceImpl implements FeedbackService {
             value = "feedbackCache",
             key = "'student:' + #studentId + ':year:' + #year + ':semester:' + #semester + ':role:' + #loginUser.role + ':' + #pageable.pageNumber + ':' + #pageable.pageSize"
     )
-    public Page<FeedbackDto> getFilterFeedback(Long studentId, Integer year, Integer semester, Pageable pageable, LoginUserDto loginUser) {
+    public Page<FeedbackDto> getFilterFeedback(Long studentId, Integer year, Semester semester, Pageable pageable, LoginUserDto loginUser) {
         checkPageSize(pageable.getPageSize());
         roleValidator.validateAccessToStudent(loginUser, studentId);
-        Semester semesterEnum = convertToSemesterEnum(semester);
 
         Pageable sortedPageable = PageRequest.of(
                 pageable.getPageNumber(),
@@ -131,11 +126,11 @@ public class FeedbackServiceImpl implements FeedbackService {
         Page<Feedback> feedbackPage;
         if (loginUser.getRole() == Member.MemberRole.ROLE_TEACHER) {
             feedbackPage = feedbackRepository.findByMemberIdAndYearAndSemester(
-                    studentId, year, semesterEnum, sortedPageable
+                    studentId, year, semester, sortedPageable
             );
         } else if (loginUser.getRole() == Member.MemberRole.ROLE_PARENT) {
             feedbackPage = feedbackRepository.findByMemberIdAndYearAndSemesterAndVisibleToParentTrue(
-                    studentId, year, semesterEnum, sortedPageable
+                    studentId, year, semester, sortedPageable
             );
         } else {
             throw new ServiceException(ReturnCode.NOT_AUTHORIZED);

@@ -6,6 +6,8 @@ import com.iEdu.global.common.enums.Semester;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -20,7 +22,8 @@ public interface GradeRepository extends JpaRepository<Grade, Long> {
     Page<Grade> findAllByMemberId(Long memberId, Pageable pageable);
 
     // 학년&학기로 성적 조회
-    List<Grade> findAllByYearAndSemester(Integer year, Semester semester);
+    @Query("SELECT g FROM Grade g JOIN FETCH g.member WHERE g.year = :year AND g.semester = :semester")
+    List<Grade> findAllByYearAndSemesterWithMember(@Param("year") Integer year, @Param("semester") Semester semester);
 
     // 멤버&학년&학기로 성적 조회
     Optional<Grade> findByMemberAndYearAndSemester(Member member, Integer year, Semester semester);

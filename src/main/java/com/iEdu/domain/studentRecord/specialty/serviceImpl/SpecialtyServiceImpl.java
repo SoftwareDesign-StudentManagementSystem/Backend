@@ -28,9 +28,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
-import static com.iEdu.global.common.utils.Converter.convertToSemesterEnum;
-import static com.iEdu.global.common.utils.RoleValidator.*;
-
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -65,7 +62,7 @@ public class SpecialtyServiceImpl implements SpecialtyService {
             value = "specialty",
             key = "'specialty:' + #studentId + ':' + #year + ':' + #semester + ':' + #pageable.pageNumber + ':' + #pageable.pageSize + ':' + #loginUser.role.name()"
     )
-    public Page<SpecialtyDto> getFilterSpecialty(Long studentId, Integer year, Integer semester, Pageable pageable, LoginUserDto loginUser) {
+    public Page<SpecialtyDto> getFilterSpecialty(Long studentId, Integer year, Semester semester, Pageable pageable, LoginUserDto loginUser) {
         checkPageSize(pageable.getPageSize());
         roleValidator.validateAccessToStudent(loginUser, studentId);
         Pageable sortedPageable = PageRequest.of(
@@ -73,9 +70,8 @@ public class SpecialtyServiceImpl implements SpecialtyService {
                 pageable.getPageSize(),
                 Sort.by(Sort.Direction.DESC, "createdAt")
         );
-        Semester semesterEnum = convertToSemesterEnum(semester);
         Page<Specialty> specialtyPage = specialtyRepository.findByMemberIdAndYearAndSemester(
-                studentId, year, semesterEnum, sortedPageable
+                studentId, year, semester, sortedPageable
         );
         return specialtyPage.map(this::convertToSpecialtyDto);
     }

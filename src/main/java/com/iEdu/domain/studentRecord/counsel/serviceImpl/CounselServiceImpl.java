@@ -30,9 +30,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import static com.iEdu.global.common.utils.Converter.convertToSemesterEnum;
-import static com.iEdu.global.common.utils.RoleValidator.*;
-
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -65,15 +62,14 @@ public class CounselServiceImpl implements CounselService {
     // (학년/반/번호/학기)로 학생들 상담 조회 [선생님 권한]
     @Override
     @Transactional(readOnly = true)
-    public List<CounselDto> getStudentsCounsel(Integer year, Integer classId, Integer number, Integer semester, LoginUserDto loginUser) {
+    public List<CounselDto> getStudentsCounsel(Integer year, Integer classId, Integer number, Semester semester, LoginUserDto loginUser) {
         // ROLE_TEACHER 아닌 경우 예외 처리
         roleValidator.validateTeacherRole(loginUser);
-        Semester semesterEnum = convertToSemesterEnum(semester);
         // 학생 목록 조회
         List<Member> students = memberRepository.findStudentsByYearClassNumber(year, classId, number);
         return students.stream()
                 .flatMap(student -> counselQueryRepository
-                        .findByMemberIdAndYearAndSemester(student.getId(), year, semesterEnum)
+                        .findByMemberIdAndYearAndSemester(student.getId(), year, semester)
                         .stream()
                 )
                 .map(this::convertToCounselDto)
@@ -87,7 +83,7 @@ public class CounselServiceImpl implements CounselService {
             cacheNames = "counsel",
             key = "'filter:' + #studentId + ':' + #year + ':' + #semester + ':' + #pageable.pageNumber + ':' + #pageable.pageSize"
     )
-    public Page<CounselDto> getFilterCounsel(Long studentId, Integer year, Integer semester, Pageable pageable, LoginUserDto loginUser) {
+    public Page<CounselDto> getFilterCounsel(Long studentId, Integer year, Semester semester, Pageable pageable, LoginUserDto loginUser) {
         checkPageSize(pageable.getPageSize());
         // ROLE_PARENT/ROLE_TEACHER 아닌 경우 예외 처리
         roleValidator.validateAccessToStudent(loginUser, studentId);
@@ -96,8 +92,7 @@ public class CounselServiceImpl implements CounselService {
                 pageable.getPageSize(),
                 Sort.by(Sort.Order.desc("createdAt"))
         );
-        Semester semesterEnum = convertToSemesterEnum(semester);
-        Page<Counsel> counselPage = counselRepository.findByMemberIdAndYearAndSemester(studentId, year, semesterEnum, sortedPageable);
+        Page<Counsel> counselPage = counselRepository.findByMemberIdAndYearAndSemester(studentId, year, semester, sortedPageable);
         return counselPage.map(this::convertToCounselDto);
     }
 

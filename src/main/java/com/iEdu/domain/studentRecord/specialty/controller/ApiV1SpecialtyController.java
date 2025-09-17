@@ -8,6 +8,7 @@ import com.iEdu.domain.studentRecord.specialty.dto.req.SpecialtyForm;
 import com.iEdu.domain.studentRecord.specialty.dto.res.SpecialtyDto;
 import com.iEdu.domain.studentRecord.specialty.entity.SpecialtyPage;
 import com.iEdu.domain.studentRecord.specialty.service.SpecialtyService;
+import com.iEdu.global.common.enums.Semester;
 import com.iEdu.global.common.response.ApiResponse;
 import com.iEdu.global.common.response.IEduPage;
 import com.iEdu.global.exception.ReturnCode;
@@ -45,7 +46,7 @@ public class ApiV1SpecialtyController {
     public ApiResponse<SpecialtyDto> getFilterSpecialty(@ModelAttribute SpecialtyPage request,
                                                         @PathVariable("studentId") Long studentId,
                                                         @RequestParam(value = "year") Integer year,
-                                                        @RequestParam(value = "semester") Integer semester,
+                                                        @RequestParam(value = "semester") Semester semester,
                                                         @LoginUser LoginUserDto loginUser) {
         Pageable pageable = PageRequest.of(request.getPage(), request.getSize());
         return ApiResponse.of(IEduPage.of(specialtyService.getFilterSpecialty(studentId, year, semester, pageable, loginUser)));

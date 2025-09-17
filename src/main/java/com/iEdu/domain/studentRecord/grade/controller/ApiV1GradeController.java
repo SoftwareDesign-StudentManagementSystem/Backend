@@ -7,6 +7,7 @@ import com.iEdu.domain.studentRecord.grade.dto.req.GradeUpdateForm;
 import com.iEdu.domain.studentRecord.grade.dto.res.GradeDto;
 import com.iEdu.domain.studentRecord.grade.entity.GradePage;
 import com.iEdu.domain.studentRecord.grade.service.GradeService;
+import com.iEdu.global.common.enums.Semester;
 import com.iEdu.global.common.response.ApiResponse;
 import com.iEdu.global.common.response.IEduPage;
 import com.iEdu.global.exception.ReturnCode;
@@ -49,9 +50,19 @@ public class ApiV1GradeController {
     @Operation(summary = "(학년/학기)로 본인 성적 조회 [학생 권한]")
     @GetMapping("/filter")
     public ApiResponse<GradeDto> getMyFilterGrade(@RequestParam(value = "year") Integer year,
-                                                  @RequestParam(value = "semester") Integer semester,
+                                                  @RequestParam(value = "semester") Semester semester,
                                                   @LoginUser LoginUserDto loginUser) {
         return ApiResponse.of(gradeService.getMyFilterGrade(year, semester, loginUser));
+    }
+
+    // (학년/학기)로 학생 성적 조회 [학부모/선생님 권한]
+    @Operation(summary = "(학년/학기)로 학생 성적 조회 [학부모/선생님 권한]")
+    @GetMapping("/filter/{studentId}")
+    public ApiResponse<GradeDto> getFilterGrade(@PathVariable("studentId") Long studentId,
+                                                @RequestParam(value = "year") Integer year,
+                                                @RequestParam(value = "semester") Semester semester,
+                                                @LoginUser LoginUserDto loginUser) {
+        return ApiResponse.of(gradeService.getFilterGrade(studentId, year, semester, loginUser));
     }
 
     // (학년/반/번호/학기)로 학생들 성적 조회 [선생님 권한]
@@ -60,19 +71,9 @@ public class ApiV1GradeController {
     public ApiResponse<List<GradeDto>> getStudentsGrade(@RequestParam(value = "year") Integer year,
                                                         @RequestParam(value = "classId") Integer classId,
                                                         @RequestParam(value = "number", required = false) Integer number,
-                                                        @RequestParam(value = "semester") Integer semester,
+                                                        @RequestParam(value = "semester") Semester semester,
                                                         @LoginUser LoginUserDto loginUser){
         return ApiResponse.of(gradeService.getStudentsGrade(year, classId, number, semester, loginUser));
-    }
-
-    // (학년/학기)로 학생 성적 조회 [학부모/선생님 권한]
-    @Operation(summary = "(학년/학기)로 학생 성적 조회 [학부모/선생님 권한]")
-    @GetMapping("/filter/{studentId}")
-    public ApiResponse<GradeDto> getFilterGrade(@PathVariable("studentId") Long studentId,
-                                                @RequestParam(value = "year") Integer year,
-                                                @RequestParam(value = "semester") Integer semester,
-                                                @LoginUser LoginUserDto loginUser) {
-        return ApiResponse.of(gradeService.getFilterGrade(studentId, year, semester, loginUser));
     }
 
     // 학생 성적 생성 [선생님 권한]

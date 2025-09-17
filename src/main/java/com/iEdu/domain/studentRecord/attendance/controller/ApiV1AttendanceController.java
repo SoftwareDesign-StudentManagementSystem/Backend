@@ -6,6 +6,7 @@ import com.iEdu.domain.studentRecord.attendance.dto.req.AttendanceForm;
 import com.iEdu.domain.studentRecord.attendance.dto.res.AttendanceDto;
 import com.iEdu.domain.studentRecord.attendance.entity.AttendancePage;
 import com.iEdu.domain.studentRecord.attendance.service.AttendanceService;
+import com.iEdu.global.common.enums.Semester;
 import com.iEdu.global.common.response.ApiResponse;
 import com.iEdu.global.common.response.IEduPage;
 import com.iEdu.global.exception.ReturnCode;
@@ -48,7 +49,7 @@ public class ApiV1AttendanceController {
     @GetMapping("/filter")
     public ApiResponse<AttendanceDto> getMyFilterAttendance(@ModelAttribute AttendancePage request,
                                                             @RequestParam(value = "year") Integer year,
-                                                            @RequestParam(value = "semester") Integer semester,
+                                                            @RequestParam(value = "semester") Semester semester,
                                                             @RequestParam(value = "month", required = false) Integer month,
                                                             @LoginUser LoginUserDto loginUser){
         Pageable pageable = PageRequest.of(request.getPage(), request.getSize());
@@ -61,7 +62,7 @@ public class ApiV1AttendanceController {
     public ApiResponse<AttendanceDto> getFilterAttendance(@ModelAttribute AttendancePage request,
                                                           @PathVariable("studentId") Long studentId,
                                                           @RequestParam(value = "year") Integer year,
-                                                          @RequestParam(value = "semester") Integer semester,
+                                                          @RequestParam(value = "semester") Semester semester,
                                                           @RequestParam(value = "month", required = false) Integer month,
                                                           @LoginUser LoginUserDto loginUser){
         Pageable pageable = PageRequest.of(request.getPage(), request.getSize());
