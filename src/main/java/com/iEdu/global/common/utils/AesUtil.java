@@ -8,9 +8,8 @@ import java.security.SecureRandom;
 import java.util.Arrays;
 import java.util.Base64;
 
-public class AESUtil {
+public class AesUtil {
     private static final String CBC_ALGORITHM = "AES/CBC/PKCS5Padding";
-    private static final String ECB_ALGORITHM = "AES"; // ECB by default
     private static final int IV_LENGTH = 16;
     private static final byte[] KEY = "MySuperSecretKey".getBytes(StandardCharsets.UTF_8);
 
@@ -53,35 +52,6 @@ public class AESUtil {
             return new String(decrypted, StandardCharsets.UTF_8);
         } catch (Exception e) {
             throw new RuntimeException("AES decryption failed", e);
-        }
-    }
-
-    // 기존 ECB 방식 복호화 (마이그레이션 용)
-    public static String legacyDecrypt(String encryptedValue) {
-        try {
-            Cipher cipher = Cipher.getInstance(ECB_ALGORITHM); // defaults to ECB
-            SecretKeySpec keySpec = new SecretKeySpec(KEY, "AES");
-
-            cipher.init(Cipher.DECRYPT_MODE, keySpec);
-            byte[] decoded = Base64.getDecoder().decode(encryptedValue);
-            byte[] decrypted = cipher.doFinal(decoded);
-
-            return new String(decrypted, StandardCharsets.UTF_8);
-        } catch (Exception e) {
-            throw new RuntimeException("Legacy AES decryption failed", e);
-        }
-    }
-
-    // CBC 실패 시 ECB fallback
-    public static String safeDecrypt(String encryptedValue) {
-        try {
-            return decrypt(encryptedValue); // CBC
-        } catch (Exception e) {
-            try {
-                return legacyDecrypt(encryptedValue); // fallback to ECB
-            } catch (Exception ex) {
-                throw new RuntimeException("Decryption failed (CBC and legacy both failed)", ex);
-            }
         }
     }
 }

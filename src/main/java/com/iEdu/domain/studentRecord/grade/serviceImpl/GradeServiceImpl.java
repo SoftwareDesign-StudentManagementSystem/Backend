@@ -1,19 +1,14 @@
 package com.iEdu.domain.studentRecord.grade.serviceImpl;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.iEdu.domain.account.auth.loginUser.LoginUserDto;
 import com.iEdu.domain.account.member.entity.Member;
-import com.iEdu.domain.account.member.entity.MemberFollow;
-import com.iEdu.domain.account.member.entity.MemberPage;
 import com.iEdu.domain.account.member.repository.MemberRepository;
 import com.iEdu.domain.account.member.service.MemberService;
 import com.iEdu.domain.notification.entity.Notification;
-import com.iEdu.domain.studentRecord.attendance.entity.Attendance;
 import com.iEdu.domain.studentRecord.grade.dto.req.GradeForm;
 import com.iEdu.domain.studentRecord.grade.dto.req.GradeUpdateForm;
-import com.iEdu.domain.studentRecord.grade.dto.res.GradeCacheDto;
 import com.iEdu.domain.studentRecord.grade.dto.res.GradeDto;
 import com.iEdu.domain.studentRecord.grade.dto.res.SubjectScore;
 import com.iEdu.domain.studentRecord.grade.entity.Grade;
@@ -22,23 +17,22 @@ import com.iEdu.domain.studentRecord.grade.repository.GradeQueryRepository;
 import com.iEdu.domain.studentRecord.grade.repository.GradeRepository;
 import com.iEdu.domain.studentRecord.grade.service.GradeService;
 import com.iEdu.global.common.enums.Semester;
+import com.iEdu.global.common.utils.RoleValidator;
 import com.iEdu.global.exception.ReturnCode;
 import com.iEdu.global.exception.ServiceException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Duration;
 import java.util.*;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import static com.iEdu.global.common.utils.Converter.convertToSemesterEnum;
 import static com.iEdu.global.common.utils.RoleValidator.*;
@@ -53,7 +47,7 @@ public class GradeServiceImpl implements GradeService {
     private final KafkaTemplate<String, String> kafkaTemplate;
     private final ObjectMapper objectMapper;
     private final MemberService memberService;
-    private final RedisTemplate<String, Object> redisTemplate;
+    private final RoleValidator roleValidator;
 
     // 본인의 모든 성적 조회 [학생 권한]
     @Override
@@ -67,7 +61,7 @@ public class GradeServiceImpl implements GradeService {
                 Sort.by(Sort.Order.desc("year"), Sort.Order.desc("semester"))
         );
         // ROLE_STUDENT 아닌 경우 예외 처리
-        validateStudentRole(loginUser);
+        roleValidator.validateStudentRole(loginUser);
         Page<Grade> gradePage = gradeRepository.findAllByMemberId(loginUser.getId(), sortedPageable);
         return gradePage.map(grade -> convertToGradeDto(grade, loginUser.getAccountId()));
     }
@@ -85,40 +79,36 @@ public class GradeServiceImpl implements GradeService {
         );
         Member student = memberRepository.getById(studentId);
         // ROLE_PARENT/ROLE_TEACHER 아닌 경우 예외 처리
-        validateAccessToStudent(loginUser, studentId);
+        roleValidator.validateAccessToStudent(loginUser, studentId);
         Page<Grade> gradePage = gradeRepository.findAllByMemberId(studentId, sortedPageable);
         return gradePage.map(grade -> convertToGradeDto(grade, student.getAccountId()));
     }
 
     // (학년/학기)로 본인 성적 조회 [학생 권한]
     @Override
-    @Transactional
+    @Transactional(readOnly = true)
+    @Cacheable(value = "grade", key = "#loginUser.id + ':' + #year + ':' + #semester")
     public GradeDto getMyFilterGrade(Integer year, Integer semester, LoginUserDto loginUser){
-        validateStudentRole(loginUser);
+        roleValidator.validateStudentRole(loginUser);
         Semester semesterEnum = convertToSemesterEnum(semester);
-        Long studentId = loginUser.getId();
-        // 캐시 키 생성
-        String cacheKey = String.format("grade:%d:%d:%s", studentId, year, semesterEnum.name());
-        // Redis에서 캐시 조회
-        Object cached = redisTemplate.opsForValue().get(cacheKey);
-        if (cached != null) {
-            JavaType type = objectMapper.getTypeFactory().constructType(GradeCacheDto.class);
-            GradeCacheDto cacheDto = objectMapper.convertValue(cached, type);
-            return cacheDto.getGradeDto();
-        }
-        // DB에서 조회
+        Grade grade = gradeRepository
+                .findByMemberIdAndYearAndSemester(loginUser.getId(), year, semesterEnum)
+                .orElseThrow(() -> new ServiceException(ReturnCode.GRADE_NOT_FOUND));
+        return convertToGradeDto(grade, loginUser.getAccountId());
+    }
+
+    // (학년/학기)로 학생 성적 조회 [학부모/선생님 권한]
+    @Override
+    @Transactional(readOnly = true)
+    @Cacheable(value = "grade", key = "#studentId + ':' + #year + ':' + #semester")
+    public GradeDto getFilterGrade(Long studentId, Integer year, Integer semester, LoginUserDto loginUser){
+        roleValidator.validateAccessToStudent(loginUser, studentId);
+        Semester semesterEnum = convertToSemesterEnum(semester);
+        Member student = memberRepository.getById(studentId);
         Grade grade = gradeRepository
                 .findByMemberIdAndYearAndSemester(studentId, year, semesterEnum)
-                .orElseThrow(() -> new ServiceException(ReturnCode.GRADE_NOT_FOUND));
-        GradeDto gradeDto = convertToGradeDto(grade, loginUser.getAccountId());
-        // 캐시에 저장
-        GradeCacheDto cacheDto = GradeCacheDto.builder()
-                .gradeDto(gradeDto)
-                .year(year)
-                .semester(semesterEnum)
-                .build();
-        redisTemplate.opsForValue().set(cacheKey, cacheDto, Duration.ofMinutes(10));
-        return gradeDto;
+                .orElseThrow(() -> new ServiceException(ReturnCode.USER_NOT_FOUND));
+        return convertToGradeDto(grade, student.getAccountId());
     }
 
     // (학년/반/번호/학기)로 학생들 성적 조회 [선생님 권한]
@@ -126,7 +116,7 @@ public class GradeServiceImpl implements GradeService {
     @Transactional
     public List<GradeDto> getStudentsGrade(Integer year, Integer classId, Integer number, Integer semester, LoginUserDto loginUser){
         // ROLE_TEACHER 아닌 경우 예외 처리
-        validateTeacherRole(loginUser);
+        roleValidator.validateTeacherRole(loginUser);
         Semester semesterEnum = convertToSemesterEnum(semester);
         List<Grade> grades = gradeQueryRepository.findAllByStudentInfoAndSemesterAndYear(
                 year, classId, number, semesterEnum
@@ -138,49 +128,17 @@ public class GradeServiceImpl implements GradeService {
                 .toList();
     }
 
-    // (학년/학기)로 학생 성적 조회 [학부모/선생님 권한]
-    @Override
-    @Transactional
-    public GradeDto getFilterGrade(Long studentId, Integer year, Integer semester, LoginUserDto loginUser){
-        validateAccessToStudent(loginUser, studentId);
-        Semester semesterEnum = convertToSemesterEnum(semester);
-        String cacheKey = String.format("grade:%d:%d:%s", studentId, year, semesterEnum.name());
-        // Redis에서 캐시 조회
-        Object cached = redisTemplate.opsForValue().get(cacheKey);
-        if (cached != null) {
-            JavaType type = objectMapper.getTypeFactory().constructType(GradeCacheDto.class);
-            GradeCacheDto cacheDto = objectMapper.convertValue(cached, type);
-            return cacheDto.getGradeDto();
-        }
-        // 캐시 없으면 DB 조회
-        Member student = memberRepository.getById(studentId);
-        Grade grade = gradeRepository
-                .findByMemberIdAndYearAndSemester(studentId, year, semesterEnum)
-                .orElseThrow(() -> new ServiceException(ReturnCode.USER_NOT_FOUND));
-        GradeDto gradeDto = convertToGradeDto(grade, student.getAccountId());
-        // 캐시에 저장 (10분 TTL)
-        GradeCacheDto cacheDto = GradeCacheDto.builder()
-                .gradeDto(gradeDto)
-                .year(year)
-                .semester(semesterEnum)
-                .build();
-        redisTemplate.opsForValue().set(cacheKey, cacheDto, Duration.ofMinutes(10));
-        return gradeDto;
-    }
-
     // 학생 성적 생성 [선생님 권한]
     @Override
     @Transactional
     public void createGrade(Long studentId, GradeForm gradeForm, LoginUserDto loginUser) {
         // ROLE_TEACHER 아닌 경우 예외 처리
-        validateTeacherRole(loginUser);
+        roleValidator.validateTeacherRole(loginUser);
         Member student = memberRepository.findById(studentId)
                 .orElseThrow(() -> new ServiceException(ReturnCode.USER_NOT_FOUND));
         // 선생님 담당 과목 확인
         Member.Subject subject = loginUser.getSubject();
-        if (subject == null) {
-            throw new ServiceException(ReturnCode.INVALID_SUBJECT);
-        }
+        if (subject == null) throw new ServiceException(ReturnCode.INVALID_SUBJECT);
         Integer year = gradeForm.getYear();
         Semester semester = gradeForm.getSemester();
         Double score = gradeForm.getScore();
@@ -192,6 +150,62 @@ public class GradeServiceImpl implements GradeService {
                         .semester(semester)
                         .build());
         // 과목별 점수 입력
+        updateSubjectScore(grade, subject, score);
+        gradeRepository.save(grade);
+        // 모든 과목 입력이 완료된 경우에만 알림 발송
+        if (isAllSubjectsFilled(grade)) {
+            sendGradeNotifications(grade, studentId, year, semester, subject, true);
+        }
+    }
+
+    // 학생 성적 수정 [선생님 권한]
+    @Override
+    @Transactional
+    @CacheEvict(value = "grade", key = "#grade.member.id + ':' + #grade.year + ':' + #grade.semester")
+    public void updateGrade(Long gradeId, GradeUpdateForm gradeUpdateForm, LoginUserDto loginUser){
+        // ROLE_TEACHER 아닌 경우 예외 처리
+        roleValidator.validateTeacherRole(loginUser);
+        Grade grade = gradeRepository.findById(gradeId)
+                .orElseThrow(() -> new ServiceException(ReturnCode.GRADE_NOT_FOUND));
+        // 선생님 담당 과목 확인
+        Member.Subject subject = loginUser.getSubject();
+        if (subject == null) throw new ServiceException(ReturnCode.INVALID_SUBJECT);
+
+        // 과목별 점수 입력
+        updateSubjectScore(grade, subject, gradeUpdateForm.getScore());
+        // 성적 알림 생성 & Kafka 이벤트 생성
+        sendGradeNotifications(grade, grade.getMember().getId(), grade.getYear(), grade.getSemester(), subject, false);
+    }
+
+    // 학생 성적 삭제 [선생님 권한]
+    @Override
+    @Transactional
+    @CacheEvict(value = "grade", key = "#grade.member.id + ':' + #grade.year + ':' + #grade.semester")
+    public void deleteGrade(Long gradeId, LoginUserDto loginUser){
+        // ROLE_TEACHER 아닌 경우 예외 처리
+        roleValidator.validateTeacherRole(loginUser);
+        Grade grade = gradeRepository.findById(gradeId)
+                .orElseThrow(() -> new ServiceException(ReturnCode.GRADE_NOT_FOUND));
+        // 선생님 담당 과목 확인
+        Member.Subject subject = loginUser.getSubject();
+        if (subject == null) throw new ServiceException(ReturnCode.INVALID_SUBJECT);
+
+        // 담당 과목 점수만 null로 설정 (실제 "삭제" 대신)
+        updateSubjectScore(grade, subject, null);
+    }
+
+    // ----------------- 헬퍼 메서드 -----------------
+
+    // 요청 페이지 수 제한
+    private void checkPageSize(int pageSize) {
+        int maxPageSize = GradePage.getMaxPageSize();
+        if (pageSize > maxPageSize) {
+            throw new ServiceException(ReturnCode.PAGE_REQUEST_FAIL);
+        }
+    }
+
+    // 성적 생성/수정/삭제 매핑
+    private void updateSubjectScore(Grade grade, Member.Subject subject, Double score) {
         switch (subject) {
             case 국어 -> grade.setKoreanLanguageScore(score);
             case 수학 -> grade.setMathematicsScore(score);
@@ -212,156 +226,37 @@ public class GradeServiceImpl implements GradeService {
             case 제2외국어 -> grade.setSecondForeignLanguageScore(score);
             default -> throw new ServiceException(ReturnCode.INVALID_SUBJECT);
         }
-        gradeRepository.save(grade);
-        // 성적 알림 생성 & Kafka 이벤트 생성
-        if (isAllSubjectsFilled(grade)) {
-            try {
-                // 1. 학생 알림 전송
-                Notification studentNotification = Notification.builder()
-                        .receiverId(studentId)
-                        .objectId(grade.getId())
-                        .content(year + "학년 " + semester.toKoreanString() + " 성적이 등록되었습니다.")
-                        .targetObject(Notification.TargetObject.Grade)
-                        .build();
-                kafkaTemplate.send("grade-topic", objectMapper.writeValueAsString(studentNotification));
-
-                // 2. 학부모 알림 전송
-                List<Member> parentList = memberService.findParentsByStudentId(studentId);
-                for (Member parent : parentList) {
-                    Notification parentNotification = Notification.builder()
-                            .receiverId(parent.getId())
-                            .objectId(grade.getId())
-                            .content("자녀의 " + year + "학년 " + semester.toKoreanString() + " 성적이 등록되었습니다.")
-                            .targetObject(Notification.TargetObject.Grade)
-                            .build();
-                    kafkaTemplate.send("grade-topic", objectMapper.writeValueAsString(parentNotification));
-                }
-            } catch (JsonProcessingException e) {
-                log.error("Failed to serialize Notification: {}", e.getMessage());
-            }
-        }
     }
 
-    // 학생 성적 수정 [선생님 권한]
-    @Override
-    @Transactional
-    public void updateGrade(Long gradeId, GradeUpdateForm gradeUpdateForm, LoginUserDto loginUser){
-        // ROLE_TEACHER 아닌 경우 예외 처리
-        validateTeacherRole(loginUser);
-        Grade grade = gradeRepository.findById(gradeId)
-                .orElseThrow(() -> new ServiceException(ReturnCode.GRADE_NOT_FOUND));
-        // 선생님 담당 과목 확인
-        Member.Subject subject = loginUser.getSubject();
-        if (subject == null) {
-            throw new ServiceException(ReturnCode.INVALID_SUBJECT);
-        }
-        Double newScore = gradeUpdateForm.getScore();
-        // 담당 과목에 맞는 필드만 업데이트
-        switch (subject) {
-            case 국어 -> grade.setKoreanLanguageScore(newScore);
-            case 수학 -> grade.setMathematicsScore(newScore);
-            case 영어 -> grade.setEnglishScore(newScore);
-            case 사회 -> grade.setSocialStudiesScore(newScore);
-            case 한국사 -> grade.setHistoryScore(newScore);
-            case 윤리 -> grade.setEthicsScore(newScore);
-            case 경제 -> grade.setEconomicsScore(newScore);
-            case 물리 -> grade.setPhysicsScore(newScore);
-            case 화학 -> grade.setChemistryScore(newScore);
-            case 생명과학 -> grade.setBiologyScore(newScore);
-            case 지구과학 -> grade.setEarthScienceScore(newScore);
-            case 음악 -> grade.setMusicScore(newScore);
-            case 미술 -> grade.setArtScore(newScore);
-            case 체육 -> grade.setPhysicalEducationScore(newScore);
-            case 기술가정 -> grade.setTechnologyAndHomeEconomicScore(newScore);
-            case 컴퓨터 -> grade.setComputerScienceScore(newScore);
-            case 제2외국어 -> grade.setSecondForeignLanguageScore(newScore);
-            default -> throw new ServiceException(ReturnCode.INVALID_SUBJECT);
-        }
-        // 캐시 무효화
-        evictGradeCache(grade.getMember().getId(), grade.getYear(), grade.getSemester());
-
-        // 성적 알림 수정 & Kafka 이벤트 생성
+    // 성적 알림 이벤트 생성
+    private void sendGradeNotifications(Grade grade, Long studentId, Integer year, Semester semester, Member.Subject subject, boolean created) {
         try {
-            // 1. 학생 알림 Kafka 전송
+            String content = created
+                    ? year + "학년 " + semester.toKoreanString() + " 성적이 등록되었습니다."
+                    : year + "학년 " + semester.toKoreanString() + " " + subject + " 점수가 수정되었습니다.";
+
             Notification studentNotification = Notification.builder()
-                    .receiverId(grade.getMember().getId())
+                    .receiverId(studentId)
                     .objectId(grade.getId())
-                    .content(grade.getYear() + "학년 " + grade.getSemester().toKoreanString() + " " + subject + " 점수가 수정되었습니다.")
+                    .content(content)
                     .targetObject(Notification.TargetObject.Grade)
                     .build();
             kafkaTemplate.send("grade-topic", objectMapper.writeValueAsString(studentNotification));
 
-            // 2. 학부모 알림 각각 Kafka 전송
-            List<Member> parentList = memberService.findParentsByStudentId(grade.getMember().getId());
+            List<Member> parentList = memberService.findParentsByStudentId(studentId);
             for (Member parent : parentList) {
                 Notification parentNotification = Notification.builder()
                         .receiverId(parent.getId())
                         .objectId(grade.getId())
-                        .content("자녀의 " + grade.getYear() + "학년 " + grade.getSemester().toKoreanString() + " " + subject + " 점수가 수정되었습니다.")
+                        .content(created
+                                ? "자녀의 " + year + "학년 " + semester.toKoreanString() + " 성적이 등록되었습니다."
+                                : "자녀의 " + year + "학년 " + semester.toKoreanString() + " " + subject + " 점수가 수정되었습니다.")
                         .targetObject(Notification.TargetObject.Grade)
                         .build();
                 kafkaTemplate.send("grade-topic", objectMapper.writeValueAsString(parentNotification));
             }
         } catch (JsonProcessingException e) {
             log.error("Failed to serialize Notification: {}", e.getMessage());
-        }
-    }
-
-    // 학생 성적 삭제 [선생님 권한]
-    @Override
-    @Transactional
-    public void deleteGrade(Long gradeId, LoginUserDto loginUser){
-        // ROLE_TEACHER 아닌 경우 예외 처리
-        validateTeacherRole(loginUser);
-        Grade grade = gradeRepository.findById(gradeId)
-                .orElseThrow(() -> new ServiceException(ReturnCode.GRADE_NOT_FOUND));
-        // 선생님 담당 과목 확인
-        Member.Subject subject = loginUser.getSubject();
-        if (subject == null) {
-            throw new ServiceException(ReturnCode.INVALID_SUBJECT);
-        }
-        // 담당 과목 점수만 null로 설정 (실제 "삭제" 대신)
-        switch (subject) {
-            case 국어 -> grade.setKoreanLanguageScore(null);
-            case 수학 -> grade.setMathematicsScore(null);
-            case 영어 -> grade.setEnglishScore(null);
-            case 사회 -> grade.setSocialStudiesScore(null);
-            case 한국사 -> grade.setHistoryScore(null);
-            case 윤리 -> grade.setEthicsScore(null);
-            case 경제 -> grade.setEconomicsScore(null);
-            case 물리 -> grade.setPhysicsScore(null);
-            case 화학 -> grade.setChemistryScore(null);
-            case 생명과학 -> grade.setBiologyScore(null);
-            case 지구과학 -> grade.setEarthScienceScore(null);
-            case 음악 -> grade.setMusicScore(null);
-            case 미술 -> grade.setArtScore(null);
-            case 체육 -> grade.setPhysicalEducationScore(null);
-            case 기술가정 -> grade.setTechnologyAndHomeEconomicScore(null);
-            case 컴퓨터 -> grade.setComputerScienceScore(null);
-            case 제2외국어 -> grade.setSecondForeignLanguageScore(null);
-            default -> throw new ServiceException(ReturnCode.INVALID_SUBJECT);
-        }
-        // 캐시 무효화
-        evictGradeCache(grade.getMember().getId(), grade.getYear(), grade.getSemester());
-    }
-
-    // ----------------- 헬퍼 메서드 -----------------
-
-    // 요청 페이지 수 제한
-    private void checkPageSize(int pageSize) {
-        int maxPageSize = GradePage.getMaxPageSize();
-        if (pageSize > maxPageSize) {
-            throw new ServiceException(ReturnCode.PAGE_REQUEST_FAIL);
-        }
-    }
-
-    // 캐시 무효화
-    public void evictGradeCache(Long studentId, Integer year, Semester semester) {
-        // 패턴 기반으로 유연하게 키 삭제 (향후 키 확장 시 유리)
-        String pattern = String.format("grade:%d:%d:%s*", studentId, year, semester.name());
-        Set<String> keys = redisTemplate.keys(pattern);
-        if (keys != null && !keys.isEmpty()) {
-            redisTemplate.delete(keys);
         }
     }
 

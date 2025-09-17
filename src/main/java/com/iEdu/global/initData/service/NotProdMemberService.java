@@ -6,6 +6,7 @@ import com.iEdu.domain.account.member.dto.req.FollowForm;
 import com.iEdu.domain.account.member.dto.req.MemberForm;
 import com.iEdu.domain.account.member.dto.req.ParentForm;
 import com.iEdu.domain.account.member.entity.Member;
+import com.iEdu.domain.account.member.mapper.MemberMapper;
 import com.iEdu.domain.account.member.repository.MemberRepository;
 import com.iEdu.domain.account.member.service.MemberService;
 import com.iEdu.global.initData.utils.NotProdUtils;
@@ -24,6 +25,7 @@ public class NotProdMemberService {
     private final MemberService memberService;
     private final MemberRepository memberRepository;
     private final NotProdUtils notProdUtils;
+    private final MemberMapper memberMapper;
     private final Random random = new Random();
 
     // 학생 가데이터 생성
@@ -129,15 +131,15 @@ public class NotProdMemberService {
 
             Member student = optionalStudent.get();
             Member parent = optionalParent.get();
-            LoginUserDto parentLogin = LoginUserDto.ConvertToLoginUserDto(parent);
-            LoginUserDto studentLogin = LoginUserDto.ConvertToLoginUserDto(student);
+            LoginUserDto parentLogin = memberMapper.toLoginUserDto(parent);
+            LoginUserDto studentLogin = memberMapper.toLoginUserDto(student);
 
             FollowForm followForm = new FollowForm();
             followForm.setName(student.getName());
             followForm.setYear(student.getYear());
             followForm.setClassId(student.getClassId());
             followForm.setNumber(student.getNumber());
-            followForm.setBirthday(LocalDate.parse(student.getBirthday()));
+            followForm.setBirthday(student.getBirthday());
             try {
                 memberService.followReq(followForm, parentLogin);
                 memberService.acceptFollowReq(parent.getId(), studentLogin);

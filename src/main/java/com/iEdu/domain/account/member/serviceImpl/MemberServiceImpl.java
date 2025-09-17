@@ -12,17 +12,18 @@ import com.iEdu.domain.account.member.dto.req.TeacherUpdateForm;
 import com.iEdu.domain.account.member.dto.res.DetailMemberDto;
 import com.iEdu.domain.account.member.dto.res.MemberDto;
 import com.iEdu.domain.account.member.dto.res.MemberPageCacheDto;
-import com.iEdu.domain.account.member.dto.res.SimpleMember;
 import com.iEdu.domain.account.member.entity.Member;
 import com.iEdu.domain.account.member.entity.MemberFollow;
 import com.iEdu.domain.account.member.entity.MemberFollowReq;
 import com.iEdu.domain.account.member.entity.MemberPage;
+import com.iEdu.domain.account.member.mapper.MemberMapper;
 import com.iEdu.domain.account.member.repository.MemberFollowRepository;
 import com.iEdu.domain.account.member.repository.MemberFollowReqRepository;
 import com.iEdu.domain.account.member.repository.MemberRepository;
 import com.iEdu.domain.account.member.service.MemberService;
 import com.iEdu.domain.notification.entity.Notification;
 import com.iEdu.domain.account.member.entity.QMember;
+import com.iEdu.global.common.utils.RoleValidator;
 import com.iEdu.global.exception.ReturnCode;
 import com.iEdu.global.exception.ServiceException;
 import com.iEdu.global.s3.S3Service;
@@ -45,10 +46,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.time.Duration;
-import java.time.LocalDate;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -67,6 +65,8 @@ public class MemberServiceImpl implements MemberService {
     private final S3Service s3Service;
     private final KafkaTemplate<String, String> kafkaTemplate;
     private final RedisTemplate<String, Object> redisTemplate;
+    private final MemberMapper memberMapper;
+    private final RoleValidator roleValidator;
     @Autowired
     private final ObjectMapper objectMapper;
 
@@ -110,7 +110,7 @@ public class MemberServiceImpl implements MemberService {
                 .name(parentForm.getName())
                 .phone(parentForm.getPhone())
                 .email(parentForm.getEmail())
-                .birthday(String.valueOf(parentForm.getBirthday()))
+                .birthday(parentForm.getBirthday())
                 .schoolName(parentForm.getSchoolName())
                 .gender(parentForm.getGender())
                 .build();
@@ -122,7 +122,7 @@ public class MemberServiceImpl implements MemberService {
     @Override
     @Transactional
     public MemberDto getMyInfo(LoginUserDto loginUser) {
-        return loginUserConvertToMemberDto(loginUser);
+        return memberMapper.toMemberDto(loginUser);
     }
 
     // 본인 상세회원정보 조회
@@ -138,7 +138,7 @@ public class MemberServiceImpl implements MemberService {
         if (cached != null && cached instanceof DetailMemberDto) {
             return (DetailMemberDto) cached;
         }
-        DetailMemberDto dto = loginUserConvertToDetailMemberDto(loginUser);
+        DetailMemberDto dto = memberMapper.toDetailMemberDto(loginUser);
         // Redis 저장 (10분 TTL)
         ops.set(cacheKey, dto, 10, TimeUnit.MINUTES);
         return dto;
@@ -150,7 +150,7 @@ public class MemberServiceImpl implements MemberService {
     public Page<MemberDto> getMyStudentInfo(Pageable pageable, LoginUserDto loginUser) {
         checkPageSize(pageable.getPageSize());
         // ROLE_TEACHER 아닌 경우 예외 처리
-        validateTeacherRole(loginUser);
+        roleValidator.validateTeacherRole(loginUser);
 
         Integer year = loginUser.getYear();
         Integer classId = loginUser.getClassId();
@@ -179,7 +179,7 @@ public class MemberServiceImpl implements MemberService {
         Page<Member> students = memberRepository.findAllByYearAndClassIdAndRole(
                 year, classId, Member.MemberRole.ROLE_STUDENT, pageable
         );
-        Page<MemberDto> dtoPage = students.map(this::memberConvertToMemberDto);
+        Page<MemberDto> dtoPage = students.map(memberMapper::toMemberDto);
         // 캐시에 저장
         MemberPageCacheDto cacheDto = MemberPageCacheDto.builder()
                 .content(dtoPage.getContent())
@@ -197,7 +197,7 @@ public class MemberServiceImpl implements MemberService {
     public Page<MemberDto> getMyFilterInfo(Integer year, Integer classId, Integer number, Pageable pageable, LoginUserDto loginUser){
         checkPageSize(pageable.getPageSize());
         // ROLE_TEACHER 아닌 경우 예외 처리
-        validateTeacherRole(loginUser);
+        roleValidator.validateTeacherRole(loginUser);
         QMember member = QMember.member;
         BooleanBuilder builder = new BooleanBuilder();
         builder.and(member.role.eq(Member.MemberRole.ROLE_STUDENT));
@@ -211,7 +211,7 @@ public class MemberServiceImpl implements MemberService {
             builder.and(member.number.eq(number));
         }
         Page<Member> memberPage = memberRepository.findAll(builder, pageable);
-        return memberPage.map(this::memberConvertToMemberDto);
+        return memberPage.map(memberMapper::toMemberDto);
     }
 
     // 학생의 회원정보 조회 [학부모/선생님 권한]
@@ -219,10 +219,10 @@ public class MemberServiceImpl implements MemberService {
     @Transactional
     public MemberDto getMemberInfo(Long studentId, LoginUserDto loginUser) {
         // ROLE_PARENT/ROLE_TEACHER 아닌 경우 예외 처리
-        validateAccessToStudent(loginUser, studentId);
+        roleValidator.validateAccessToStudent(loginUser, studentId);
         Member student = memberRepository.findByIdAndRole(studentId, Member.MemberRole.ROLE_STUDENT)
                 .orElseThrow(() -> new ServiceException(ReturnCode.USER_NOT_FOUND));
-        return memberConvertToMemberDto(student);
+        return memberMapper.toMemberDto(student);
     }
 
     // 학생의 상세회원정보 조회 [학부모/선생님 권한]
@@ -230,10 +230,10 @@ public class MemberServiceImpl implements MemberService {
     @Transactional
     public DetailMemberDto getMemberDetailInfo(Long studentId, LoginUserDto loginUser) {
         // ROLE_PARENT/ROLE_TEACHER 아닌 경우 예외 처리
-        validateAccessToStudent(loginUser, studentId);
+        roleValidator.validateAccessToStudent(loginUser, studentId);
         Member student = memberRepository.findByIdAndRole(studentId, Member.MemberRole.ROLE_STUDENT)
                 .orElseThrow(() -> new ServiceException(ReturnCode.USER_NOT_FOUND));
-        return memberConvertToDetailMemberDto(student);
+        return memberMapper.toDetailMemberDto(student);
     }
 
     // 학생/학부모 회원정보 수정 [학생/학부모 권한]
@@ -241,7 +241,7 @@ public class MemberServiceImpl implements MemberService {
     @Transactional
     public void basicUpdateMemberInfo(BasicUpdateForm basicUpdateForm, MultipartFile imageFile, LoginUserDto loginUser){
         // ROLE_STUDENT/ROLE_PARENT 아닌 경우 예외 처리
-        validateStudentOrParentRole(loginUser);
+        roleValidator.validateStudentOrParentRole(loginUser);
         // 기존 이미지 삭제 후 입력 받은 이미지 S3에 저장
         String imageUrl = loginUser.getProfileImageUrl(); // 기본적으로 기존 이미지 URL을 사용
         if (imageFile != null && !imageFile.isEmpty()) {
@@ -280,7 +280,7 @@ public class MemberServiceImpl implements MemberService {
         loginUser.setEmail(basicUpdateForm.getEmail());
         loginUser.setProfileImageUrl(imageUrl);
         // LoginUserDto를 Member 엔티티로 변환
-        Member memberEntity = loginUser.ConvertToMember();
+        Member memberEntity = memberMapper.toMember(loginUser);
         memberRepository.save(memberEntity);
         // 캐시 무효화 1: 본인 상세정보 캐시 삭제
         String myDetailCacheKey = "myDetailInfo::" + loginUser.getId();
@@ -307,7 +307,7 @@ public class MemberServiceImpl implements MemberService {
     @Transactional
     public void teacherUpdateMemberInfo(TeacherUpdateForm teacherUpdateForm, MultipartFile imageFile, LoginUserDto loginUser){
         // ROLE_TEACHER 아닌 경우 예외 처리
-        validateTeacherRole(loginUser);
+        roleValidator.validateTeacherRole(loginUser);
         // 기존 이미지 삭제 후 입력 받은 이미지 S3에 저장
         String imageUrl = loginUser.getProfileImageUrl(); // 기본적으로 기존 이미지 URL을 사용
         if (imageFile != null && !imageFile.isEmpty()) {
@@ -355,7 +355,7 @@ public class MemberServiceImpl implements MemberService {
         loginUser.setEmail(teacherUpdateForm.getEmail());
         loginUser.setProfileImageUrl(imageUrl);
         // LoginUserDto를 Member 엔티티로 변환
-        Member memberEntity = loginUser.ConvertToMember();
+        Member memberEntity = memberMapper.toMember(loginUser);
         memberRepository.save(memberEntity);
         // 캐시 무효화 1: 본인 상세정보 캐시 삭제
         String myDetailCacheKey = "myDetailInfo::" + loginUser.getId();
@@ -382,10 +382,10 @@ public class MemberServiceImpl implements MemberService {
     @Transactional
     public Page<MemberDto> searchMemberInfo(Pageable pageable, String keyword, LoginUserDto loginUser) {
         // ROLE_PARENT이/ROLE_TEACHER 아닌 경우 예외 처리
-        validateParentOrTeacherRole(loginUser);
+        roleValidator.validateParentOrTeacherRole(loginUser);
         checkPageSize(pageable.getPageSize());
         Page<Member> members = memberRepository.findByKeywordAndRole(pageable, keyword, Member.MemberRole.ROLE_STUDENT);
-        return members.map(this::memberConvertToMemberDto);
+        return members.map(memberMapper::toMemberDto);
     }
 
     // 팔로우 요청하기 [학부모 권한]
@@ -393,8 +393,8 @@ public class MemberServiceImpl implements MemberService {
     @Transactional
     public void followReq(FollowForm followForm, LoginUserDto loginUser){
         // ROLE_PARENT 아닌 경우 예외 처리
-        validateParentRole(loginUser);
-        Member followReq = loginUser.ConvertToMember();
+        roleValidator.validateParentRole(loginUser);
+        Member followReq = memberMapper.toMember(loginUser);
         Member followRec = memberRepository.findByNameAndYearAndClassIdAndNumberAndBirthday(
                 followForm.getName(),
                 followForm.getYear(),
@@ -437,8 +437,8 @@ public class MemberServiceImpl implements MemberService {
     @Transactional
     public void cancelFollowReq(Long memberId, LoginUserDto loginUser){
         // ROLE_PARENT 아닌 경우 예외 처리
-        validateParentRole(loginUser);
-        Member followReq = loginUser.ConvertToMember();
+        roleValidator.validateParentRole(loginUser);
+        Member followReq = memberMapper.toMember(loginUser);
         Member followRec = memberRepository.findById(memberId)
                 .orElseThrow(() -> new ServiceException(ReturnCode.USER_NOT_FOUND));
         MemberFollowReq memberFollowReq = memberFollowReqRepository.findByFollowReqAndFollowRec(followReq, followRec)
@@ -451,10 +451,10 @@ public class MemberServiceImpl implements MemberService {
     @Transactional
     public void acceptFollowReq(Long memberId, LoginUserDto loginUser){
         // ROLE_STUDENT 아닌 경우 예외 처리
-        validateStudentRole(loginUser);
+        roleValidator.validateStudentRole(loginUser);
         Member requester = memberRepository.findById(memberId)
                 .orElseThrow(() -> new ServiceException(ReturnCode.USER_NOT_FOUND));
-        Member receiver = loginUser.ConvertToMember();
+        Member receiver = memberMapper.toMember(loginUser);
         MemberFollowReq followReq = memberFollowReqRepository.findByFollowReqAndFollowRec(requester, receiver)
                 .orElseThrow(() -> new ServiceException(ReturnCode.REQUEST_NOT_FOUND));
         memberFollowReqRepository.delete(followReq);
@@ -483,10 +483,10 @@ public class MemberServiceImpl implements MemberService {
     @Transactional
     public void refuseFollowReq(Long memberId, LoginUserDto loginUser){
         // ROLE_STUDENT 아닌 경우 예외 처리
-        validateStudentRole(loginUser);
+        roleValidator.validateStudentRole(loginUser);
         Member requester = memberRepository.findById(memberId)
                 .orElseThrow(() -> new ServiceException(ReturnCode.USER_NOT_FOUND));
-        Member receiver = loginUser.ConvertToMember();
+        Member receiver = memberMapper.toMember(loginUser);
         MemberFollowReq memberFollowReq = memberFollowReqRepository.findByFollowReqAndFollowRec(requester, receiver)
                 .orElseThrow(() -> new ServiceException(ReturnCode.REQUEST_NOT_FOUND));
         memberFollowReqRepository.delete(memberFollowReq);
@@ -497,8 +497,8 @@ public class MemberServiceImpl implements MemberService {
     @Transactional
     public void cancelFollow(Long memberId, LoginUserDto loginUser){
         // ROLE_PARENT 아닌 경우 예외 처리
-        validateParentRole(loginUser);
-        Member follow = loginUser.ConvertToMember();
+        roleValidator.validateParentRole(loginUser);
+        Member follow = memberMapper.toMember(loginUser);
         Member followed = memberRepository.findById(memberId)
                 .orElseThrow(() -> new ServiceException(ReturnCode.USER_NOT_FOUND));
         MemberFollow memberFollow = memberFollowRepository.findByFollowAndFollowed(follow, followed)
@@ -517,193 +517,13 @@ public class MemberServiceImpl implements MemberService {
                 .collect(Collectors.toList());
     }
 
+    // ----------------- 헬퍼 메서드 -----------------
+
     // 요청 페이지 수 제한
     private void checkPageSize(int pageSize) {
         int maxPageSize = MemberPage.getMaxPageSize();
         if (pageSize > maxPageSize) {
             throw new ServiceException(ReturnCode.PAGE_REQUEST_FAIL);
         }
-    }
-
-    // LoginUser -> MemberDto 변환
-    private MemberDto loginUserConvertToMemberDto(LoginUserDto loginUser) {
-        return MemberDto.builder()
-                .id(loginUser.getId())
-                .name(loginUser.getName())
-                .profileImageUrl(loginUser.getProfileImageUrl())
-                .schoolName(loginUser.getSchoolName())
-                .year(loginUser.getYear())
-                .classId(loginUser.getClassId())
-                .number(loginUser.getNumber())
-                .subject(loginUser.getSubject())
-                .role(loginUser.getRole())
-                .build();
-    }
-
-    // Member -> MemberDto 변환
-    private MemberDto memberConvertToMemberDto(Member member) {
-        return MemberDto.builder()
-                .id(member.getId())
-                .name(member.getName())
-                .profileImageUrl(member.getProfileImageUrl())
-                .schoolName(member.getSchoolName())
-                .year(member.getYear())
-                .classId(member.getClassId())
-                .number(member.getNumber())
-                .subject(member.getSubject())
-                .role(member.getRole())
-                .build();
-    }
-
-    // LoginUser -> DetailMemberDto 변환
-    private DetailMemberDto loginUserConvertToDetailMemberDto(LoginUserDto loginUser) {
-        return DetailMemberDto.builder()
-                .id(loginUser.getId())
-                .accountId(loginUser.getAccountId())
-                .name(loginUser.getName())
-                .phone(loginUser.getPhone())
-                .email(loginUser.getEmail())
-                .birthday(loginUser.getBirthday())
-                .profileImageUrl(loginUser.getProfileImageUrl())
-                .schoolName(loginUser.getSchoolName())
-                .year(loginUser.getYear())
-                .classId(loginUser.getClassId())
-                .number(loginUser.getNumber())
-                .subject(loginUser.getSubject())
-                .gender(loginUser.getGender())
-                .role(loginUser.getRole())
-                // 자녀 목록 변환
-                .childrenList(loginUser.getFollowList().stream()
-                        .map(MemberFollow -> SimpleMember.builder()
-                                .id(MemberFollow.getFollowed().getId())
-                                .name(MemberFollow.getFollowed().getName())
-                                .profileImageUrl(MemberFollow.getFollowed().getProfileImageUrl())
-                                .year(MemberFollow.getFollowed().getYear())
-                                .classId(MemberFollow.getFollowed().getClassId())
-                                .number(MemberFollow.getFollowed().getNumber())
-                                .role(MemberFollow.getFollowed().getRole())
-                                .build()
-                        )
-                        .collect(Collectors.toList())
-                )
-                // 부모 목록 변환
-                .parentList(loginUser.getFollowedList().stream()
-                        .map(MemberFollow -> SimpleMember.builder()
-                                .id(MemberFollow.getFollow().getId())
-                                .name(MemberFollow.getFollow().getName())
-                                .profileImageUrl(MemberFollow.getFollow().getProfileImageUrl())
-                                .year(MemberFollow.getFollow().getYear())
-                                .classId(MemberFollow.getFollow().getClassId())
-                                .number(MemberFollow.getFollow().getNumber())
-                                .role(MemberFollow.getFollow().getRole())
-                                .build()
-                        )
-                        .collect(Collectors.toList())
-                )
-                // 팔로우 요청 목록 변환 (현재 사용자가 요청한 팔로우)
-                .followReqList(loginUser.getFollowReqList().stream()
-                        .map(MemberFollowReq -> SimpleMember.builder()
-                                .id(MemberFollowReq.getFollowRec().getId())
-                                .name(MemberFollowReq.getFollowRec().getName())
-                                .profileImageUrl(MemberFollowReq.getFollowRec().getProfileImageUrl())
-                                .year(MemberFollowReq.getFollowRec().getYear())
-                                .classId(MemberFollowReq.getFollowRec().getClassId())
-                                .number(MemberFollowReq.getFollowRec().getNumber())
-                                .role(MemberFollowReq.getFollowRec().getRole())
-                                .build()
-                        )
-                        .collect(Collectors.toList())
-                )
-                // 팔로우 요청 받은 목록 변환 (다른 사용자가 본인한테 요청한 팔로우)
-                .followRecList(loginUser.getFollowRecList().stream()
-                        .map(MemberFollowReq -> SimpleMember.builder()
-                                .id(MemberFollowReq.getFollowReq().getId())
-                                .name(MemberFollowReq.getFollowReq().getName())
-                                .profileImageUrl(MemberFollowReq.getFollowReq().getProfileImageUrl())
-                                .year(MemberFollowReq.getFollowReq().getYear())
-                                .classId(MemberFollowReq.getFollowReq().getClassId())
-                                .number(MemberFollowReq.getFollowReq().getNumber())
-                                .role(MemberFollowReq.getFollowReq().getRole())
-                                .build()
-                        )
-                        .collect(Collectors.toList())
-                )
-                .build();
-    }
-
-    // Member -> DetailMemberDto 변환
-    private DetailMemberDto memberConvertToDetailMemberDto(Member member) {
-        return DetailMemberDto.builder()
-                .id(member.getId())
-                .accountId(member.getAccountId())
-                .name(member.getName())
-                .phone(member.getPhone())
-                .email(member.getEmail())
-                .birthday(LocalDate.parse(member.getBirthday()))
-                .profileImageUrl(member.getProfileImageUrl())
-                .schoolName(member.getSchoolName())
-                .year(member.getYear())
-                .classId(member.getClassId())
-                .number(member.getNumber())
-                .subject(member.getSubject())
-                .gender(member.getGender())
-                .role(member.getRole())
-                // 자녀 목록 변환
-                .childrenList(member.getFollowList().stream()
-                        .map(MemberFollow -> SimpleMember.builder()
-                                .id(MemberFollow.getFollowed().getId())
-                                .name(MemberFollow.getFollowed().getName())
-                                .profileImageUrl(MemberFollow.getFollowed().getProfileImageUrl())
-                                .year(MemberFollow.getFollowed().getYear())
-                                .classId(MemberFollow.getFollowed().getClassId())
-                                .number(MemberFollow.getFollowed().getNumber())
-                                .role(MemberFollow.getFollowed().getRole())
-                                .build()
-                        )
-                        .collect(Collectors.toList())
-                )
-                // 부모 목록 변환
-                .parentList(member.getFollowedList().stream()
-                        .map(MemberFollow -> SimpleMember.builder()
-                                .id(MemberFollow.getFollow().getId())
-                                .name(MemberFollow.getFollow().getName())
-                                .profileImageUrl(MemberFollow.getFollow().getProfileImageUrl())
-                                .year(MemberFollow.getFollow().getYear())
-                                .classId(MemberFollow.getFollow().getClassId())
-                                .number(MemberFollow.getFollow().getNumber())
-                                .role(MemberFollow.getFollow().getRole())
-                                .build()
-                        )
-                        .collect(Collectors.toList())
-                )
-                // 팔로우 요청 목록 변환 (현재 사용자가 요청한 팔로우)
-                .followReqList(member.getFollowReqList().stream()
-                        .map(MemberFollowReq -> SimpleMember.builder()
-                                .id(MemberFollowReq.getFollowRec().getId())
-                                .name(MemberFollowReq.getFollowRec().getName())
-                                .profileImageUrl(MemberFollowReq.getFollowRec().getProfileImageUrl())
-                                .year(MemberFollowReq.getFollowRec().getYear())
-                                .classId(MemberFollowReq.getFollowRec().getClassId())
-                                .number(MemberFollowReq.getFollowRec().getNumber())
-                                .role(MemberFollowReq.getFollowRec().getRole())
-                                .build()
-                        )
-                        .collect(Collectors.toList())
-                )
-                // 팔로우 요청 받은 목록 변환 (다른 사용자가 본인한테 요청한 팔로우)
-                .followRecList(member.getFollowRecList().stream()
-                        .map(MemberFollowReq -> SimpleMember.builder()
-                                .id(MemberFollowReq.getFollowReq().getId())
-                                .name(MemberFollowReq.getFollowReq().getName())
-                                .profileImageUrl(MemberFollowReq.getFollowReq().getProfileImageUrl())
-                                .year(MemberFollowReq.getFollowReq().getYear())
-                                .classId(MemberFollowReq.getFollowReq().getClassId())
-                                .number(MemberFollowReq.getFollowReq().getNumber())
-                                .role(MemberFollowReq.getFollowReq().getRole())
-                                .build()
-                        )
-                        .collect(Collectors.toList())
-                )
-                .build();
     }
 }
