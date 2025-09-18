@@ -69,11 +69,13 @@ public class CounselServiceImpl implements CounselService {
         roleValidator.validateTeacherRole(loginUser);
         // 학생 목록 조회
         List<Member> students = memberRepository.findStudentsByYearClassNumber(year, classId, number);
-        return students.stream()
-                .flatMap(student -> counselQueryRepository
-                        .findByMemberIdAndYearAndSemester(student.getId(), year, semester)
-                        .stream()
-                )
+        List<Long> studentIds = students.stream()
+                .map(Member::getId)
+                .toList();
+        // studentId -> List<Counsel> 맵핑
+        List<Counsel> counselList = counselQueryRepository
+                .findByMemberIdInAndYearAndSemester(studentIds, year, semester);
+        return counselList.stream()
                 .map(this::convertToCounselDto)
                 .collect(Collectors.toList());
     }

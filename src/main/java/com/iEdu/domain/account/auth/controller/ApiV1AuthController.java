@@ -24,21 +24,21 @@ public class ApiV1AuthController {
     @Operation(summary = "로그인", description = "계정ID와 비밀번호로 로그인합니다.")
     @PostMapping("/login")
     public ApiResponse<Auth> login(@RequestBody @Valid LoginForm loginForm) {
-        return ApiResponse.of(authService.login(loginForm, false));
+        return ApiResponse.success(authService.login(loginForm, false));
     }
 
     // 로그아웃
     @Operation(summary = "로그아웃", description = "현재 로그인된 사용자가 로그아웃합니다.")
     @PostMapping("/logout")
-    public ApiResponse<String> logout(@LoginUser LoginUserDto loginUser) {
+    public ApiResponse<Void> logout(@LoginUser LoginUserDto loginUser) {
         authService.logout(loginUser);
-        return ApiResponse.of(ReturnCode.SUCCESS);
+        return ApiResponse.success();
     }
 
     // accessToken 재발급
     @Operation(summary = "accessToken 재발급", description = "refresh 토큰을 사용하여 access 토큰을 재발급합니다.")
     @GetMapping("/refresh-token")
     public ApiResponse<Auth> refreshToken(@RequestHeader("Authorization") String refreshToken, @LoginUser LoginUserDto loginUser) {
-        return ApiResponse.of(authService.refreshToken(refreshToken, loginUser));
+        return ApiResponse.success(authService.refreshToken(refreshToken, loginUser));
     }
 }

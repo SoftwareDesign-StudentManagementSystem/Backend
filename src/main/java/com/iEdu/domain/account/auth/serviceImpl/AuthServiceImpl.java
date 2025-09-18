@@ -65,7 +65,6 @@ public class AuthServiceImpl implements AuthService {
         if (refreshToken.startsWith("Bearer ")) {
             refreshToken = refreshToken.substring(7);
         }
-
         String storedRefreshToken = refreshTokenService.getRefreshToken(loginUser.getId().toString());
         if (storedRefreshToken == null || !storedRefreshToken.equals(refreshToken)) {
             throw new RuntimeException("유효하지 않은 리프레시 토큰입니다.");
@@ -75,7 +74,6 @@ public class AuthServiceImpl implements AuthService {
         }
         Long accountId = jwtTokenProvider.getAccountIdFromToken(storedRefreshToken);
         String newAccessToken = jwtTokenProvider.generateToken(accountId, accessTokenExpiration);
-
         return new Auth(newAccessToken, storedRefreshToken);
     }
 }

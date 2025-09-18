@@ -6,5 +6,6 @@ import com.iEdu.global.common.enums.Semester;
 import java.util.List;
 
 public interface CounselQueryRepository {
-    List<Counsel> findByMemberIdAndYearAndSemester(Long memberId, Integer year, Semester semester);
+    // 여러 학생 id를 한 번에 조회
+    List<Counsel> findByMemberIdInAndYearAndSemester(List<Long> memberIds, Integer year, Semester semester);
 }

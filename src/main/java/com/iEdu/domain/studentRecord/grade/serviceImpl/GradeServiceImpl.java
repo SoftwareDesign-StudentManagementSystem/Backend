@@ -34,6 +34,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -62,7 +63,12 @@ public class GradeServiceImpl implements GradeService {
         // ROLE_STUDENT 아닌 경우 예외 처리
         roleValidator.validateStudentRole(loginUser);
         Page<Grade> gradePage = gradeRepository.findAllByMemberId(loginUser.getId(), sortedPageable);
-        return gradePage.map(grade -> convertToGradeDto(grade, loginUser.getAccountId()));
+        // 각 성적의 year/semester 조합별로 성적 리스트 미리 조회
+        Map<String, List<Grade>> gradeMap = preloadAllGrades(gradePage.getContent());
+        return gradePage.map(grade ->
+                convertToGradeDto(grade, loginUser.getAccountId(),
+                        gradeMap.get(grade.getYear() + ":" + grade.getSemester()))
+        );
     }
 
     // 학생의 모든 성적 조회 [학부모/선생님 권한]
@@ -80,7 +86,12 @@ public class GradeServiceImpl implements GradeService {
         // ROLE_PARENT/ROLE_TEACHER 아닌 경우 예외 처리
         roleValidator.validateAccessToStudent(loginUser, studentId);
         Page<Grade> gradePage = gradeRepository.findAllByMemberId(studentId, sortedPageable);
-        return gradePage.map(grade -> convertToGradeDto(grade, student.getAccountId()));
+        // 각 성적의 year/semester 조합별로 성적 리스트 미리 조회
+        Map<String, List<Grade>> gradeMap = preloadAllGrades(gradePage.getContent());
+        return gradePage.map(grade ->
+                convertToGradeDto(grade, student.getAccountId(),
+                        gradeMap.get(grade.getYear() + ":" + grade.getSemester()))
+        );
     }
 
     // (학년/학기)로 본인 성적 조회 [학생 권한]
@@ -92,7 +103,8 @@ public class GradeServiceImpl implements GradeService {
         Grade grade = gradeRepository
                 .findByMemberIdAndYearAndSemester(loginUser.getId(), year, semester)
                 .orElseThrow(() -> new ServiceException(ReturnCode.GRADE_NOT_FOUND));
-        return convertToGradeDto(grade, loginUser.getAccountId());
+        List<Grade> allGrades = gradeRepository.findAllByYearAndSemesterWithMember(year, semester);
+        return convertToGradeDto(grade, loginUser.getAccountId(), allGrades);
     }
 
     // (학년/학기)로 학생 성적 조회 [학부모/선생님 권한]
@@ -105,7 +117,8 @@ public class GradeServiceImpl implements GradeService {
         Grade grade = gradeRepository
                 .findByMemberIdAndYearAndSemester(studentId, year, semester)
                 .orElseThrow(() -> new ServiceException(ReturnCode.USER_NOT_FOUND));
-        return convertToGradeDto(grade, student.getAccountId());
+        List<Grade> allGrades = gradeRepository.findAllByYearAndSemesterWithMember(year, semester);
+        return convertToGradeDto(grade, student.getAccountId(), allGrades);
     }
 
     // (학년/반/번호/학기)로 학생들 성적 조회 [선생님 권한]
@@ -117,10 +130,12 @@ public class GradeServiceImpl implements GradeService {
         List<Grade> grades = gradeQueryRepository.findAllByStudentInfoAndSemesterAndYearWithMember(
                 year, classId, number, semester
         );
+        // 학년/학기 전체 성적 미리 조회
+        List<Grade> allGrades = gradeRepository.findAllByYearAndSemesterWithMember(year, semester);
         // 학급 전체 성적 데이터 기준으로 랭크 계산
         return grades.stream()
-                .sorted(Comparator.comparing(g -> g.getMember().getId())) // studentId 기준 오름차순 정렬
-                .map(grade -> convertToGradeDto(grade, grade.getMember().getAccountId()))
+                .sorted(Comparator.comparing(g -> g.getMember().getId()))
+                .map(grade -> convertToGradeDto(grade, grade.getMember().getAccountId(), allGrades))
                 .toList();
     }
 
@@ -286,18 +301,22 @@ public class GradeServiceImpl implements GradeService {
                 && grade.getSecondForeignLanguageScore() != null;
     }
 
+    // 여러 Grade(year, semester) 조합에 대해 미리 학기별 성적 리스트 조회
+    private Map<String, List<Grade>> preloadAllGrades(List<Grade> grades) {
+        return grades.stream()
+                .collect(Collectors.toMap(
+                        g -> g.getYear() + ":" + g.getSemester(),
+                        g -> gradeRepository.findAllByYearAndSemesterWithMember(g.getYear(), g.getSemester()),
+                        (existing, replacement) -> existing // 충돌 시 기존 값 유지
+                ));
+    }
+
     // Grade -> GradeDto 변환
     @Override
-    public GradeDto convertToGradeDto(Grade grade, Long studentAccountId) {
+    public GradeDto convertToGradeDto(Grade grade, Long studentAccountId, List<Grade> allGradesForYearAndSemester) {
         Integer year = grade.getYear();
         Semester semester = grade.getSemester();
-
         Long targetEntranceYear = studentAccountId / 100000;
-
-        // 해당 학년과 학기의 모든 성적 불러오기
-        List<Grade> allGradesForYearAndSemester = gradeRepository.findAllByYearAndSemesterWithMember(year, semester);
-
-        // 입학 연도 필터링 → 같은 입학연도 학생들만 남김
         List<Grade> sameCohortGrades = allGradesForYearAndSemester.stream()
                 .filter(g -> (g.getMember().getAccountId() / 100000) == targetEntranceYear)
                 .toList();

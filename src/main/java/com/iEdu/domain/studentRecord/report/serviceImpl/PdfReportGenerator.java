@@ -254,13 +254,14 @@ public class PdfReportGenerator implements ReportGenerator {
 
         List<Long> studentIds = students.stream().map(Member::getId).toList();
         List<Grade> grades = gradeRepository.findByMemberIdInAndYearAndSemester(studentIds, year, semester);
+        List<Grade> allGrades = gradeRepository.findAllByYearAndSemesterWithMember(year, semester);
         // studentId -> List<Grade> 맵핑
         Map<Long, Grade> gradeMap = grades.stream()
                 .collect(Collectors.toMap(g -> g.getMember().getId(), g -> g));
         for (Member student : students) {
             Grade grade = gradeMap.get(student.getId());
             if (grade != null) {
-                GradeDto dto = gradeService.convertToGradeDto(grade, student.getAccountId());
+                GradeDto dto = gradeService.convertToGradeDto(grade, student.getAccountId(), allGrades);
                 // dto 내용 그대로 테이블에 추가
                 table.addCell(new Paragraph(student.getName()).setFont(fontRegular).setFontSize(7));
                 table.addCell(new Paragraph(year.toString()).setFont(fontRegular).setFontSize(7));

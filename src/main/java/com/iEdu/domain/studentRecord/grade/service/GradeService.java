@@ -37,5 +37,5 @@ public interface GradeService {
     void deleteGrade(Long gradeId, LoginUserDto loginUser);
 
     // Grade -> GradeDto 변환
-    GradeDto convertToGradeDto(Grade grade, Long studentAccountId);
+    GradeDto convertToGradeDto(Grade grade, Long studentAccountId, List<Grade> allGradesForYearAndSemester);
 }

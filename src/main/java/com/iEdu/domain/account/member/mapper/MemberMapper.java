@@ -14,10 +14,8 @@ import java.util.stream.Collectors;
 
 @Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE)
 public interface MemberMapper {
-
     // ---------- Member / LoginUserDto -> MemberDto ----------
     MemberDto toMemberDto(Member source);
-
     MemberDto toMemberDto(LoginUserDto source);
 
     // ---------- Member / LoginUserDto -> DetailMemberDto ----------

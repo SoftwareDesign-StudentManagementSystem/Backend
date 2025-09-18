@@ -27,10 +27,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class NotificationServiceImpl implements NotificationService {
     private final NotificationRepository notificationRepository;
-    private final RedisTemplate<String, Object> redisTemplate;
     private final RoleValidator roleValidator;
-    @Autowired
-    private final ObjectMapper objectMapper;
 
     // 알림 생성 [선생님 권한]
     @Override

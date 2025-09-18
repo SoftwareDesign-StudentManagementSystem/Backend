@@ -27,6 +27,6 @@ public class ApiV1ReportController {
     @Operation(summary = "학생 보고서 생성 및 다운로드 [선생님 권한]")
     @PostMapping
     public ApiResponse<ReportDto> generateReport(@RequestBody @Valid ReportForm reportForm, @LoginUser LoginUserDto loginUser) {
-        return ApiResponse.of(reportService.generateReport(reportForm, loginUser));
+        return ApiResponse.success(reportService.generateReport(reportForm, loginUser));
     }
 }

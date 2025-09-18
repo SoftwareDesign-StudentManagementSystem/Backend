@@ -83,7 +83,6 @@ public class AttendanceServiceImpl implements AttendanceService {
         checkPageSize(pageable.getPageSize());
         // ROLE_STUDENT 아닌 경우 예외 처리
         roleValidator.validateStudentRole(loginUser);
-        String semesterStr = semester.name();
 
         Pageable sortedPageable = PageRequest.of(
                 pageable.getPageNumber(),
@@ -92,7 +91,7 @@ public class AttendanceServiceImpl implements AttendanceService {
         );
         Page<Attendance> attendancePage =
                 attendanceRepository.findFilteredAttendancesByMemberAndYearAndSemesterAndOptionalMonth(
-                        loginUser.getId(), year, semesterStr, month, sortedPageable
+                        loginUser.getId(), year, semester, month, sortedPageable
                 );
         return attendancePage.map(this::convertToAttendanceDto);
     }
@@ -110,7 +109,6 @@ public class AttendanceServiceImpl implements AttendanceService {
         checkPageSize(pageable.getPageSize());
         // ROLE_PARENT/ROLE_TEACHER 아닌 경우 예외 처리
         roleValidator.validateAccessToStudent(loginUser, studentId);
-        String semesterStr = semester.name();
 
         Pageable sortedPageable = PageRequest.of(
                 pageable.getPageNumber(),
@@ -119,7 +117,7 @@ public class AttendanceServiceImpl implements AttendanceService {
         );
         Page<Attendance> attendancePage =
                 attendanceRepository.findFilteredAttendancesByMemberAndYearAndSemesterAndOptionalMonth(
-                        studentId, year, semesterStr, month, sortedPageable
+                        studentId, year, semester, month, sortedPageable
                 );
         return attendancePage.map(this::convertToAttendanceDto);
     }
