@@ -20,6 +20,7 @@ import com.iEdu.global.exception.ReturnCode;
 import com.iEdu.global.exception.ServiceException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.*;
@@ -29,9 +30,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.stream.Collectors;
-
-import static com.iEdu.global.common.utils.Converter.convertToSemesterEnum;
-import static com.iEdu.global.common.utils.RoleValidator.*;
 
 @Slf4j
 @Service
@@ -44,6 +42,7 @@ public class CounselServiceImpl implements CounselService {
     private final KafkaTemplate<String, String> kafkaTemplate;
     private final ObjectMapper objectMapper;
     private final RoleValidator roleValidator;
+    private final CacheManager cacheManager;
 
     // 학생의 모든 상담 조회 [학부모/선생님 권한]
     @Override
@@ -65,15 +64,14 @@ public class CounselServiceImpl implements CounselService {
     // (학년/반/번호/학기)로 학생들 상담 조회 [선생님 권한]
     @Override
     @Transactional(readOnly = true)
-    public List<CounselDto> getStudentsCounsel(Integer year, Integer classId, Integer number, Integer semester, LoginUserDto loginUser) {
+    public List<CounselDto> getStudentsCounsel(Integer year, Integer classId, Integer number, Semester semester, LoginUserDto loginUser) {
         // ROLE_TEACHER 아닌 경우 예외 처리
         roleValidator.validateTeacherRole(loginUser);
-        Semester semesterEnum = convertToSemesterEnum(semester);
         // 학생 목록 조회
         List<Member> students = memberRepository.findStudentsByYearClassNumber(year, classId, number);
         return students.stream()
                 .flatMap(student -> counselQueryRepository
-                        .findByMemberIdAndYearAndSemester(student.getId(), year, semesterEnum)
+                        .findByMemberIdAndYearAndSemester(student.getId(), year, semester)
                         .stream()
                 )
                 .map(this::convertToCounselDto)
@@ -87,7 +85,7 @@ public class CounselServiceImpl implements CounselService {
             cacheNames = "counsel",
             key = "'filter:' + #studentId + ':' + #year + ':' + #semester + ':' + #pageable.pageNumber + ':' + #pageable.pageSize"
     )
-    public Page<CounselDto> getFilterCounsel(Long studentId, Integer year, Integer semester, Pageable pageable, LoginUserDto loginUser) {
+    public Page<CounselDto> getFilterCounsel(Long studentId, Integer year, Semester semester, Pageable pageable, LoginUserDto loginUser) {
         checkPageSize(pageable.getPageSize());
         // ROLE_PARENT/ROLE_TEACHER 아닌 경우 예외 처리
         roleValidator.validateAccessToStudent(loginUser, studentId);
@@ -96,8 +94,7 @@ public class CounselServiceImpl implements CounselService {
                 pageable.getPageSize(),
                 Sort.by(Sort.Order.desc("createdAt"))
         );
-        Semester semesterEnum = convertToSemesterEnum(semester);
-        Page<Counsel> counselPage = counselRepository.findByMemberIdAndYearAndSemester(studentId, year, semesterEnum, sortedPageable);
+        Page<Counsel> counselPage = counselRepository.findByMemberIdAndYearAndSemester(studentId, year, semester, sortedPageable);
         return counselPage.map(this::convertToCounselDto);
     }
 
@@ -127,10 +124,6 @@ public class CounselServiceImpl implements CounselService {
     // 학생 상담 수정 [선생님 권한]
     @Override
     @Transactional
-    @CacheEvict(
-            cacheNames = "counsel",
-            key = "'filter:' + #counsel.member.id + ':' + #counselForm.year + ':' + #counselForm.semester"
-    )
     public void updateCounsel(Long counselId, CounselForm counselForm, LoginUserDto loginUser) {
         // ROLE_TEACHER 아닌 경우 예외 처리
         roleValidator.validateTeacherRole(loginUser);
@@ -142,6 +135,8 @@ public class CounselServiceImpl implements CounselService {
         counsel.setContent(counselForm.getContent());
         counsel.setNextCounselDate(counselForm.getNextCounselDate());
 
+        // 캐시 무효화
+        evictCounselCache(counsel.getMember().getId(), counsel.getYear(), counsel.getSemester());
         // 상담 알림 수정 & Kafka 이벤트 생성
         sendCounselNotification(counsel, "수정");
     }
@@ -149,16 +144,14 @@ public class CounselServiceImpl implements CounselService {
     // 학생 상담 삭제 [선생님 권한]
     @Override
     @Transactional
-    @CacheEvict(
-            cacheNames = "counsel",
-            key = "'filter:' + #counsel.member.id + ':' + #counsel.year + ':' + #counsel.semester"
-    )
     public void deleteCounsel(Long counselId, LoginUserDto loginUser) {
         // ROLE_TEACHER 아닌 경우 예외 처리
         roleValidator.validateTeacherRole(loginUser);
         Counsel counsel = counselRepository.findById(counselId)
                 .orElseThrow(() -> new ServiceException(ReturnCode.COUNSEL_NOT_FOUND));
         counselRepository.delete(counsel);
+        // 캐시 무효화
+        evictCounselCache(counsel.getMember().getId(), counsel.getYear(), counsel.getSemester());
     }
 
     // ----------------- 헬퍼 메서드 -----------------
@@ -169,6 +162,13 @@ public class CounselServiceImpl implements CounselService {
         if (pageSize > maxPageSize) {
             throw new ServiceException(ReturnCode.PAGE_REQUEST_FAIL);
         }
+    }
+
+    // 캐시 무효화
+    private void evictCounselCache(Long studentId, Integer year, Semester semester) {
+        String cacheKey = "counsel:" + studentId + ":" + year + ":" + semester;
+        cacheManager.getCache("counsel").evictIfPresent(cacheKey);
+        log.debug("Counsel key evicted: {}", cacheKey);
     }
 
     // 상담 알림 이벤트 생성

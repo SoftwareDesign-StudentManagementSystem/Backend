@@ -6,7 +6,6 @@ import com.iEdu.global.common.enums.Semester;
 import java.util.List;
 
 public interface GradeQueryRepository {
-    List<Grade> findAllByStudentInfoAndSemesterAndYear(
-            Integer studentYear, Integer classId, Integer number,
-            Semester semester);
+    List<Grade> findAllByStudentInfoAndSemesterAndYearWithMember(
+            Integer studentYear, Integer classId, Integer number, Semester semester);
 }

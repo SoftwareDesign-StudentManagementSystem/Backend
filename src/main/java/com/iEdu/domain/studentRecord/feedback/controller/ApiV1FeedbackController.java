@@ -6,6 +6,7 @@ import com.iEdu.domain.studentRecord.feedback.dto.req.FeedbackForm;
 import com.iEdu.domain.studentRecord.feedback.dto.res.FeedbackDto;
 import com.iEdu.domain.studentRecord.feedback.entity.FeedbackPage;
 import com.iEdu.domain.studentRecord.feedback.service.FeedbackService;
+import com.iEdu.global.common.enums.Semester;
 import com.iEdu.global.common.response.ApiResponse;
 import com.iEdu.global.common.response.IEduPage;
 import com.iEdu.global.exception.ReturnCode;
@@ -47,7 +48,7 @@ public class ApiV1FeedbackController {
     @GetMapping("/filter")
     public ApiResponse<FeedbackDto> getMyFilterFeedback(@ModelAttribute FeedbackPage request,
                                                         @RequestParam(value = "year") Integer year,
-                                                        @RequestParam(value = "semester") Integer semester,
+                                                        @RequestParam(value = "semester") Semester semester,
                                                         @LoginUser LoginUserDto loginUser ){
         Pageable pageable = PageRequest.of(request.getPage(), request.getSize());
         return ApiResponse.of(IEduPage.of(feedbackService.getMyFilterFeedback(year, semester, pageable, loginUser)));
@@ -59,7 +60,7 @@ public class ApiV1FeedbackController {
     public ApiResponse<FeedbackDto> getFilterFeedback(@ModelAttribute FeedbackPage request,
                                                       @PathVariable("studentId") Long studentId,
                                                       @RequestParam(value = "year") Integer year,
-                                                      @RequestParam(value = "semester") Integer semester,
+                                                      @RequestParam(value = "semester") Semester semester,
                                                       @LoginUser LoginUserDto loginUser) {
         Pageable pageable = PageRequest.of(request.getPage(), request.getSize());
         return ApiResponse.of(IEduPage.of(feedbackService.getFilterFeedback(studentId, year, semester, pageable, loginUser)));

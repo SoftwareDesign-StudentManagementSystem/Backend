@@ -1,6 +1,7 @@
 package com.iEdu.domain.studentRecord.feedback.repository;
 
 import com.iEdu.domain.studentRecord.feedback.entity.Feedback;
+import com.iEdu.domain.studentRecord.grade.entity.Grade;
 import com.iEdu.global.common.enums.Semester;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -23,8 +24,8 @@ public interface FeedbackRepository extends JpaRepository<Feedback, Long> {
     // 특정 학년/학기의 피드백 데이터 조회
     Page<Feedback> findByMemberIdAndYearAndSemester(Long memberId, Integer year, Semester semester, Pageable pageable);
 
-    // 특정 학년/학기의 피드백 데이터 조회(보고서용)
-    List<Feedback> findByMemberIdAndYearAndSemester(Long studentId, Integer year, Semester semester);
+    // 여러 학생 성적을 배치 조회(보고서용)
+    List<Feedback> findByMemberIdInAndYearAndSemester(List<Long> memberIds, Integer year, Semester semester);
 
     // 특정 학년/학기의 피드백 데이터 조회 및 학생 권한 확인
     Page<Feedback> findByMemberIdAndYearAndSemesterAndVisibleToStudentTrue(

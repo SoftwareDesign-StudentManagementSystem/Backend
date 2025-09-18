@@ -19,6 +19,7 @@ import com.iEdu.global.exception.ReturnCode;
 import com.iEdu.global.exception.ServiceException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.*;
@@ -27,9 +28,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-
-import static com.iEdu.global.common.utils.Converter.convertToSemesterEnum;
-import static com.iEdu.global.common.utils.RoleValidator.*;
 
 @Slf4j
 @Service
@@ -41,6 +39,7 @@ public class SpecialtyServiceImpl implements SpecialtyService {
     private final KafkaTemplate<String, String> kafkaTemplate;
     private final ObjectMapper objectMapper;
     private final RoleValidator roleValidator;
+    private final CacheManager cacheManager;
 
     // 학생의 모든 특기사항 조회 [학부모/선생님 권한]
     @Override
@@ -65,7 +64,7 @@ public class SpecialtyServiceImpl implements SpecialtyService {
             value = "specialty",
             key = "'specialty:' + #studentId + ':' + #year + ':' + #semester + ':' + #pageable.pageNumber + ':' + #pageable.pageSize + ':' + #loginUser.role.name()"
     )
-    public Page<SpecialtyDto> getFilterSpecialty(Long studentId, Integer year, Integer semester, Pageable pageable, LoginUserDto loginUser) {
+    public Page<SpecialtyDto> getFilterSpecialty(Long studentId, Integer year, Semester semester, Pageable pageable, LoginUserDto loginUser) {
         checkPageSize(pageable.getPageSize());
         roleValidator.validateAccessToStudent(loginUser, studentId);
         Pageable sortedPageable = PageRequest.of(
@@ -73,9 +72,8 @@ public class SpecialtyServiceImpl implements SpecialtyService {
                 pageable.getPageSize(),
                 Sort.by(Sort.Direction.DESC, "createdAt")
         );
-        Semester semesterEnum = convertToSemesterEnum(semester);
         Page<Specialty> specialtyPage = specialtyRepository.findByMemberIdAndYearAndSemester(
-                studentId, year, semesterEnum, sortedPageable
+                studentId, year, semester, sortedPageable
         );
         return specialtyPage.map(this::convertToSpecialtyDto);
     }
@@ -105,10 +103,6 @@ public class SpecialtyServiceImpl implements SpecialtyService {
     // 학생 특기사항 수정 [선생님 권한]
     @Override
     @Transactional
-    @CacheEvict(
-            value = "specialty",
-            key = "'specialty:' + #specialty.member.id + ':' + #specialtyForm.year + ':' + #specialtyForm.semester + ':*'"
-    )
     public void updateSpecialty(Long specialtyId, SpecialtyForm specialtyForm, LoginUserDto loginUser) {
         // ROLE_TEACHER 아닌 경우 예외 처리
         roleValidator.validateTeacherRole(loginUser);
@@ -119,6 +113,8 @@ public class SpecialtyServiceImpl implements SpecialtyService {
         specialty.setDate(specialtyForm.getDate());
         specialty.setContent(specialtyForm.getContent());
 
+        // 캐시 무효화
+        evictSpecialtyCache(specialty.getMember().getId(), specialty.getYear(), specialty.getSemester());
         // 특기사항 알림 수정 & Kafka 이벤트 생성
         sendSpecialtyNotification(specialty, "수정");
     }
@@ -126,16 +122,14 @@ public class SpecialtyServiceImpl implements SpecialtyService {
     // 학생 특기사항 삭제 [선생님 권한]
     @Override
     @Transactional
-    @CacheEvict(
-            value = "specialty",
-            key = "'specialty:' + #specialty.member.id + ':' + #specialty.year + ':' + #specialty.semester + ':*'"
-    )
     public void deleteSpecialty(Long specialtyId, LoginUserDto loginUser) {
         // ROLE_TEACHER 아닌 경우 예외 처리
         roleValidator.validateTeacherRole(loginUser);
         Specialty specialty = specialtyRepository.findById(specialtyId)
                 .orElseThrow(() -> new ServiceException(ReturnCode.SPECIALTY_NOT_FOUND));
         specialtyRepository.delete(specialty);
+        // 캐시 무효화
+        evictSpecialtyCache(specialty.getMember().getId(), specialty.getYear(), specialty.getSemester());
     }
 
     // ----------------- 헬퍼 메서드 -----------------
@@ -146,6 +140,13 @@ public class SpecialtyServiceImpl implements SpecialtyService {
         if (pageSize > maxPageSize) {
             throw new ServiceException(ReturnCode.PAGE_REQUEST_FAIL);
         }
+    }
+
+    // 캐시 무효화
+    private void evictSpecialtyCache(Long studentId, Integer year, Semester semester) {
+        String cacheKey = "specialty:" + studentId + ":" + year + ":" + semester;
+        cacheManager.getCache("specialty").evictIfPresent(cacheKey);
+        log.debug("Specialty key evicted: {}", cacheKey);
     }
 
     // 특기사항 알림 이벤트 생성

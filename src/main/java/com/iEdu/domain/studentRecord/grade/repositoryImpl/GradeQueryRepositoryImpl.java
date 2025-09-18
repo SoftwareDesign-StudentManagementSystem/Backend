@@ -1,5 +1,6 @@
 package com.iEdu.domain.studentRecord.grade.repositoryImpl;
 
+import com.iEdu.domain.account.member.entity.QMember;
 import com.iEdu.domain.studentRecord.grade.entity.Grade;
 import com.iEdu.domain.studentRecord.grade.entity.QGrade;
 import com.iEdu.domain.studentRecord.grade.repository.GradeQueryRepository;
@@ -19,25 +20,22 @@ public class GradeQueryRepositoryImpl implements GradeQueryRepository {
     private final JPAQueryFactory queryFactory;
 
     @Override
-    public List<Grade> findAllByStudentInfoAndSemesterAndYear(
-            Integer studentYear, Integer classId, Integer number,
-            Semester semester) {
-
+    public List<Grade> findAllByStudentInfoAndSemesterAndYearWithMember(
+            Integer studentYear, Integer classId, Integer number, Semester semester) {
         QGrade grade = QGrade.grade;
+        QMember member = QMember.member;
 
         return queryFactory
                 .selectFrom(grade)
+                .join(grade.member, member).fetchJoin()   // fetchJoin
                 .where(
-                        grade.member.year.eq(studentYear),
-                        grade.member.classId.eq(classId),
-                        eqNumber(grade, number),
-                        grade.semester.eq(semester)
+                        member.year.eq(studentYear),
+                        member.classId.eq(classId),
+                        number != null ? member.number.eq(number) : null,
+                        grade.semester.eq(semester),
+                        grade.year.eq(studentYear)
                 )
+                .orderBy(member.id.asc())                 // DB에서 정렬
                 .fetch();
-    }
-
-    // grade를 인자로 받고, member.number.eq(number) 처리
-    private BooleanExpression eqNumber(QGrade grade, Integer number) {
-        return number != null ? grade.member.number.eq(number) : null;
     }
 }

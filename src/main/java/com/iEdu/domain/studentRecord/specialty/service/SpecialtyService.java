@@ -4,6 +4,7 @@ import com.iEdu.domain.account.auth.loginUser.LoginUserDto;
 import com.iEdu.domain.studentRecord.specialty.dto.req.SpecialtyForm;
 import com.iEdu.domain.studentRecord.specialty.dto.res.SpecialtyDto;
 import com.iEdu.domain.studentRecord.specialty.entity.Specialty;
+import com.iEdu.global.common.enums.Semester;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
@@ -14,7 +15,7 @@ public interface SpecialtyService {
     Page<SpecialtyDto> getAllSpecialty(Long studentId, Pageable pageable, LoginUserDto loginUser);
 
     // (학년/학기)로 학생 특기사항 조회 [학부모/선생님 권한]
-    Page<SpecialtyDto> getFilterSpecialty(Long studentId, Integer year, Integer semester, Pageable pageable, LoginUserDto loginUser);
+    Page<SpecialtyDto> getFilterSpecialty(Long studentId, Integer year, Semester semester, Pageable pageable, LoginUserDto loginUser);
 
     // 학생 특기사항 생성 [선생님 권한]
     void createSpecialty(Long studentId, SpecialtyForm specialtyForm, LoginUserDto loginUser);

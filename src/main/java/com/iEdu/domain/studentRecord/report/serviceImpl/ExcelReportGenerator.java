@@ -35,7 +35,9 @@ import org.springframework.stereotype.Component;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Component("EXCEL")
 @RequiredArgsConstructor
@@ -91,14 +93,17 @@ public class ExcelReportGenerator implements ReportGenerator {
     private void writeFeedbackSection(Sheet sheet, List<Member> students, Integer year, Semester semester) {
         Row header = sheet.createRow(0);
         String[] columns = {"날짜", "학생 이름", "학년", "반", "번호", "학기", "선생님 이름", "카테고리", "내용"};
-        for (int i = 0; i < columns.length; i++) {
-            header.createCell(i).setCellValue(columns[i]);
-        }
+        for (int i = 0; i < columns.length; i++) header.createCell(i).setCellValue(columns[i]);
 
+        List<Long> studentIds = students.stream().map(Member::getId).toList();
+        List<Feedback> feedbacks = feedbackRepository.findByMemberIdInAndYearAndSemester(studentIds, year, semester);
+        // studentId -> List<Feedback> 맵핑
+        Map<Long, List<Feedback>> feedbackMap = feedbacks.stream()
+                .collect(Collectors.groupingBy(f -> f.getMember().getId()));
         int rowIdx = 1;
         for (Member student : students) {
-            List<Feedback> feedbacks = feedbackRepository.findByMemberIdAndYearAndSemester(student.getId(), year, semester);
-            for (Feedback feedback : feedbacks) {
+            List<Feedback> list = feedbackMap.getOrDefault(student.getId(), List.of());
+            for (Feedback feedback : list) {
                 FeedbackDto dto = feedbackService.convertToFeedbackDto(feedback);
                 Row row = sheet.createRow(rowIdx++);
                 row.createCell(0).setCellValue(dto.getDate().toString());
@@ -117,14 +122,17 @@ public class ExcelReportGenerator implements ReportGenerator {
     private void writeCounselSection(Sheet sheet, List<Member> students, Integer year, Semester semester) {
         Row header = sheet.createRow(0);
         String[] columns = {"날짜", "학생 이름", "학년", "반", "번호", "학기", "선생님 이름", "내용", "다음 상담예정일"};
-        for (int i = 0; i < columns.length; i++) {
-            header.createCell(i).setCellValue(columns[i]);
-        }
+        for (int i = 0; i < columns.length; i++) header.createCell(i).setCellValue(columns[i]);
 
+        List<Long> studentIds = students.stream().map(Member::getId).toList();
+        List<Counsel> counsels = counselRepository.findByMemberIdInAndYearAndSemester(studentIds, year, semester);
+        // studentId -> List<Counsel> 맵핑
+        Map<Long, List<Counsel>> counselMap = counsels.stream()
+                .collect(Collectors.groupingBy(c -> c.getMember().getId()));
         int rowIdx = 1;
         for (Member student : students) {
-            List<Counsel> counsels = counselRepository.findByMemberIdAndYearAndSemester(student.getId(), year, semester);
-            for (Counsel counsel : counsels) {
+            List<Counsel> list = counselMap.getOrDefault(student.getId(), List.of());
+            for (Counsel counsel : list) {
                 CounselDto dto = counselService.convertToCounselDto(counsel);
                 Row row = sheet.createRow(rowIdx++);
                 row.createCell(0).setCellValue(dto.getDate().toString());
@@ -143,23 +151,28 @@ public class ExcelReportGenerator implements ReportGenerator {
     private void writeSpecialtySection(Sheet sheet, List<Member> students, Integer year, Semester semester) {
         Row header = sheet.createRow(0);
         String[] columns = {"날짜", "학생 이름", "학년", "반", "번호", "학기", "선생님 이름", "내용"};
-        for (int i = 0; i < columns.length; i++) {
-            header.createCell(i).setCellValue(columns[i]);
-        }
+        for (int i = 0; i < columns.length; i++) header.createCell(i).setCellValue(columns[i]);
 
+        List<Long> studentIds = students.stream().map(Member::getId).toList();
+        List<Specialty> specialties = specialtyRepository.findByMemberIdInAndYearAndSemester(studentIds, year, semester);
+        // studentId -> List<Specialty> 맵핑
+        Map<Long, List<Specialty>> specialtyMap = specialties.stream()
+                .collect(Collectors.groupingBy(s -> s.getMember().getId()));
         int rowIdx = 1;
         for (Member student : students) {
-            List<Specialty> specialties = specialtyRepository.findByMemberIdAndYearAndSemester(student.getId(), year, semester);
-            for (Specialty specialty : specialties) {
+            List<Specialty> list = specialtyMap.getOrDefault(student.getId(), List.of());
+            for (Specialty specialty : list) {
                 SpecialtyDto dto = specialtyService.convertToSpecialtyDto(specialty);
                 Row row = sheet.createRow(rowIdx++);
                 row.createCell(0).setCellValue(dto.getDate().toString());
+                row.createCell(1).setCellValue(student.getName());
                 row.createCell(2).setCellValue(year);
                 row.createCell(3).setCellValue(student.getClassId());
                 row.createCell(4).setCellValue(student.getNumber());
                 row.createCell(5).setCellValue(semester.toKoreanString());
                 row.createCell(6).setCellValue(dto.getTeacherName());
-                row.createCell(7).setCellValue(dto.getContent());            }
+                row.createCell(7).setCellValue(dto.getContent());
+            }
         }
     }
 
@@ -210,15 +223,18 @@ public class ExcelReportGenerator implements ReportGenerator {
                 "학생 이름", "학년", "반", "번호", "학기", "국어", "수학", "영어", "사회", "한국사", "윤리", "경제",
                 "물리", "화학", "생명과학", "지구과학", "음악", "미술", "체육", "기술가정", "컴퓨터", "제2외국어", "학년 석차"
         };
-        for (int i = 0; i < columns.length; i++) {
-            header.createCell(i).setCellValue(columns[i]);
-        }
+        for (int i = 0; i < columns.length; i++) header.createCell(i).setCellValue(columns[i]);
 
+        List<Long> studentIds = students.stream().map(Member::getId).toList();
+        List<Grade> grades = gradeRepository.findByMemberIdInAndYearAndSemester(studentIds, year, semester);
+        // studentId -> List<Grade> 맵핑
+        Map<Long, Grade> gradeMap = grades.stream()
+                .collect(Collectors.toMap(g -> g.getMember().getId(), g -> g));
         int rowIdx = 1;
         for (Member student : students) {
-            Optional<Grade> optionalGrade = gradeRepository.findByMemberIdAndYearAndSemester(student.getId(), year, semester);
-            if (optionalGrade.isPresent()) {
-                GradeDto dto = gradeService.convertToGradeDto(optionalGrade.get(), student.getAccountId());
+            Grade grade = gradeMap.get(student.getId());
+            if (grade != null) {
+                GradeDto dto = gradeService.convertToGradeDto(grade, student.getAccountId());
                 Row row = sheet.createRow(rowIdx++);
                 int cellIdx = 0;
                 row.createCell(cellIdx++).setCellValue(student.getName());

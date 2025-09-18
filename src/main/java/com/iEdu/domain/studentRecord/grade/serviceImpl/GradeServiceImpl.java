@@ -22,7 +22,8 @@ import com.iEdu.global.exception.ReturnCode;
 import com.iEdu.global.exception.ServiceException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -33,9 +34,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
-
-import static com.iEdu.global.common.utils.Converter.convertToSemesterEnum;
-import static com.iEdu.global.common.utils.RoleValidator.*;
 
 @Slf4j
 @Service
@@ -48,6 +46,7 @@ public class GradeServiceImpl implements GradeService {
     private final ObjectMapper objectMapper;
     private final MemberService memberService;
     private final RoleValidator roleValidator;
+    private final CacheManager cacheManager;
 
     // 본인의 모든 성적 조회 [학생 권한]
     @Override
@@ -88,11 +87,10 @@ public class GradeServiceImpl implements GradeService {
     @Override
     @Transactional(readOnly = true)
     @Cacheable(value = "grade", key = "#loginUser.id + ':' + #year + ':' + #semester")
-    public GradeDto getMyFilterGrade(Integer year, Integer semester, LoginUserDto loginUser){
+    public GradeDto getMyFilterGrade(Integer year, Semester semester, LoginUserDto loginUser){
         roleValidator.validateStudentRole(loginUser);
-        Semester semesterEnum = convertToSemesterEnum(semester);
         Grade grade = gradeRepository
-                .findByMemberIdAndYearAndSemester(loginUser.getId(), year, semesterEnum)
+                .findByMemberIdAndYearAndSemester(loginUser.getId(), year, semester)
                 .orElseThrow(() -> new ServiceException(ReturnCode.GRADE_NOT_FOUND));
         return convertToGradeDto(grade, loginUser.getAccountId());
     }
@@ -101,12 +99,11 @@ public class GradeServiceImpl implements GradeService {
     @Override
     @Transactional(readOnly = true)
     @Cacheable(value = "grade", key = "#studentId + ':' + #year + ':' + #semester")
-    public GradeDto getFilterGrade(Long studentId, Integer year, Integer semester, LoginUserDto loginUser){
+    public GradeDto getFilterGrade(Long studentId, Integer year, Semester semester, LoginUserDto loginUser){
         roleValidator.validateAccessToStudent(loginUser, studentId);
-        Semester semesterEnum = convertToSemesterEnum(semester);
         Member student = memberRepository.getById(studentId);
         Grade grade = gradeRepository
-                .findByMemberIdAndYearAndSemester(studentId, year, semesterEnum)
+                .findByMemberIdAndYearAndSemester(studentId, year, semester)
                 .orElseThrow(() -> new ServiceException(ReturnCode.USER_NOT_FOUND));
         return convertToGradeDto(grade, student.getAccountId());
     }
@@ -114,12 +111,11 @@ public class GradeServiceImpl implements GradeService {
     // (학년/반/번호/학기)로 학생들 성적 조회 [선생님 권한]
     @Override
     @Transactional
-    public List<GradeDto> getStudentsGrade(Integer year, Integer classId, Integer number, Integer semester, LoginUserDto loginUser){
+    public List<GradeDto> getStudentsGrade(Integer year, Integer classId, Integer number, Semester semester, LoginUserDto loginUser){
         // ROLE_TEACHER 아닌 경우 예외 처리
         roleValidator.validateTeacherRole(loginUser);
-        Semester semesterEnum = convertToSemesterEnum(semester);
-        List<Grade> grades = gradeQueryRepository.findAllByStudentInfoAndSemesterAndYear(
-                year, classId, number, semesterEnum
+        List<Grade> grades = gradeQueryRepository.findAllByStudentInfoAndSemesterAndYearWithMember(
+                year, classId, number, semester
         );
         // 학급 전체 성적 데이터 기준으로 랭크 계산
         return grades.stream()
@@ -161,7 +157,6 @@ public class GradeServiceImpl implements GradeService {
     // 학생 성적 수정 [선생님 권한]
     @Override
     @Transactional
-    @CacheEvict(value = "grade", key = "#grade.member.id + ':' + #grade.year + ':' + #grade.semester")
     public void updateGrade(Long gradeId, GradeUpdateForm gradeUpdateForm, LoginUserDto loginUser){
         // ROLE_TEACHER 아닌 경우 예외 처리
         roleValidator.validateTeacherRole(loginUser);
@@ -173,6 +168,8 @@ public class GradeServiceImpl implements GradeService {
 
         // 과목별 점수 입력
         updateSubjectScore(grade, subject, gradeUpdateForm.getScore());
+        // 캐시 무효화
+        evictGradeCache(grade.getMember().getId(), grade.getYear(), grade.getSemester());
         // 성적 알림 생성 & Kafka 이벤트 생성
         sendGradeNotifications(grade, grade.getMember().getId(), grade.getYear(), grade.getSemester(), subject, false);
     }
@@ -180,7 +177,6 @@ public class GradeServiceImpl implements GradeService {
     // 학생 성적 삭제 [선생님 권한]
     @Override
     @Transactional
-    @CacheEvict(value = "grade", key = "#grade.member.id + ':' + #grade.year + ':' + #grade.semester")
     public void deleteGrade(Long gradeId, LoginUserDto loginUser){
         // ROLE_TEACHER 아닌 경우 예외 처리
         roleValidator.validateTeacherRole(loginUser);
@@ -192,6 +188,8 @@ public class GradeServiceImpl implements GradeService {
 
         // 담당 과목 점수만 null로 설정 (실제 "삭제" 대신)
         updateSubjectScore(grade, subject, null);
+        // 캐시 무효화
+        evictGradeCache(grade.getMember().getId(), grade.getYear(), grade.getSemester());
     }
 
     // ----------------- 헬퍼 메서드 -----------------
@@ -202,6 +200,13 @@ public class GradeServiceImpl implements GradeService {
         if (pageSize > maxPageSize) {
             throw new ServiceException(ReturnCode.PAGE_REQUEST_FAIL);
         }
+    }
+
+    // 캐시 무효화
+    private void evictGradeCache(Long studentId, Integer year, Semester semester) {
+        String cacheKey = studentId + ":" + year + ":" + semester;
+        cacheManager.getCache("grade").evictIfPresent(cacheKey);
+        log.debug("Grade cache evicted: {}", cacheKey);
     }
 
     // 성적 생성/수정/삭제 매핑
@@ -290,7 +295,7 @@ public class GradeServiceImpl implements GradeService {
         Long targetEntranceYear = studentAccountId / 100000;
 
         // 해당 학년과 학기의 모든 성적 불러오기
-        List<Grade> allGradesForYearAndSemester = gradeRepository.findAllByYearAndSemester(year, semester);
+        List<Grade> allGradesForYearAndSemester = gradeRepository.findAllByYearAndSemesterWithMember(year, semester);
 
         // 입학 연도 필터링 → 같은 입학연도 학생들만 남김
         List<Grade> sameCohortGrades = allGradesForYearAndSemester.stream()
