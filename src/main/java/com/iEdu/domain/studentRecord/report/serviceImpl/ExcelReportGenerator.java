@@ -1,26 +1,26 @@
 package com.iEdu.domain.studentRecord.report.serviceImpl;
 
 import com.iEdu.domain.account.member.entity.Member;
-import com.iEdu.domain.studentRecord.attendance.dto.res.AttendanceDto;
+import com.iEdu.domain.studentRecord.attendance.dto.res.AttendanceResponse;
 import com.iEdu.domain.studentRecord.attendance.dto.res.PeriodAttendanceDto;
 import com.iEdu.domain.studentRecord.attendance.entity.Attendance;
 import com.iEdu.domain.studentRecord.attendance.repository.AttendanceRepository;
 import com.iEdu.domain.studentRecord.attendance.service.AttendanceService;
-import com.iEdu.domain.studentRecord.counsel.dto.res.CounselDto;
+import com.iEdu.domain.studentRecord.counsel.dto.res.CounselResponse;
 import com.iEdu.domain.studentRecord.counsel.entity.Counsel;
 import com.iEdu.domain.studentRecord.counsel.repository.CounselRepository;
 import com.iEdu.domain.studentRecord.counsel.service.CounselService;
-import com.iEdu.domain.studentRecord.feedback.dto.res.FeedbackDto;
+import com.iEdu.domain.studentRecord.feedback.dto.res.FeedbackResponse;
 import com.iEdu.domain.studentRecord.feedback.entity.Feedback;
 import com.iEdu.domain.studentRecord.feedback.repository.FeedbackRepository;
 import com.iEdu.domain.studentRecord.feedback.service.FeedbackService;
-import com.iEdu.domain.studentRecord.grade.dto.res.GradeDto;
+import com.iEdu.domain.studentRecord.grade.dto.res.GradeResponse;
 import com.iEdu.domain.studentRecord.grade.entity.Grade;
 import com.iEdu.domain.studentRecord.grade.repository.GradeRepository;
 import com.iEdu.domain.studentRecord.grade.service.GradeService;
-import com.iEdu.domain.studentRecord.report.dto.req.ReportForm;
+import com.iEdu.domain.studentRecord.report.dto.req.ReportRequest;
 import com.iEdu.domain.studentRecord.report.service.ReportGenerator;
-import com.iEdu.domain.studentRecord.specialty.dto.res.SpecialtyDto;
+import com.iEdu.domain.studentRecord.specialty.dto.res.SpecialtyResponse;
 import com.iEdu.domain.studentRecord.specialty.entity.Specialty;
 import com.iEdu.domain.studentRecord.specialty.repository.SpecialtyRepository;
 import com.iEdu.domain.studentRecord.specialty.service.SpecialtyService;
@@ -36,7 +36,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Component("EXCEL")
@@ -54,7 +53,7 @@ public class ExcelReportGenerator implements ReportGenerator {
     private final GradeService gradeService;
 
     @Override
-    public byte[] generateSingleTypeReport(List<Member> students, Integer year, Semester semester, ReportForm form, String type) {
+    public byte[] generateSingleTypeReport(List<Member> students, Integer year, Semester semester, ReportRequest form, String type) {
         try (Workbook workbook = new XSSFWorkbook(); ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
             Sheet sheet = workbook.createSheet(type); // 각 항목별 시트 이름: 성적, 피드백 등
             switch (type) {
@@ -72,7 +71,7 @@ public class ExcelReportGenerator implements ReportGenerator {
     }
 
     @Override
-    public byte[] generateReport(Member student, Integer year, Semester semester, ReportForm form) {
+    public byte[] generateReport(Member student, Integer year, Semester semester, ReportRequest form) {
         try (Workbook workbook = new XSSFWorkbook(); ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
             if (form.getAttendance()) {
                 Sheet sheet = workbook.createSheet("출결");
@@ -104,7 +103,7 @@ public class ExcelReportGenerator implements ReportGenerator {
         for (Member student : students) {
             List<Feedback> list = feedbackMap.getOrDefault(student.getId(), List.of());
             for (Feedback feedback : list) {
-                FeedbackDto dto = feedbackService.convertToFeedbackDto(feedback);
+                FeedbackResponse dto = feedbackService.convertToFeedbackDto(feedback);
                 Row row = sheet.createRow(rowIdx++);
                 row.createCell(0).setCellValue(dto.getDate().toString());
                 row.createCell(1).setCellValue(student.getName());
@@ -133,7 +132,7 @@ public class ExcelReportGenerator implements ReportGenerator {
         for (Member student : students) {
             List<Counsel> list = counselMap.getOrDefault(student.getId(), List.of());
             for (Counsel counsel : list) {
-                CounselDto dto = counselService.convertToCounselDto(counsel);
+                CounselResponse dto = counselService.convertToCounselDto(counsel);
                 Row row = sheet.createRow(rowIdx++);
                 row.createCell(0).setCellValue(dto.getDate().toString());
                 row.createCell(1).setCellValue(student.getName());
@@ -162,7 +161,7 @@ public class ExcelReportGenerator implements ReportGenerator {
         for (Member student : students) {
             List<Specialty> list = specialtyMap.getOrDefault(student.getId(), List.of());
             for (Specialty specialty : list) {
-                SpecialtyDto dto = specialtyService.convertToSpecialtyDto(specialty);
+                SpecialtyResponse dto = specialtyService.convertToSpecialtyDto(specialty);
                 Row row = sheet.createRow(rowIdx++);
                 row.createCell(0).setCellValue(dto.getDate().toString());
                 row.createCell(1).setCellValue(student.getName());
@@ -200,7 +199,7 @@ public class ExcelReportGenerator implements ReportGenerator {
         List<Attendance> attendances = attendanceRepository.findByMemberIdAndYearAndSemesterOrderByDateAsc(student.getId(), year, semester);
         int rowIdx = 3;
         for (Attendance attendance : attendances) {
-            AttendanceDto dto = attendanceService.convertToAttendanceDto(attendance);
+            AttendanceResponse dto = attendanceService.convertToAttendanceDto(attendance);
             Row row = sheet.createRow(rowIdx++);
             row.createCell(0).setCellValue(dto.getDate().toString());
 
@@ -235,7 +234,7 @@ public class ExcelReportGenerator implements ReportGenerator {
         for (Member student : students) {
             Grade grade = gradeMap.get(student.getId());
             if (grade != null) {
-                GradeDto dto = gradeService.convertToGradeDto(grade, student.getAccountId(), allGrades);
+                GradeResponse dto = gradeService.convertToGradeDto(grade, student.getAccountId(), allGrades);
                 Row row = sheet.createRow(rowIdx++);
                 int cellIdx = 0;
                 row.createCell(cellIdx++).setCellValue(student.getName());

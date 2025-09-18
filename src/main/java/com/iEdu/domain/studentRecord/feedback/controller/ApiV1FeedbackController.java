@@ -2,13 +2,12 @@ package com.iEdu.domain.studentRecord.feedback.controller;
 
 import com.iEdu.domain.account.auth.loginUser.LoginUser;
 import com.iEdu.domain.account.auth.loginUser.LoginUserDto;
-import com.iEdu.domain.studentRecord.feedback.dto.req.FeedbackForm;
-import com.iEdu.domain.studentRecord.feedback.dto.res.FeedbackDto;
+import com.iEdu.domain.studentRecord.feedback.dto.req.FeedbackRequest;
+import com.iEdu.domain.studentRecord.feedback.dto.res.FeedbackResponse;
 import com.iEdu.domain.studentRecord.feedback.entity.FeedbackPage;
 import com.iEdu.domain.studentRecord.feedback.service.FeedbackService;
 import com.iEdu.global.common.enums.Semester;
 import com.iEdu.global.common.response.ApiResponse;
-import com.iEdu.global.exception.ReturnCode;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -29,7 +28,7 @@ public class ApiV1FeedbackController {
     // 본인의 모든 피드백 조회 [학생 권한]
     @Operation(summary = "본인의 모든 피드백 조회 [학생 권한]")
     @GetMapping
-    public ApiResponse<List<FeedbackDto>> getMyAllFeedback(@ModelAttribute FeedbackPage request, @LoginUser LoginUserDto loginUser) {
+    public ApiResponse<List<FeedbackResponse>> getMyAllFeedback(@ModelAttribute FeedbackPage request, @LoginUser LoginUserDto loginUser) {
         Pageable pageable = PageRequest.of(request.getPage(), request.getSize());
         return ApiResponse.success(feedbackService.getMyAllFeedback(pageable, loginUser));
     }
@@ -37,9 +36,9 @@ public class ApiV1FeedbackController {
     // 학생의 모든 피드백 조회 [학부모/선생님 권한]
     @Operation(summary = "학생의 모든 피드백 조회 [학부모/선생님 권한]")
     @GetMapping("/{studentId}")
-    public ApiResponse<List<FeedbackDto>> getAllFeedback(@ModelAttribute FeedbackPage request,
-                                                   @PathVariable("studentId") Long studentId,
-                                                   @LoginUser LoginUserDto loginUser) {
+    public ApiResponse<List<FeedbackResponse>> getAllFeedback(@ModelAttribute FeedbackPage request,
+                                                              @PathVariable("studentId") Long studentId,
+                                                              @LoginUser LoginUserDto loginUser) {
         Pageable pageable = PageRequest.of(request.getPage(), request.getSize());
         return ApiResponse.success(feedbackService.getAllFeedback(studentId, pageable, loginUser));
     }
@@ -47,10 +46,10 @@ public class ApiV1FeedbackController {
     // (학년/학기)로 본인 피드백 조회 [학생 권한]
     @Operation(summary = "(학년/학기)로 본인 피드백 조회 [학생 권한]")
     @GetMapping("/filter")
-    public ApiResponse<List<FeedbackDto>> getMyFilterFeedback(@ModelAttribute FeedbackPage request,
-                                                        @RequestParam(value = "year") Integer year,
-                                                        @RequestParam(value = "semester") Semester semester,
-                                                        @LoginUser LoginUserDto loginUser ){
+    public ApiResponse<List<FeedbackResponse>> getMyFilterFeedback(@ModelAttribute FeedbackPage request,
+                                                                   @RequestParam(value = "year") Integer year,
+                                                                   @RequestParam(value = "semester") Semester semester,
+                                                                   @LoginUser LoginUserDto loginUser ){
         Pageable pageable = PageRequest.of(request.getPage(), request.getSize());
         return ApiResponse.success(feedbackService.getMyFilterFeedback(year, semester, pageable, loginUser));
     }
@@ -58,11 +57,11 @@ public class ApiV1FeedbackController {
     // (학년/학기)로 학생 피드백 조회 [학부모/선생님 권한]
     @Operation(summary = "(학년/학기)로 학생 피드백 조회 [학부모/선생님 권한]")
     @GetMapping("/filter/{studentId}")
-    public ApiResponse<List<FeedbackDto>> getFilterFeedback(@ModelAttribute FeedbackPage request,
-                                                      @PathVariable("studentId") Long studentId,
-                                                      @RequestParam(value = "year") Integer year,
-                                                      @RequestParam(value = "semester") Semester semester,
-                                                      @LoginUser LoginUserDto loginUser) {
+    public ApiResponse<List<FeedbackResponse>> getFilterFeedback(@ModelAttribute FeedbackPage request,
+                                                                 @PathVariable("studentId") Long studentId,
+                                                                 @RequestParam(value = "year") Integer year,
+                                                                 @RequestParam(value = "semester") Semester semester,
+                                                                 @LoginUser LoginUserDto loginUser) {
         Pageable pageable = PageRequest.of(request.getPage(), request.getSize());
         return ApiResponse.success(feedbackService.getFilterFeedback(studentId, year, semester, pageable, loginUser));
     }
@@ -71,19 +70,19 @@ public class ApiV1FeedbackController {
     @Operation(summary = "학생 피드백 생성 [선생님 권한]")
     @PostMapping("/{studentId}")
     public ApiResponse<Void> createFeedback(@PathVariable("studentId") Long studentId,
-                                              @RequestBody @Valid FeedbackForm feedbackForm,
+                                              @RequestBody @Valid FeedbackRequest feedbackRequest,
                                               @LoginUser LoginUserDto loginUser) {
-        feedbackService.createFeedback(studentId, feedbackForm, loginUser);
+        feedbackService.createFeedback(studentId, feedbackRequest, loginUser);
         return ApiResponse.success();
     }
 
     // 학생 피드백 수정 [선생님 권한]
     @Operation(summary = "학생 피드백 수정 [선생님 권한]")
-    @PutMapping("/{feedbackId}")
+    @PatchMapping("/{feedbackId}")
     public ApiResponse<Void> updateFeedback(@PathVariable("feedbackId") Long feedbackId,
-                                              @RequestBody @Valid FeedbackForm feedbackForm,
+                                              @RequestBody @Valid FeedbackRequest feedbackRequest,
                                               @LoginUser LoginUserDto loginUser) {
-        feedbackService.updateFeedback(feedbackId, feedbackForm, loginUser);
+        feedbackService.updateFeedback(feedbackId, feedbackRequest, loginUser);
         return ApiResponse.success();
     }
 

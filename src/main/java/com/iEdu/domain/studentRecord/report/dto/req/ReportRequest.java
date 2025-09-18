@@ -12,7 +12,7 @@ import java.util.List;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class ReportForm {
+public class ReportRequest {
     @Column(columnDefinition = "jsonb") // PostgreSQL의 jsonb 타입 사용
     @Size(max = 25, message = "최대 25명까지만 선택할 수 있습니다.")
     private List<Long> studentIdList;
@@ -25,8 +25,8 @@ public class ReportForm {
     private Boolean feedback;
     private Boolean specialty;
 
-    public ReportForm copyWithOnly(String field) {
-        return ReportForm.builder()
+    public ReportRequest copyWithOnly(String field) {
+        return ReportRequest.builder()
                 .studentIdList(this.studentIdList)
                 .year(this.year)
                 .semester(this.semester)

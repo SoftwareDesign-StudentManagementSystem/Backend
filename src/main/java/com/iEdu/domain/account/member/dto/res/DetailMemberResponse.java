@@ -9,7 +9,7 @@ import java.util.List;
 
 @Data
 @Builder
-public class DetailMemberDto {
+public class DetailMemberResponse {
     private Long id;
     private Long accountId;
     private String name;
@@ -24,8 +24,8 @@ public class DetailMemberDto {
     private Member.Subject subject;
     private Member.Gender gender;
     private Member.MemberRole role;
-    private List<SimpleMember> childrenList;
-    private List<SimpleMember> parentList;
-    private List<SimpleMember> followReqList;
-    private List<SimpleMember> followRecList;
+    private List<SimpleMemberDto> childrenList;
+    private List<SimpleMemberDto> parentList;
+    private List<SimpleMemberDto> followReqList;
+    private List<SimpleMemberDto> followRecList;
 }

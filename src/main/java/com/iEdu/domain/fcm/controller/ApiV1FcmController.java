@@ -3,8 +3,7 @@ package com.iEdu.domain.fcm.controller;
 import com.iEdu.domain.account.auth.loginUser.LoginUser;
 import com.iEdu.domain.account.auth.loginUser.LoginUserDto;
 import com.iEdu.global.common.response.ApiResponse;
-import com.iEdu.global.exception.ReturnCode;
-import com.iEdu.domain.fcm.dto.req.FcmToken;
+import com.iEdu.domain.fcm.dto.req.FcmTokenRequest;
 import com.iEdu.domain.fcm.service.FcmTokenService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -22,8 +21,8 @@ public class ApiV1FcmController {
     // FCM Token 저장
     @Operation(summary = "FCM Token 저장")
     @PostMapping
-    public ApiResponse<Void> saveFcmToken(@RequestBody @Valid FcmToken fcmToken, @LoginUser LoginUserDto loginUser) {
-        fcmTokenService.saveFcmToken(loginUser.getId(), fcmToken.getFcmToken());
+    public ApiResponse<Void> saveFcmToken(@RequestBody @Valid FcmTokenRequest fcmTokenRequest, @LoginUser LoginUserDto loginUser) {
+        fcmTokenService.saveFcmToken(loginUser.getId(), fcmTokenRequest.getFcmToken());
         return ApiResponse.success();
     }
 

@@ -13,7 +13,7 @@ import java.time.LocalDate;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class FollowForm {
+public class FollowRequest {
     @NotBlank(message = "이름은 필수입니다.")
     private String name;
 

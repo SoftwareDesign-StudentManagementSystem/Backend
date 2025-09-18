@@ -1,26 +1,25 @@
 package com.iEdu.domain.studentRecord.report.serviceImpl;
 
 import com.iEdu.domain.account.member.entity.Member;
-import com.iEdu.domain.studentRecord.attendance.dto.res.AttendanceDto;
-import com.iEdu.domain.studentRecord.attendance.dto.res.PeriodAttendanceDto;
+import com.iEdu.domain.studentRecord.attendance.dto.res.AttendanceResponse;
 import com.iEdu.domain.studentRecord.attendance.entity.Attendance;
 import com.iEdu.domain.studentRecord.attendance.repository.AttendanceRepository;
 import com.iEdu.domain.studentRecord.attendance.service.AttendanceService;
-import com.iEdu.domain.studentRecord.counsel.dto.res.CounselDto;
+import com.iEdu.domain.studentRecord.counsel.dto.res.CounselResponse;
 import com.iEdu.domain.studentRecord.counsel.entity.Counsel;
 import com.iEdu.domain.studentRecord.counsel.repository.CounselRepository;
 import com.iEdu.domain.studentRecord.counsel.service.CounselService;
-import com.iEdu.domain.studentRecord.feedback.dto.res.FeedbackDto;
+import com.iEdu.domain.studentRecord.feedback.dto.res.FeedbackResponse;
 import com.iEdu.domain.studentRecord.feedback.entity.Feedback;
 import com.iEdu.domain.studentRecord.feedback.repository.FeedbackRepository;
 import com.iEdu.domain.studentRecord.feedback.service.FeedbackService;
-import com.iEdu.domain.studentRecord.grade.dto.res.GradeDto;
+import com.iEdu.domain.studentRecord.grade.dto.res.GradeResponse;
 import com.iEdu.domain.studentRecord.grade.entity.Grade;
 import com.iEdu.domain.studentRecord.grade.repository.GradeRepository;
 import com.iEdu.domain.studentRecord.grade.service.GradeService;
-import com.iEdu.domain.studentRecord.report.dto.req.ReportForm;
+import com.iEdu.domain.studentRecord.report.dto.req.ReportRequest;
 import com.iEdu.domain.studentRecord.report.service.ReportGenerator;
-import com.iEdu.domain.studentRecord.specialty.dto.res.SpecialtyDto;
+import com.iEdu.domain.studentRecord.specialty.dto.res.SpecialtyResponse;
 import com.iEdu.domain.studentRecord.specialty.entity.Specialty;
 import com.iEdu.domain.studentRecord.specialty.repository.SpecialtyRepository;
 import com.iEdu.domain.studentRecord.specialty.service.SpecialtyService;
@@ -33,26 +32,18 @@ import com.itextpdf.kernel.font.PdfFontFactory;
 import com.itextpdf.kernel.pdf.PdfDocument;
 import com.itextpdf.kernel.pdf.PdfWriter;
 import com.itextpdf.layout.Document;
-import com.itextpdf.layout.element.AreaBreak;
 import com.itextpdf.layout.element.Cell;
 import com.itextpdf.layout.element.Paragraph;
 import com.itextpdf.layout.element.Table;
-import com.itextpdf.layout.properties.UnitValue;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.stream.Collectors;
-import java.util.stream.IntStream;
-import java.util.stream.Stream;
-
-import static com.iEdu.domain.studentRecord.attendance.entity.PeriodAttendance.State.*;
 
 @Component("PDF")
 @RequiredArgsConstructor
@@ -69,7 +60,7 @@ public class PdfReportGenerator implements ReportGenerator {
     private final GradeService gradeService;
 
     @Override
-    public byte[] generateSingleTypeReport(List<Member> students, Integer year, Semester semester, ReportForm form, String type) {
+    public byte[] generateSingleTypeReport(List<Member> students, Integer year, Semester semester, ReportRequest form, String type) {
         try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
             PdfWriter writer = new PdfWriter(baos);
             PdfDocument pdf = new PdfDocument(writer);
@@ -93,7 +84,7 @@ public class PdfReportGenerator implements ReportGenerator {
     }
 
     @Override
-    public byte[] generateReport(Member student, Integer year, Semester semester, ReportForm form) {
+    public byte[] generateReport(Member student, Integer year, Semester semester, ReportRequest form) {
         try {
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
             PdfWriter writer = new PdfWriter(baos);
@@ -135,7 +126,7 @@ public class PdfReportGenerator implements ReportGenerator {
         for (Member student : students) {
             List<Feedback> list = feedbackMap.getOrDefault(student.getId(), List.of());
             for (Feedback feedback : list) {
-                FeedbackDto dto = feedbackService.convertToFeedbackDto(feedback);
+                FeedbackResponse dto = feedbackService.convertToFeedbackDto(feedback);
                 table.addCell(new Paragraph(dto.getDate().toString()).setFont(fontRegular).setFontSize(7));
                 table.addCell(new Paragraph(student.getName()).setFont(fontRegular).setFontSize(7));
                 table.addCell(new Paragraph(year.toString()).setFont(fontRegular).setFontSize(7));
@@ -164,7 +155,7 @@ public class PdfReportGenerator implements ReportGenerator {
         for (Member student : students) {
             List<Counsel> list = counselMap.getOrDefault(student.getId(), List.of());
             for (Counsel counsel : list) {
-                CounselDto dto = counselService.convertToCounselDto(counsel);
+                CounselResponse dto = counselService.convertToCounselDto(counsel);
                 table.addCell(new Paragraph(dto.getDate().toString()).setFont(fontRegular).setFontSize(7));
                 table.addCell(new Paragraph(student.getName()).setFont(fontRegular).setFontSize(7));
                 table.addCell(new Paragraph(year.toString()).setFont(fontRegular).setFontSize(7));
@@ -194,7 +185,7 @@ public class PdfReportGenerator implements ReportGenerator {
         for (Member student : students) {
             List<Specialty> list = specialtyMap.getOrDefault(student.getId(), List.of());
             for (Specialty specialty : list) {
-                SpecialtyDto dto = specialtyService.convertToSpecialtyDto(specialty);
+                SpecialtyResponse dto = specialtyService.convertToSpecialtyDto(specialty);
                 table.addCell(new Paragraph(dto.getDate().toString()).setFont(fontRegular).setFontSize(7));
                 table.addCell(new Paragraph(student.getName()).setFont(fontRegular).setFontSize(7));
                 table.addCell(new Paragraph(year.toString()).setFont(fontRegular).setFontSize(7));
@@ -219,7 +210,7 @@ public class PdfReportGenerator implements ReportGenerator {
 
         List<Attendance> attendances = attendanceRepository.findByMemberIdAndYearAndSemesterOrderByDateAsc(student.getId(), year, semester);
         for (Attendance attendance : attendances) {
-            AttendanceDto dto = attendanceService.convertToAttendanceDto(attendance);
+            AttendanceResponse dto = attendanceService.convertToAttendanceDto(attendance);
             Map<Integer, String> periodMap = dto.getPeriodAttendanceDtos().stream()
                     .collect(Collectors.toMap(
                             p -> p.getPeriod().getValue(),
@@ -261,7 +252,7 @@ public class PdfReportGenerator implements ReportGenerator {
         for (Member student : students) {
             Grade grade = gradeMap.get(student.getId());
             if (grade != null) {
-                GradeDto dto = gradeService.convertToGradeDto(grade, student.getAccountId(), allGrades);
+                GradeResponse dto = gradeService.convertToGradeDto(grade, student.getAccountId(), allGrades);
                 // dto 내용 그대로 테이블에 추가
                 table.addCell(new Paragraph(student.getName()).setFont(fontRegular).setFontSize(7));
                 table.addCell(new Paragraph(year.toString()).setFont(fontRegular).setFontSize(7));

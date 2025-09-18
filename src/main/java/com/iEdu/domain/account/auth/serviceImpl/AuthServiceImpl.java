@@ -1,7 +1,7 @@
 package com.iEdu.domain.account.auth.serviceImpl;
 
-import com.iEdu.domain.account.auth.dto.req.LoginForm;
-import com.iEdu.domain.account.auth.dto.res.Auth;
+import com.iEdu.domain.account.auth.dto.req.LoginRequest;
+import com.iEdu.domain.account.auth.dto.res.LoginResponse;
 import com.iEdu.domain.account.auth.loginUser.LoginUserDto;
 import com.iEdu.domain.account.auth.security.JwtTokenProvider;
 import com.iEdu.domain.account.auth.service.AuthService;
@@ -35,18 +35,18 @@ public class AuthServiceImpl implements AuthService {
     // 로그인
     @Override
     @Transactional
-    public Auth login(LoginForm loginForm, boolean isSocialLogin) {
-        Member member = memberRepository.findByAccountId(loginForm.getAccountId())
+    public LoginResponse login(LoginRequest loginRequest, boolean isSocialLogin) {
+        Member member = memberRepository.findByAccountId(loginRequest.getAccountId())
                 .orElseThrow(() -> new ServiceException(ReturnCode.USER_NOT_FOUND));
         // 소셜 로그인이라면 비밀번호 검증을 생략
-        if (!isSocialLogin && !passwordEncoder.matches(loginForm.getPassword(), member.getPassword())) {
+        if (!isSocialLogin && !passwordEncoder.matches(loginRequest.getPassword(), member.getPassword())) {
             throw new RuntimeException("비밀번호가 올바르지 않습니다.");
         }
         String accessToken = jwtTokenProvider.generateToken(member.getAccountId(), accessTokenExpiration);
         String refreshToken = jwtTokenProvider.generateToken(member.getAccountId(), refreshTokenExpiration);
         // Refresh Token을 Redis에 저장
         refreshTokenService.saveRefreshToken(member.getId().toString(), refreshToken, refreshTokenExpiration);
-        return new Auth(accessToken, refreshToken);
+        return new LoginResponse(accessToken, refreshToken);
     }
 
     // 로그아웃
@@ -60,7 +60,7 @@ public class AuthServiceImpl implements AuthService {
     // accessToken 재발급
     @Override
     @Transactional
-    public Auth refreshToken(String refreshToken, LoginUserDto loginUser) {
+    public LoginResponse refreshToken(String refreshToken, LoginUserDto loginUser) {
         // "Bearer "가 붙어있다면 제거
         if (refreshToken.startsWith("Bearer ")) {
             refreshToken = refreshToken.substring(7);
@@ -74,6 +74,6 @@ public class AuthServiceImpl implements AuthService {
         }
         Long accountId = jwtTokenProvider.getAccountIdFromToken(storedRefreshToken);
         String newAccessToken = jwtTokenProvider.generateToken(accountId, accessTokenExpiration);
-        return new Auth(newAccessToken, storedRefreshToken);
+        return new LoginResponse(newAccessToken, storedRefreshToken);
     }
 }

@@ -1,9 +1,9 @@
 package com.iEdu.domain.account.member.mapper;
 
 import com.iEdu.domain.account.auth.loginUser.LoginUserDto;
-import com.iEdu.domain.account.member.dto.res.DetailMemberDto;
-import com.iEdu.domain.account.member.dto.res.MemberDto;
-import com.iEdu.domain.account.member.dto.res.SimpleMember;
+import com.iEdu.domain.account.member.dto.res.DetailMemberResponse;
+import com.iEdu.domain.account.member.dto.res.MemberResponse;
+import com.iEdu.domain.account.member.dto.res.SimpleMemberDto;
 import com.iEdu.domain.account.member.entity.Member;
 import com.iEdu.domain.account.member.entity.MemberFollow;
 import com.iEdu.domain.account.member.entity.MemberFollowReq;
@@ -15,8 +15,8 @@ import java.util.stream.Collectors;
 @Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE)
 public interface MemberMapper {
     // ---------- Member / LoginUserDto -> MemberDto ----------
-    MemberDto toMemberDto(Member source);
-    MemberDto toMemberDto(LoginUserDto source);
+    MemberResponse toMemberDto(Member source);
+    MemberResponse toMemberDto(LoginUserDto source);
 
     // ---------- Member / LoginUserDto -> DetailMemberDto ----------
     @Mappings({
@@ -25,7 +25,7 @@ public interface MemberMapper {
             @Mapping(target = "followReqList", source = "followReqList", qualifiedByName = "followReqToRecs"),
             @Mapping(target = "followRecList", source = "followRecList", qualifiedByName = "followReqToReqs")
     })
-    DetailMemberDto toDetailMemberDto(Member source);
+    DetailMemberResponse toDetailMemberDto(Member source);
 
     @Mappings({
             @Mapping(target = "childrenList", source = "followList", qualifiedByName = "followToChildren"),
@@ -33,7 +33,7 @@ public interface MemberMapper {
             @Mapping(target = "followReqList", source = "followReqList", qualifiedByName = "followReqToRecs"),
             @Mapping(target = "followRecList", source = "followRecList", qualifiedByName = "followReqToReqs")
     })
-    DetailMemberDto toDetailMemberDto(LoginUserDto source);
+    DetailMemberResponse toDetailMemberDto(LoginUserDto source);
 
     // ---------- LoginUserDto -> Member (엔티티 저장용) ----------
     // 관계 필드나 콜렉션은 무시 (지연 로딩 유발/불필요한 merge 방지)
@@ -58,7 +58,7 @@ public interface MemberMapper {
     // ---------- List & Element 변환기 ----------
 
     @Named("followToChildren")
-    default List<SimpleMember> followToChildren(List<MemberFollow> follows) {
+    default List<SimpleMemberDto> followToChildren(List<MemberFollow> follows) {
         if (follows == null) return List.of();
         return follows.stream()
                 .map(this::followToChild)
@@ -66,7 +66,7 @@ public interface MemberMapper {
     }
 
     @Named("followedToParents")
-    default List<SimpleMember> followedToParents(List<MemberFollow> followedList) {
+    default List<SimpleMemberDto> followedToParents(List<MemberFollow> followedList) {
         if (followedList == null) return List.of();
         return followedList.stream()
                 .map(this::followedToParent)
@@ -74,7 +74,7 @@ public interface MemberMapper {
     }
 
     @Named("followReqToRecs")
-    default List<SimpleMember> followReqToRecs(List<MemberFollowReq> reqs) {
+    default List<SimpleMemberDto> followReqToRecs(List<MemberFollowReq> reqs) {
         if (reqs == null) return List.of();
         return reqs.stream()
                 .map(this::followReqToRec)
@@ -82,7 +82,7 @@ public interface MemberMapper {
     }
 
     @Named("followReqToReqs")
-    default List<SimpleMember> followReqToReqs(List<MemberFollowReq> reqs) {
+    default List<SimpleMemberDto> followReqToReqs(List<MemberFollowReq> reqs) {
         if (reqs == null) return List.of();
         return reqs.stream()
                 .map(this::followReqToRequester)
@@ -92,10 +92,10 @@ public interface MemberMapper {
     // ---------- Element 단위 매핑(팔로우/요청) ----------
 
     // 자녀: MemberFollow.followed 기준
-    default SimpleMember followToChild(MemberFollow mf) {
+    default SimpleMemberDto followToChild(MemberFollow mf) {
         if (mf == null || mf.getFollowed() == null) return null;
         var m = mf.getFollowed();
-        return SimpleMember.builder()
+        return SimpleMemberDto.builder()
                 .id(m.getId())
                 .name(m.getName())
                 .profileImageUrl(m.getProfileImageUrl())
@@ -107,10 +107,10 @@ public interface MemberMapper {
     }
 
     // 부모: MemberFollow.follow 기준
-    default SimpleMember followedToParent(MemberFollow mf) {
+    default SimpleMemberDto followedToParent(MemberFollow mf) {
         if (mf == null || mf.getFollow() == null) return null;
         var m = mf.getFollow();
-        return SimpleMember.builder()
+        return SimpleMemberDto.builder()
                 .id(m.getId())
                 .name(m.getName())
                 .profileImageUrl(m.getProfileImageUrl())
@@ -122,10 +122,10 @@ public interface MemberMapper {
     }
 
     // 내가 요청한 팔로우 목록: MemberFollowReq.followRec 기준
-    default SimpleMember followReqToRec(MemberFollowReq req) {
+    default SimpleMemberDto followReqToRec(MemberFollowReq req) {
         if (req == null || req.getFollowRec() == null) return null;
         var m = req.getFollowRec();
-        return SimpleMember.builder()
+        return SimpleMemberDto.builder()
                 .id(m.getId())
                 .name(m.getName())
                 .profileImageUrl(m.getProfileImageUrl())
@@ -137,10 +137,10 @@ public interface MemberMapper {
     }
 
     // 내가 받은 팔로우 요청 목록: MemberFollowReq.followReq 기준
-    default SimpleMember followReqToRequester(MemberFollowReq req) {
+    default SimpleMemberDto followReqToRequester(MemberFollowReq req) {
         if (req == null || req.getFollowReq() == null) return null;
         var m = req.getFollowReq();
-        return SimpleMember.builder()
+        return SimpleMemberDto.builder()
                 .id(m.getId())
                 .name(m.getName())
                 .profileImageUrl(m.getProfileImageUrl())

@@ -2,10 +2,10 @@ package com.iEdu.domain.notification.eventListener;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.iEdu.domain.notification.dto.res.NotificationDto;
+import com.iEdu.domain.notification.dto.res.NotificationResponse;
 import com.iEdu.domain.notification.entity.Notification;
 import com.iEdu.domain.notification.service.NotificationService;
-import com.iEdu.domain.fcm.dto.FcmMessage;
+import com.iEdu.domain.fcm.dto.res.FcmMessageResponse;
 import com.iEdu.domain.fcm.service.FcmService;
 import com.iEdu.domain.fcm.service.FcmTokenService;
 import lombok.RequiredArgsConstructor;
@@ -57,15 +57,15 @@ public class NotificationEventListener {
                 notificationService.createNotification(notification);
                 String fcmToken = fcmTokenService.getFcmToken(notification.getReceiverId());
                 if (fcmToken != null) {
-                    NotificationDto notificationDto = notificationService.convertToNotificationDto(notification);
-                    String bodyJson = objectMapper.writeValueAsString(notificationDto);
+                    NotificationResponse notificationResponse = notificationService.convertToNotificationDto(notification);
+                    String bodyJson = objectMapper.writeValueAsString(notificationResponse);
 
-                    FcmMessage fcmMessage = FcmMessage.builder()
+                    FcmMessageResponse fcmMessageResponse = FcmMessageResponse.builder()
                             .targetToken(fcmToken)
                             .title(title)
                             .body(bodyJson)
                             .build();
-                    fcmService.sendMessageTo(fcmMessage);
+                    fcmService.sendMessageTo(fcmMessageResponse);
                 } else {
                     log.warn("FCM token not found for receiverId: {}", notification.getReceiverId());
                 }

@@ -10,7 +10,7 @@ import java.time.LocalDate;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class CounselForm {
+public class CounselRequest {
     private Integer year;
     private Semester semester;
     private LocalDate date;

@@ -1,8 +1,8 @@
 package com.iEdu.domain.notification.service;
 
 import com.iEdu.domain.account.auth.loginUser.LoginUserDto;
-import com.iEdu.domain.notification.dto.req.NotificationForm;
-import com.iEdu.domain.notification.dto.res.NotificationDto;
+import com.iEdu.domain.notification.dto.req.NotificationRequest;
+import com.iEdu.domain.notification.dto.res.NotificationResponse;
 import com.iEdu.domain.notification.entity.Notification;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -12,11 +12,11 @@ public interface NotificationService {
     void createNotification(Notification notification);
 
     // 알림 목록 조회 [학부모/학생 권한]
-    Page<NotificationDto> getNotifications(Pageable pageable, LoginUserDto loginUser);
+    Page<NotificationResponse> getNotifications(Pageable pageable, LoginUserDto loginUser);
 
     // 알림 읽음 처리 [학부모/학생 권한]
-    void markAsRead(NotificationForm notificationForm, LoginUserDto loginUser);
+    void markAsRead(NotificationRequest notificationRequest, LoginUserDto loginUser);
 
     // Notification을 NotificationDto로 변환
-    NotificationDto convertToNotificationDto(Notification notification);
+    NotificationResponse convertToNotificationDto(Notification notification);
 }

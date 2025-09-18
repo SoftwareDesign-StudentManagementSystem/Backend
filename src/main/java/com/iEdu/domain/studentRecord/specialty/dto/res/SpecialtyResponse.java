@@ -10,7 +10,7 @@ import java.time.LocalDate;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-public class SpecialtyDto {
+public class SpecialtyResponse {
     private Long id; // 특기사항 ID
     private Long studentId; // 작성 대상 학생의 멤버 ID
     private String teacherName;

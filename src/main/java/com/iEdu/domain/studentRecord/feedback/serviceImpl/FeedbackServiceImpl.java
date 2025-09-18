@@ -7,8 +7,8 @@ import com.iEdu.domain.account.member.entity.Member;
 import com.iEdu.domain.account.member.repository.MemberRepository;
 import com.iEdu.domain.account.member.service.MemberService;
 import com.iEdu.domain.notification.entity.Notification;
-import com.iEdu.domain.studentRecord.feedback.dto.req.FeedbackForm;
-import com.iEdu.domain.studentRecord.feedback.dto.res.FeedbackDto;
+import com.iEdu.domain.studentRecord.feedback.dto.req.FeedbackRequest;
+import com.iEdu.domain.studentRecord.feedback.dto.res.FeedbackResponse;
 import com.iEdu.domain.studentRecord.feedback.entity.Feedback;
 import com.iEdu.domain.studentRecord.feedback.entity.FeedbackCategory;
 import com.iEdu.domain.studentRecord.feedback.entity.FeedbackPage;
@@ -18,10 +18,10 @@ import com.iEdu.global.common.enums.Semester;
 import com.iEdu.global.common.utils.RoleValidator;
 import com.iEdu.global.exception.ReturnCode;
 import com.iEdu.global.exception.ServiceException;
+import com.iEdu.global.redis.helper.RedisCacheEvictHelper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.CacheManager;
-import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.*;
 import org.springframework.kafka.core.KafkaTemplate;
@@ -40,12 +40,12 @@ public class FeedbackServiceImpl implements FeedbackService {
     private final KafkaTemplate kafkaTemplate;
     private final ObjectMapper objectMapper;
     private final RoleValidator roleValidator;
-    private final CacheManager cacheManager;
+    private final RedisCacheEvictHelper redisCacheEvictHelper;
 
     // 본인의 모든 피드백 조회 [학생 권한]
     @Override
     @Transactional(readOnly = true)
-    public Page<FeedbackDto> getMyAllFeedback(Pageable pageable, LoginUserDto loginUser) {
+    public Page<FeedbackResponse> getMyAllFeedback(Pageable pageable, LoginUserDto loginUser) {
         checkPageSize(pageable.getPageSize());
         // 정렬 조건 추가: year(내림차순), semester(SECOND_SEMESTER 우선), createdAt(내림차순)
         Pageable sortedPageable = PageRequest.of(
@@ -63,7 +63,7 @@ public class FeedbackServiceImpl implements FeedbackService {
     // 학생의 모든 피드백 조회 [학부모/선생님 권한]
     @Override
     @Transactional(readOnly = true)
-    public Page<FeedbackDto> getAllFeedback(Long studentId, Pageable pageable, LoginUserDto loginUser){
+    public Page<FeedbackResponse> getAllFeedback(Long studentId, Pageable pageable, LoginUserDto loginUser){
         checkPageSize(pageable.getPageSize());
         // 정렬 조건 추가: year(내림차순), semester(SECOND_SEMESTER 우선), createdAt(내림차순)
         Pageable sortedPageable = PageRequest.of(
@@ -94,7 +94,7 @@ public class FeedbackServiceImpl implements FeedbackService {
             value = "feedback",
             key = "'student:' + #loginUser.id + ':year:' + #year + ':semester:' + #semester + ':' + #pageable.pageNumber + ':' + #pageable.pageSize"
     )
-    public Page<FeedbackDto> getMyFilterFeedback(Integer year, Semester semester, Pageable pageable, LoginUserDto loginUser) {
+    public Page<FeedbackResponse> getMyFilterFeedback(Integer year, Semester semester, Pageable pageable, LoginUserDto loginUser) {
         checkPageSize(pageable.getPageSize());
         roleValidator.validateStudentRole(loginUser);
 
@@ -116,7 +116,7 @@ public class FeedbackServiceImpl implements FeedbackService {
             value = "feedback",
             key = "'student:' + #studentId + ':year:' + #year + ':semester:' + #semester + ':role:' + #loginUser.role + ':' + #pageable.pageNumber + ':' + #pageable.pageSize"
     )
-    public Page<FeedbackDto> getFilterFeedback(Long studentId, Integer year, Semester semester, Pageable pageable, LoginUserDto loginUser) {
+    public Page<FeedbackResponse> getFilterFeedback(Long studentId, Integer year, Semester semester, Pageable pageable, LoginUserDto loginUser) {
         checkPageSize(pageable.getPageSize());
         roleValidator.validateAccessToStudent(loginUser, studentId);
 
@@ -143,7 +143,7 @@ public class FeedbackServiceImpl implements FeedbackService {
     // 학생 피드백 생성 [선생님 권한]
     @Override
     @Transactional
-    public void createFeedback(Long studentId, FeedbackForm feedbackForm, LoginUserDto loginUser) {
+    public void createFeedback(Long studentId, FeedbackRequest feedbackRequest, LoginUserDto loginUser) {
         // ROLE_TEACHER 아닌 경우 예외 처리
         roleValidator.validateTeacherRole(loginUser);
         Member student = memberRepository.findById(studentId)
@@ -151,13 +151,13 @@ public class FeedbackServiceImpl implements FeedbackService {
         Feedback feedback = Feedback.builder()
                 .member(student)
                 .teacherName(loginUser.getName())
-                .year(feedbackForm.getYear())
-                .semester(feedbackForm.getSemester())
-                .date(feedbackForm.getDate())
-                .category(feedbackForm.getCategory())
-                .content(feedbackForm.getContent())
-                .visibleToStudent(feedbackForm.getVisibleToStudent())
-                .visibleToParent(feedbackForm.getVisibleToParent())
+                .year(feedbackRequest.getYear())
+                .semester(feedbackRequest.getSemester())
+                .date(feedbackRequest.getDate())
+                .category(feedbackRequest.getCategory())
+                .content(feedbackRequest.getContent())
+                .visibleToStudent(feedbackRequest.getVisibleToStudent())
+                .visibleToParent(feedbackRequest.getVisibleToParent())
                 .build();
         feedbackRepository.save(feedback);
 
@@ -168,18 +168,18 @@ public class FeedbackServiceImpl implements FeedbackService {
     // 학생 피드백 수정 [선생님 권한]
     @Override
     @Transactional
-    public void updateFeedback(Long feedbackId, FeedbackForm feedbackForm, LoginUserDto loginUser) {
+    public void updateFeedback(Long feedbackId, FeedbackRequest feedbackRequest, LoginUserDto loginUser) {
         // ROLE_TEACHER 아닌 경우 예외 처리
         roleValidator.validateTeacherRole(loginUser);
         Feedback feedback = feedbackRepository.findById(feedbackId)
                 .orElseThrow(() -> new ServiceException(ReturnCode.FEEDBACK_NOT_FOUND));
-        feedback.setYear(feedbackForm.getYear());
-        feedback.setSemester(feedbackForm.getSemester());
-        feedback.setDate(feedbackForm.getDate());
-        feedback.setCategory(feedbackForm.getCategory());
-        feedback.setContent(feedbackForm.getContent());
-        feedback.setVisibleToStudent(feedbackForm.getVisibleToStudent());
-        feedback.setVisibleToParent(feedbackForm.getVisibleToParent());
+        feedback.setYear(feedbackRequest.getYear());
+        feedback.setSemester(feedbackRequest.getSemester());
+        feedback.setDate(feedbackRequest.getDate());
+        feedback.setCategory(feedbackRequest.getCategory());
+        feedback.setContent(feedbackRequest.getContent());
+        feedback.setVisibleToStudent(feedbackRequest.getVisibleToStudent());
+        feedback.setVisibleToParent(feedbackRequest.getVisibleToParent());
 
         // 캐시 무효화
         evictFeedbackCache(feedback.getMember().getId(), feedback.getYear(), feedback.getSemester());
@@ -212,9 +212,9 @@ public class FeedbackServiceImpl implements FeedbackService {
 
     // 캐시 무효화
     private void evictFeedbackCache(Long studentId, Integer year, Semester semester) {
-        String cacheKey = "feedback:" + studentId + ":" + year + ":" + semester;
-        cacheManager.getCache("feedback").evictIfPresent(cacheKey);
-        log.debug("Feedback key evicted: {}", cacheKey);
+        String prefix = "student:" + studentId + ":year:" + year + ":semester:" + semester + ":";
+        redisCacheEvictHelper.evictByPrefix(prefix);
+        log.debug("Feedback cache evicted for studentId={}, year={}, semester={}, prefix={}", studentId, year, semester, prefix);
     }
 
     // 피드백 알림 생성 & 이벤트 생성
@@ -252,8 +252,8 @@ public class FeedbackServiceImpl implements FeedbackService {
 
     // Feedback -> FeedbackDto 변환
     @Override
-    public FeedbackDto convertToFeedbackDto(Feedback feedback) {
-        return FeedbackDto.builder()
+    public FeedbackResponse convertToFeedbackDto(Feedback feedback) {
+        return FeedbackResponse.builder()
                 .id(feedback.getId())
                 .studentId(feedback.getMember().getId())
                 .teacherName(feedback.getTeacherName())

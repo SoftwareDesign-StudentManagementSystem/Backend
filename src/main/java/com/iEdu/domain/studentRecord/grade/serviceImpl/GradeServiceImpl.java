@@ -7,10 +7,10 @@ import com.iEdu.domain.account.member.entity.Member;
 import com.iEdu.domain.account.member.repository.MemberRepository;
 import com.iEdu.domain.account.member.service.MemberService;
 import com.iEdu.domain.notification.entity.Notification;
-import com.iEdu.domain.studentRecord.grade.dto.req.GradeForm;
-import com.iEdu.domain.studentRecord.grade.dto.req.GradeUpdateForm;
-import com.iEdu.domain.studentRecord.grade.dto.res.GradeDto;
-import com.iEdu.domain.studentRecord.grade.dto.res.SubjectScore;
+import com.iEdu.domain.studentRecord.grade.dto.req.GradeRequest;
+import com.iEdu.domain.studentRecord.grade.dto.req.GradeUpdateRequest;
+import com.iEdu.domain.studentRecord.grade.dto.res.GradeResponse;
+import com.iEdu.domain.studentRecord.grade.dto.res.SubjectScoreDto;
 import com.iEdu.domain.studentRecord.grade.entity.Grade;
 import com.iEdu.domain.studentRecord.grade.entity.GradePage;
 import com.iEdu.domain.studentRecord.grade.repository.GradeQueryRepository;
@@ -22,7 +22,6 @@ import com.iEdu.global.exception.ReturnCode;
 import com.iEdu.global.exception.ServiceException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
@@ -52,7 +51,7 @@ public class GradeServiceImpl implements GradeService {
     // 본인의 모든 성적 조회 [학생 권한]
     @Override
     @Transactional
-    public Page<GradeDto> getMyAllGrade(Pageable pageable, LoginUserDto loginUser){
+    public Page<GradeResponse> getMyAllGrade(Pageable pageable, LoginUserDto loginUser){
         checkPageSize(pageable.getPageSize());
         // 정렬 조건 추가: year(내림차순), semester(SECOND_SEMESTER 우선)
         Pageable sortedPageable = PageRequest.of(
@@ -74,7 +73,7 @@ public class GradeServiceImpl implements GradeService {
     // 학생의 모든 성적 조회 [학부모/선생님 권한]
     @Override
     @Transactional
-    public Page<GradeDto> getAllGrade(Long studentId, Pageable pageable, LoginUserDto loginUser){
+    public Page<GradeResponse> getAllGrade(Long studentId, Pageable pageable, LoginUserDto loginUser){
         checkPageSize(pageable.getPageSize());
         // 정렬 조건 추가: year(내림차순), semester(SECOND_SEMESTER 우선)
         Pageable sortedPageable = PageRequest.of(
@@ -98,7 +97,7 @@ public class GradeServiceImpl implements GradeService {
     @Override
     @Transactional(readOnly = true)
     @Cacheable(value = "grade", key = "#loginUser.id + ':' + #year + ':' + #semester")
-    public GradeDto getMyFilterGrade(Integer year, Semester semester, LoginUserDto loginUser){
+    public GradeResponse getMyFilterGrade(Integer year, Semester semester, LoginUserDto loginUser){
         roleValidator.validateStudentRole(loginUser);
         Grade grade = gradeRepository
                 .findByMemberIdAndYearAndSemester(loginUser.getId(), year, semester)
@@ -111,7 +110,7 @@ public class GradeServiceImpl implements GradeService {
     @Override
     @Transactional(readOnly = true)
     @Cacheable(value = "grade", key = "#studentId + ':' + #year + ':' + #semester")
-    public GradeDto getFilterGrade(Long studentId, Integer year, Semester semester, LoginUserDto loginUser){
+    public GradeResponse getFilterGrade(Long studentId, Integer year, Semester semester, LoginUserDto loginUser){
         roleValidator.validateAccessToStudent(loginUser, studentId);
         Member student = memberRepository.getById(studentId);
         Grade grade = gradeRepository
@@ -124,7 +123,7 @@ public class GradeServiceImpl implements GradeService {
     // (학년/반/번호/학기)로 학생들 성적 조회 [선생님 권한]
     @Override
     @Transactional
-    public List<GradeDto> getStudentsGrade(Integer year, Integer classId, Integer number, Semester semester, LoginUserDto loginUser){
+    public List<GradeResponse> getStudentsGrade(Integer year, Integer classId, Integer number, Semester semester, LoginUserDto loginUser){
         // ROLE_TEACHER 아닌 경우 예외 처리
         roleValidator.validateTeacherRole(loginUser);
         List<Grade> grades = gradeQueryRepository.findAllByStudentInfoAndSemesterAndYearWithMember(
@@ -142,7 +141,7 @@ public class GradeServiceImpl implements GradeService {
     // 학생 성적 생성 [선생님 권한]
     @Override
     @Transactional
-    public void createGrade(Long studentId, GradeForm gradeForm, LoginUserDto loginUser) {
+    public void createGrade(Long studentId, GradeRequest gradeRequest, LoginUserDto loginUser) {
         // ROLE_TEACHER 아닌 경우 예외 처리
         roleValidator.validateTeacherRole(loginUser);
         Member student = memberRepository.findById(studentId)
@@ -150,9 +149,9 @@ public class GradeServiceImpl implements GradeService {
         // 선생님 담당 과목 확인
         Member.Subject subject = loginUser.getSubject();
         if (subject == null) throw new ServiceException(ReturnCode.INVALID_SUBJECT);
-        Integer year = gradeForm.getYear();
-        Semester semester = gradeForm.getSemester();
-        Double score = gradeForm.getScore();
+        Integer year = gradeRequest.getYear();
+        Semester semester = gradeRequest.getSemester();
+        Double score = gradeRequest.getScore();
         // 기존 성적 존재 여부 확인
         Grade grade = gradeRepository.findByMemberAndYearAndSemester(student, year, semester)
                 .orElseGet(() -> Grade.builder()
@@ -172,7 +171,7 @@ public class GradeServiceImpl implements GradeService {
     // 학생 성적 수정 [선생님 권한]
     @Override
     @Transactional
-    public void updateGrade(Long gradeId, GradeUpdateForm gradeUpdateForm, LoginUserDto loginUser){
+    public void updateGrade(Long gradeId, GradeUpdateRequest gradeUpdateRequest, LoginUserDto loginUser){
         // ROLE_TEACHER 아닌 경우 예외 처리
         roleValidator.validateTeacherRole(loginUser);
         Grade grade = gradeRepository.findById(gradeId)
@@ -182,7 +181,7 @@ public class GradeServiceImpl implements GradeService {
         if (subject == null) throw new ServiceException(ReturnCode.INVALID_SUBJECT);
 
         // 과목별 점수 입력
-        updateSubjectScore(grade, subject, gradeUpdateForm.getScore());
+        updateSubjectScore(grade, subject, gradeUpdateRequest.getScore());
         // 캐시 무효화
         evictGradeCache(grade.getMember().getId(), grade.getYear(), grade.getSemester());
         // 성적 알림 생성 & Kafka 이벤트 생성
@@ -313,7 +312,7 @@ public class GradeServiceImpl implements GradeService {
 
     // Grade -> GradeDto 변환
     @Override
-    public GradeDto convertToGradeDto(Grade grade, Long studentAccountId, List<Grade> allGradesForYearAndSemester) {
+    public GradeResponse convertToGradeDto(Grade grade, Long studentAccountId, List<Grade> allGradesForYearAndSemester) {
         Integer year = grade.getYear();
         Semester semester = grade.getSemester();
         Long targetEntranceYear = studentAccountId / 100000;
@@ -321,7 +320,7 @@ public class GradeServiceImpl implements GradeService {
                 .filter(g -> (g.getMember().getAccountId() / 100000) == targetEntranceYear)
                 .toList();
         String gradeRankForYear = calculateGradeRank(grade, sameCohortGrades);
-        return GradeDto.builder()
+        return GradeResponse.builder()
                 .id(grade.getId())
                 .studentId(grade.getMember().getId())
                 .year(year)
@@ -348,7 +347,7 @@ public class GradeServiceImpl implements GradeService {
     }
 
     // GradeDto의 SubjectScore 객체 생성
-    private SubjectScore createSubjectScore(Double myScore, List<Double> allScores) {
+    private SubjectScoreDto createSubjectScore(Double myScore, List<Double> allScores) {
         if (myScore == null) return null;
         List<Double> validScores = allScores.stream()
                 .filter(Objects::nonNull)
@@ -376,7 +375,7 @@ public class GradeServiceImpl implements GradeService {
         else if (percentile <= 96) relativeRankGrade = 8;
         else relativeRankGrade = 9;
 
-        return SubjectScore.builder()
+        return SubjectScoreDto.builder()
                 .score(myScore)
                 .average(average)
                 .achievementLevel(achievementLevel)

@@ -10,7 +10,7 @@ import java.time.LocalDate;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-public class CounselDto {
+public class CounselResponse {
     private Long id;
     private Long studentId;
     private String teacherName;
