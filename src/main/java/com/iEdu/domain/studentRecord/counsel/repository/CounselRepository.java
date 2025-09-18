@@ -1,6 +1,7 @@
 package com.iEdu.domain.studentRecord.counsel.repository;
 
 import com.iEdu.domain.studentRecord.counsel.entity.Counsel;
+import com.iEdu.domain.studentRecord.grade.entity.Grade;
 import com.iEdu.global.common.enums.Semester;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -17,6 +18,6 @@ public interface CounselRepository extends JpaRepository<Counsel, Long> {
     // 특정 회원의 상담 내역 필터 조회
     Page<Counsel> findByMemberIdAndYearAndSemester(Long memberId, Integer year, Semester semester, Pageable pageable);
 
-    // 특정 회원의 상담 내역 필터 조회(보고서용)
-    List<Counsel> findByMemberIdAndYearAndSemester(Long studentId, Integer year, Semester semester);
+    // 여러 학생 성적을 배치 조회(보고서용)
+    List<Counsel> findByMemberIdInAndYearAndSemester(List<Long> memberIds, Integer year, Semester semester);
 }

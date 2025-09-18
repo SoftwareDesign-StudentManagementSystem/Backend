@@ -1,5 +1,6 @@
 package com.iEdu.domain.studentRecord.specialty.repository;
 
+import com.iEdu.domain.studentRecord.grade.entity.Grade;
 import com.iEdu.domain.studentRecord.specialty.entity.Specialty;
 import com.iEdu.global.common.enums.Semester;
 import org.springframework.data.domain.Page;
@@ -17,6 +18,6 @@ public interface SpecialtyRepository extends JpaRepository<Specialty, Long> {
     // (학년/학기)로 학생 특기사항 조회
     Page<Specialty> findByMemberIdAndYearAndSemester(Long memberId, Integer year, Semester semester, Pageable pageable);
 
-    // (학년/학기)로 학생 특기사항 조회(보고서용)
-    List<Specialty> findByMemberIdAndYearAndSemester(Long studentId, Integer year, Semester semester);
+    // 여러 학생 성적을 배치 조회(보고서용)
+    List<Specialty> findByMemberIdInAndYearAndSemester(List<Long> memberIds, Integer year, Semester semester);
 }

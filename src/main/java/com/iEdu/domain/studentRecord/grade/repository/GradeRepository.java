@@ -18,6 +18,9 @@ public interface GradeRepository extends JpaRepository<Grade, Long> {
     // 멤버ID&학년&학기로 성적 조회
     Optional<Grade> findByMemberIdAndYearAndSemester(Long memberId, Integer year, Semester semester);
 
+    // 여러 학생 성적을 배치 조회(보고서용)
+    List<Grade> findByMemberIdInAndYearAndSemester(List<Long> memberIds, Integer year, Semester semester);
+
     // 멤버ID로 모든 성적 조회(학년&학기 내림차순)
     Page<Grade> findAllByMemberId(Long memberId, Pageable pageable);
 

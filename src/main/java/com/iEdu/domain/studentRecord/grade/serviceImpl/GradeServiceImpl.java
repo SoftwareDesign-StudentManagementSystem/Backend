@@ -22,6 +22,7 @@ import com.iEdu.global.exception.ReturnCode;
 import com.iEdu.global.exception.ServiceException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
@@ -167,12 +168,10 @@ public class GradeServiceImpl implements GradeService {
 
         // 과목별 점수 입력
         updateSubjectScore(grade, subject, gradeUpdateForm.getScore());
+        // 캐시 무효화
+        evictGradeCache(grade.getMember().getId(), grade.getYear(), grade.getSemester());
         // 성적 알림 생성 & Kafka 이벤트 생성
         sendGradeNotifications(grade, grade.getMember().getId(), grade.getYear(), grade.getSemester(), subject, false);
-
-        // 캐시 무효화
-        String key = grade.getMember().getId() + ":" + grade.getYear() + ":" + grade.getSemester();
-        cacheManager.getCache("grade").evict(key);
     }
 
     // 학생 성적 삭제 [선생님 권한]
@@ -189,10 +188,8 @@ public class GradeServiceImpl implements GradeService {
 
         // 담당 과목 점수만 null로 설정 (실제 "삭제" 대신)
         updateSubjectScore(grade, subject, null);
-
         // 캐시 무효화
-        String key = grade.getMember().getId() + ":" + grade.getYear() + ":" + grade.getSemester();
-        cacheManager.getCache("grade").evict(key);
+        evictGradeCache(grade.getMember().getId(), grade.getYear(), grade.getSemester());
     }
 
     // ----------------- 헬퍼 메서드 -----------------
@@ -203,6 +200,13 @@ public class GradeServiceImpl implements GradeService {
         if (pageSize > maxPageSize) {
             throw new ServiceException(ReturnCode.PAGE_REQUEST_FAIL);
         }
+    }
+
+    // 캐시 무효화
+    private void evictGradeCache(Long studentId, Integer year, Semester semester) {
+        String cacheKey = studentId + ":" + year + ":" + semester;
+        cacheManager.getCache("grade").evictIfPresent(cacheKey);
+        log.debug("Grade cache evicted: {}", cacheKey);
     }
 
     // 성적 생성/수정/삭제 매핑

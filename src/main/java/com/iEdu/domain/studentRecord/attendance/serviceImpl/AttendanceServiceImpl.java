@@ -17,6 +17,7 @@ import com.iEdu.global.exception.ReturnCode;
 import com.iEdu.global.exception.ServiceException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.*;
@@ -33,6 +34,7 @@ public class AttendanceServiceImpl implements AttendanceService {
     private final MemberRepository memberRepository;
     private final AttendanceRepository attendanceRepository;
     private final RoleValidator roleValidator;
+    private final CacheManager cacheManager;
 
     // 본인의 모든 출결 조회 [학생 권한]
     @Override
@@ -71,8 +73,10 @@ public class AttendanceServiceImpl implements AttendanceService {
     // (학년/학기/월)로 본인 출결 조회 [학생 권한]
     @Override
     @Transactional(readOnly = true)
-    @Cacheable(value = "attendance", key = "'student:' + #loginUser.id + ':' + #year + ':' + #semester + ':' + (#month != null ? #month : 'all')",
-            unless = "#result == null or #result.isEmpty()")
+    @Cacheable(
+            cacheNames = "attendance",
+            key = "'student:' + #loginUser.id + ':' + #year + ':' + #semester + ':' + (#month != null ? #month : 'all') + ':' + #pageable.pageNumber + ':' + #pageable.pageSize"
+    )
     public Page<AttendanceDto> getMyFilterAttendance(
             Integer year, Semester semester, Integer month, Pageable pageable, LoginUserDto loginUser
     ) {
@@ -97,9 +101,8 @@ public class AttendanceServiceImpl implements AttendanceService {
     @Override
     @Transactional(readOnly = true)
     @Cacheable(
-            value = "attendance",
-            key = "'student:' + #studentId + ':' + #year + ':' + #semester + ':' + (#month != null ? #month : 'all')",
-            unless = "#result == null or #result.isEmpty()"
+            cacheNames = "attendance",
+            key = "'student:' + #studentId + ':' + #year + ':' + #semester + ':' + (#month != null ? #month : 'all') + ':' + #pageable.pageNumber + ':' + #pageable.pageSize"
     )
     public Page<AttendanceDto> getFilterAttendance(
             Long studentId, Integer year, Semester semester, Integer month, Pageable pageable, LoginUserDto loginUser
@@ -145,10 +148,6 @@ public class AttendanceServiceImpl implements AttendanceService {
     // 학생 출결 수정 [선생님 권한]
     @Override
     @Transactional
-    @CacheEvict(
-            value = "attendance",
-            key = "'student:' + #attendance.member.id + ':' + #attendance.year + ':' + #attendance.semester + ':*'"
-    )
     public void updateAttendance(Long attendanceId, AttendanceForm attendanceForm, LoginUserDto loginUser){
         // ROLE_TEACHER 아닌 경우 예외 처리
         roleValidator.validateTeacherRole(loginUser);
@@ -163,21 +162,21 @@ public class AttendanceServiceImpl implements AttendanceService {
             attendance.getPeriodAttendances().add(pa);
         }
         attendanceRepository.save(attendance);
+        // 캐시 무효화
+        evictAttendanceCache(attendance.getMember().getId(), attendance.getYear(), attendance.getSemester());
     }
 
     // 학생 출결 삭제 [선생님 권한]
     @Override
     @Transactional
-    @CacheEvict(
-            value = "attendance",
-            key = "'student:' + #attendance.member.id + ':' + #attendance.year + ':' + #attendance.semester + ':*'"
-    )
     public void deleteAttendance(Long attendanceId, LoginUserDto loginUser){
         // ROLE_TEACHER 아닌 경우 예외 처리
         roleValidator.validateTeacherRole(loginUser);
         Attendance attendance = attendanceRepository.findById(attendanceId)
                 .orElseThrow(() -> new ServiceException(ReturnCode.ATTENDANCE_NOT_FOUND));
         attendanceRepository.delete(attendance);
+        // 캐시 무효화
+        evictAttendanceCache(attendance.getMember().getId(), attendance.getYear(), attendance.getSemester());
     }
 
     // ----------------- 헬퍼 메서드 -----------------
@@ -188,6 +187,13 @@ public class AttendanceServiceImpl implements AttendanceService {
         if (pageSize > maxPageSize) {
             throw new ServiceException(ReturnCode.PAGE_REQUEST_FAIL);
         }
+    }
+
+    // 캐시 무효화
+    private void evictAttendanceCache(Long studentId, Integer year, Semester semester) {
+        String cacheKey = "attendance:" + studentId + ":" + year + ":" + semester;
+        cacheManager.getCache("attendance").evictIfPresent(cacheKey);
+        log.debug("Attendance key evicted: {}", cacheKey);
     }
 
     // Attendance -> AttendanceDto 변환

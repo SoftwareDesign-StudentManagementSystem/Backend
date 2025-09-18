@@ -36,10 +36,7 @@ public class ReportServiceImpl implements ReportService {
     @Transactional
     public ReportDto generateReport(ReportForm form, LoginUserDto loginUser) {
         roleValidator.validateTeacherRole(loginUser);
-        List<Member> students = form.getStudentIdList().stream()
-                .map(id -> memberRepository.findById(id)
-                        .orElseThrow(() -> new ServiceException(ReturnCode.USER_NOT_FOUND)))
-                .collect(Collectors.toList());
+        List<Member> students = memberRepository.findAllById(form.getStudentIdList());
         Map<String, String> reportUrls = new LinkedHashMap<>(); // 유지 순서 보장
 
         List<Semester> targetSemesters = form.getSemester() == Semester.ALL
