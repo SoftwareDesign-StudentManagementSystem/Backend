@@ -6,6 +6,7 @@ import com.iEdu.global.jpa.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
+import org.hibernate.annotations.BatchSize;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -23,7 +24,7 @@ public class Attendance extends BaseEntity {
     private Member member;
 
     private Integer year;
-    
+
     @Enumerated(EnumType.STRING)
     @Column(length = 15)
     private Semester semester;
@@ -31,6 +32,7 @@ public class Attendance extends BaseEntity {
     private LocalDate date;
 
     @OneToMany(mappedBy = "attendance", cascade = CascadeType.ALL, orphanRemoval = true)
+    @BatchSize(size = 50)
     @Builder.Default
     private List<PeriodAttendance> periodAttendances = new ArrayList<>();
 }

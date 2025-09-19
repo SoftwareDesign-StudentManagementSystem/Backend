@@ -4,17 +4,17 @@ import com.iEdu.domain.account.auth.loginUser.LoginUserDto;
 import com.iEdu.domain.account.member.entity.Member;
 import com.iEdu.domain.account.member.mapper.MemberMapper;
 import com.iEdu.domain.account.member.repository.MemberRepository;
-import com.iEdu.domain.studentRecord.attendance.dto.req.AttendanceForm;
+import com.iEdu.domain.studentRecord.attendance.dto.req.AttendanceRequest;
 import com.iEdu.domain.studentRecord.attendance.entity.PeriodAttendance;
 import com.iEdu.domain.studentRecord.attendance.service.AttendanceService;
-import com.iEdu.domain.studentRecord.counsel.dto.req.CounselForm;
+import com.iEdu.domain.studentRecord.counsel.dto.req.CounselRequest;
 import com.iEdu.domain.studentRecord.counsel.service.CounselService;
-import com.iEdu.domain.studentRecord.feedback.dto.req.FeedbackForm;
+import com.iEdu.domain.studentRecord.feedback.dto.req.FeedbackRequest;
 import com.iEdu.domain.studentRecord.feedback.entity.FeedbackCategory;
 import com.iEdu.domain.studentRecord.feedback.service.FeedbackService;
-import com.iEdu.domain.studentRecord.grade.dto.req.GradeForm;
+import com.iEdu.domain.studentRecord.grade.dto.req.GradeRequest;
 import com.iEdu.domain.studentRecord.grade.service.GradeService;
-import com.iEdu.domain.studentRecord.specialty.dto.req.SpecialtyForm;
+import com.iEdu.domain.studentRecord.specialty.dto.req.SpecialtyRequest;
 import com.iEdu.domain.studentRecord.specialty.service.SpecialtyService;
 import com.iEdu.global.common.enums.Semester;
 import com.iEdu.global.initData.utils.NotProdUtils;
@@ -65,12 +65,12 @@ public class NotProdStudentRecordService {
                         for (Semester semester : Semester.values()) {
                             if (semester == Semester.ALL) continue; // ALL 제외
                             if (finalGrade == studentGrade && semester == Semester.SECOND_SEMESTER) continue;
-                            GradeForm gradeForm = GradeForm.builder()
+                            GradeRequest gradeRequest = GradeRequest.builder()
                                     .year(finalGrade)
                                     .semester(semester)
                                     .score(notProdUtils.generateScore())
                                     .build();
-                            gradeService.createGrade((long) studentId, gradeForm, loginUser);
+                            gradeService.createGrade((long) studentId, gradeRequest, loginUser);
                         }
                     }
                 }
@@ -123,7 +123,7 @@ public class NotProdStudentRecordService {
                                                 .build()
                                 );
                             }
-                            AttendanceForm form = AttendanceForm.builder()
+                            AttendanceRequest form = AttendanceRequest.builder()
                                     .year(targetYear)  // 출결은 과거 학년 단위로 생성
                                     .semester(semester)
                                     .date(date)
@@ -171,7 +171,7 @@ public class NotProdStudentRecordService {
 
                     for (Member student : students) {
                         feedbackService.createFeedback(student.getId(),
-                                FeedbackForm.builder()
+                                FeedbackRequest.builder()
                                         .year(targetYear)
                                         .semester(semester)
                                         .date(gradeDate)
@@ -182,7 +182,7 @@ public class NotProdStudentRecordService {
                                         .build(),
                                 loginUser);
                         feedbackService.createFeedback(student.getId(),
-                                FeedbackForm.builder()
+                                FeedbackRequest.builder()
                                         .year(targetYear)
                                         .semester(semester)
                                         .date(attitudeDate)
@@ -193,7 +193,7 @@ public class NotProdStudentRecordService {
                                         .build(),
                                 loginUser);
                         feedbackService.createFeedback(student.getId(),
-                                FeedbackForm.builder()
+                                FeedbackRequest.builder()
                                         .year(targetYear)
                                         .semester(semester)
                                         .date(attendanceDate)
@@ -204,7 +204,7 @@ public class NotProdStudentRecordService {
                                         .build(),
                                 loginUser);
                         feedbackService.createFeedback(student.getId(),
-                                FeedbackForm.builder()
+                                FeedbackRequest.builder()
                                         .year(targetYear)
                                         .semester(semester)
                                         .date(behaviorDate)
@@ -258,7 +258,7 @@ public class NotProdStudentRecordService {
                         for (int i = 0; i < 2; i++) {
                             LocalDate date = (i == 0) ? firstDate : secondDate;
                             LocalDate nextCounselDate = date.plusDays(7);
-                            CounselForm form = new CounselForm();
+                            CounselRequest form = new CounselRequest();
                             form.setYear(targetYear);
                             form.setSemester(semester);
                             form.setDate(date);
@@ -309,7 +309,7 @@ public class NotProdStudentRecordService {
                     for (Member student : students) {
                         for (int i = 0; i < 2; i++) {
                             LocalDate date = (i == 0) ? firstDate : secondDate;
-                            SpecialtyForm form = new SpecialtyForm();
+                            SpecialtyRequest form = new SpecialtyRequest();
                             form.setYear(targetYear);
                             form.setSemester(semester);
                             form.setDate(date);

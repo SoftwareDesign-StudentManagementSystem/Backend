@@ -11,6 +11,6 @@ import java.util.Map;
 @Setter
 @Builder
 @AllArgsConstructor
-public class ReportDto {
+public class ReportResponse {
     private Map<String, String> reportUrls;
 }

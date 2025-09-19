@@ -1,17 +1,15 @@
 package com.iEdu.domain.account.member.serviceImpl;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.iEdu.domain.account.auth.loginUser.LoginUserDto;
 import com.iEdu.domain.account.auth.service.AuthService;
-import com.iEdu.domain.account.member.dto.req.BasicUpdateForm;
-import com.iEdu.domain.account.member.dto.req.FollowForm;
-import com.iEdu.domain.account.member.dto.req.ParentForm;
-import com.iEdu.domain.account.member.dto.req.TeacherUpdateForm;
-import com.iEdu.domain.account.member.dto.res.DetailMemberDto;
-import com.iEdu.domain.account.member.dto.res.MemberDto;
-import com.iEdu.domain.account.member.dto.res.MemberPageCacheDto;
+import com.iEdu.domain.account.member.dto.req.BasicUpdateRequest;
+import com.iEdu.domain.account.member.dto.req.FollowRequest;
+import com.iEdu.domain.account.member.dto.req.ParentSignUpRequest;
+import com.iEdu.domain.account.member.dto.req.TeacherUpdateRequest;
+import com.iEdu.domain.account.member.dto.res.DetailMemberResponse;
+import com.iEdu.domain.account.member.dto.res.MemberResponse;
 import com.iEdu.domain.account.member.entity.Member;
 import com.iEdu.domain.account.member.entity.MemberFollow;
 import com.iEdu.domain.account.member.entity.MemberFollowReq;
@@ -26,17 +24,16 @@ import com.iEdu.domain.account.member.entity.QMember;
 import com.iEdu.global.common.utils.RoleValidator;
 import com.iEdu.global.exception.ReturnCode;
 import com.iEdu.global.exception.ServiceException;
+import com.iEdu.global.redis.helper.RedisCacheEvictHelper;
 import com.iEdu.global.s3.S3Service;
 import com.querydsl.core.BooleanBuilder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.CacheManager;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.security.crypto.bcrypt.BCrypt;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -45,13 +42,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.time.Duration;
 import java.util.List;
-import java.util.Set;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
-
-import static com.iEdu.global.common.utils.RoleValidator.*;
 
 @Slf4j
 @Service
@@ -64,18 +56,19 @@ public class MemberServiceImpl implements MemberService {
     private final AuthService authService;
     private final S3Service s3Service;
     private final KafkaTemplate<String, String> kafkaTemplate;
-    private final RedisTemplate<String, Object> redisTemplate;
     private final MemberMapper memberMapper;
     private final RoleValidator roleValidator;
     @Autowired
     private final ObjectMapper objectMapper;
+    private final CacheManager cacheManager;
+    private final RedisCacheEvictHelper redisCacheEvictHelper;
 
     // 학부모 회원가입
     @Override
     @Transactional
-    public Member signup(ParentForm parentForm){
-        Long accountId = parentForm.getAccountId();
-        String email = parentForm.getEmail();
+    public Member signup(ParentSignUpRequest parentSignUpRequest){
+        Long accountId = parentSignUpRequest.getAccountId();
+        String email = parentSignUpRequest.getEmail();
         // 0. accountId 길이 검증 (11자리인지 확인)
         if (String.valueOf(accountId).length() != 11) {
             log.error("잘못된 parentAccountId: {}", accountId);
@@ -103,16 +96,16 @@ public class MemberServiceImpl implements MemberService {
             throw new ServiceException(ReturnCode.MEMBER_ALREADY_EXISTS); // 이미 부모가 등록됨
         }
         // 비밀번호가 없으면 null로 처리하거나 다른 처리를 할 수 있습니다.
-        String encodedPassword = parentForm.getPassword() != null ? passwordEncoder.encode(parentForm.getPassword()) : null;
+        String encodedPassword = parentSignUpRequest.getPassword() != null ? passwordEncoder.encode(parentSignUpRequest.getPassword()) : null;
         Member member = Member.builder()
-                .accountId(parentForm.getAccountId())
+                .accountId(parentSignUpRequest.getAccountId())
                 .password(encodedPassword)
-                .name(parentForm.getName())
-                .phone(parentForm.getPhone())
-                .email(parentForm.getEmail())
-                .birthday(parentForm.getBirthday())
-                .schoolName(parentForm.getSchoolName())
-                .gender(parentForm.getGender())
+                .name(parentSignUpRequest.getName())
+                .phone(parentSignUpRequest.getPhone())
+                .email(parentSignUpRequest.getEmail())
+                .birthday(parentSignUpRequest.getBirthday())
+                .schoolName(parentSignUpRequest.getSchoolName())
+                .gender(parentSignUpRequest.getGender())
                 .build();
         memberRepository.save(member);
         return member;
@@ -121,80 +114,44 @@ public class MemberServiceImpl implements MemberService {
     // 본인 회원정보 조회
     @Override
     @Transactional
-    public MemberDto getMyInfo(LoginUserDto loginUser) {
+    public MemberResponse getMyInfo(LoginUserDto loginUser) {
         return memberMapper.toMemberDto(loginUser);
     }
 
     // 본인 상세회원정보 조회
     @Override
-    @Transactional
-    public DetailMemberDto getMyDetailInfo(LoginUserDto loginUser){
-        Long memberId = loginUser.getId();
-        String cacheKey = "myDetailInfo::" + memberId;
-
-        // Redis 조회
-        ValueOperations<String, Object> ops = redisTemplate.opsForValue();
-        Object cached = ops.get(cacheKey);
-        if (cached != null && cached instanceof DetailMemberDto) {
-            return (DetailMemberDto) cached;
-        }
-        DetailMemberDto dto = memberMapper.toDetailMemberDto(loginUser);
-        // Redis 저장 (10분 TTL)
-        ops.set(cacheKey, dto, 10, TimeUnit.MINUTES);
-        return dto;
+    @Transactional(readOnly = true)
+    @Cacheable(value = "member", key = "'myDetailInfo:' + #loginUser.role.name() + ':' + #loginUser.id")
+    public DetailMemberResponse getMyDetailInfo(LoginUserDto loginUser) {
+        return memberMapper.toDetailMemberDto(loginUser);
     }
 
     // 담당 학생들의 회원정보 조회 [선생님 권한]
     @Override
     @Transactional(readOnly = true)
-    public Page<MemberDto> getMyStudentInfo(Pageable pageable, LoginUserDto loginUser) {
+    @Cacheable(
+            value = "member",
+            key = "'myStudents:' + #loginUser.role.name() + ':' + #loginUser.id + ':' + #pageable.pageNumber + ':' + #pageable.pageSize + ':' + #loginUser.classId"
+    )
+    public Page<MemberResponse> getMyStudentInfo(Pageable pageable, LoginUserDto loginUser) {
         checkPageSize(pageable.getPageSize());
-        // ROLE_TEACHER 아닌 경우 예외 처리
         roleValidator.validateTeacherRole(loginUser);
 
         Integer year = loginUser.getYear();
         Integer classId = loginUser.getClassId();
-        Long teacherId = loginUser.getId();
         if (classId == null) {
             throw new ServiceException(ReturnCode.CLASSID_NOT_FOUND);
         }
-        String cacheKey = String.format("myStudents:%d:%d:%d:%d",
-                teacherId,
-                pageable.getPageNumber(),
-                pageable.getPageSize(),
-                classId
-        );
-        // Redis 캐시 조회
-        Object cached = redisTemplate.opsForValue().get(cacheKey);
-        if (cached != null) {
-            JavaType type = objectMapper.getTypeFactory().constructType(MemberPageCacheDto.class);
-            MemberPageCacheDto cacheDto = objectMapper.convertValue(cached, type);
-            return new PageImpl<>(
-                    cacheDto.getContent(),
-                    PageRequest.of(cacheDto.getPageNumber(), cacheDto.getPageSize()),
-                    cacheDto.getTotalElements()
-            );
-        }
-        // DB에서 조회
         Page<Member> students = memberRepository.findAllByYearAndClassIdAndRole(
                 year, classId, Member.MemberRole.ROLE_STUDENT, pageable
         );
-        Page<MemberDto> dtoPage = students.map(memberMapper::toMemberDto);
-        // 캐시에 저장
-        MemberPageCacheDto cacheDto = MemberPageCacheDto.builder()
-                .content(dtoPage.getContent())
-                .pageNumber(dtoPage.getNumber())
-                .pageSize(dtoPage.getSize())
-                .totalElements(dtoPage.getTotalElements())
-                .build();
-        redisTemplate.opsForValue().set(cacheKey, cacheDto, Duration.ofMinutes(10));
-        return dtoPage;
+        return students.map(memberMapper::toMemberDto);
     }
 
     // (학년/반/번호)로 학생 조회 [선생님 권한]
     @Override
     @Transactional
-    public Page<MemberDto> getMyFilterInfo(Integer year, Integer classId, Integer number, Pageable pageable, LoginUserDto loginUser){
+    public Page<MemberResponse> getMyFilterInfo(Integer year, Integer classId, Integer number, Pageable pageable, LoginUserDto loginUser){
         checkPageSize(pageable.getPageSize());
         // ROLE_TEACHER 아닌 경우 예외 처리
         roleValidator.validateTeacherRole(loginUser);
@@ -217,7 +174,7 @@ public class MemberServiceImpl implements MemberService {
     // 학생의 회원정보 조회 [학부모/선생님 권한]
     @Override
     @Transactional
-    public MemberDto getMemberInfo(Long studentId, LoginUserDto loginUser) {
+    public MemberResponse getMemberInfo(Long studentId, LoginUserDto loginUser) {
         // ROLE_PARENT/ROLE_TEACHER 아닌 경우 예외 처리
         roleValidator.validateAccessToStudent(loginUser, studentId);
         Member student = memberRepository.findByIdAndRole(studentId, Member.MemberRole.ROLE_STUDENT)
@@ -228,7 +185,7 @@ public class MemberServiceImpl implements MemberService {
     // 학생의 상세회원정보 조회 [학부모/선생님 권한]
     @Override
     @Transactional
-    public DetailMemberDto getMemberDetailInfo(Long studentId, LoginUserDto loginUser) {
+    public DetailMemberResponse getMemberDetailInfo(Long studentId, LoginUserDto loginUser) {
         // ROLE_PARENT/ROLE_TEACHER 아닌 경우 예외 처리
         roleValidator.validateAccessToStudent(loginUser, studentId);
         Member student = memberRepository.findByIdAndRole(studentId, Member.MemberRole.ROLE_STUDENT)
@@ -239,16 +196,14 @@ public class MemberServiceImpl implements MemberService {
     // 학생/학부모 회원정보 수정 [학생/학부모 권한]
     @Override
     @Transactional
-    public void basicUpdateMemberInfo(BasicUpdateForm basicUpdateForm, MultipartFile imageFile, LoginUserDto loginUser){
+    public void basicUpdateMemberInfo(BasicUpdateRequest basicUpdateRequest, MultipartFile imageFile, LoginUserDto loginUser){
         // ROLE_STUDENT/ROLE_PARENT 아닌 경우 예외 처리
         roleValidator.validateStudentOrParentRole(loginUser);
         // 기존 이미지 삭제 후 입력 받은 이미지 S3에 저장
         String imageUrl = loginUser.getProfileImageUrl(); // 기본적으로 기존 이미지 URL을 사용
         if (imageFile != null && !imageFile.isEmpty()) {
             // 기존 이미지 없으면 바로 새로운 이미지 저장
-            if (imageUrl != null && !imageUrl.isEmpty()) {
-                s3Service.deleteFile(imageUrl);
-            }
+            if (imageUrl != null && !imageUrl.isEmpty()) s3Service.deleteFile(imageUrl);
             try {
                 imageUrl = s3Service.uploadImageFile(imageFile, "profile-image");
             } catch (IOException e) {
@@ -256,65 +211,41 @@ public class MemberServiceImpl implements MemberService {
             }
         } else {
             // imageFile이 없으면 기존 이미지가 있다면 삭제한다
-            if (imageUrl != null && !imageUrl.isEmpty()) {
-                s3Service.deleteFile(imageUrl); // 기존 이미지 삭제
-            }
+            if (imageUrl != null && !imageUrl.isEmpty()) s3Service.deleteFile(imageUrl); // 기존 이미지 삭제
             imageUrl = null;
         }
-        if (basicUpdateForm.getPassword() != null) {
-            loginUser.setPassword(BCrypt.hashpw(basicUpdateForm.getPassword(), BCrypt.gensalt()));
+        if (basicUpdateRequest.getPassword() != null) {
+            loginUser.setPassword(BCrypt.hashpw(basicUpdateRequest.getPassword(), BCrypt.gensalt()));
         }
-        if (basicUpdateForm.getName() != null) {
-            loginUser.setName(basicUpdateForm.getName());
-        }
-        if (basicUpdateForm.getBirthday() != null) {
-            loginUser.setBirthday(basicUpdateForm.getBirthday());
-        }
-        if (basicUpdateForm.getSchoolName() != null) {
-            loginUser.setSchoolName(basicUpdateForm.getSchoolName());
-        }
-        if (basicUpdateForm.getGender() != null) {
-            loginUser.setGender(basicUpdateForm.getGender());
-        }
-        loginUser.setPhone(basicUpdateForm.getPhone());
-        loginUser.setEmail(basicUpdateForm.getEmail());
+        if (basicUpdateRequest.getName() != null) loginUser.setName(basicUpdateRequest.getName());
+        if (basicUpdateRequest.getBirthday() != null) loginUser.setBirthday(basicUpdateRequest.getBirthday());
+        if (basicUpdateRequest.getSchoolName() != null) loginUser.setSchoolName(basicUpdateRequest.getSchoolName());
+        if (basicUpdateRequest.getGender() != null) loginUser.setGender(basicUpdateRequest.getGender());
+        loginUser.setPhone(basicUpdateRequest.getPhone());
+        loginUser.setEmail(basicUpdateRequest.getEmail());
         loginUser.setProfileImageUrl(imageUrl);
         // LoginUserDto를 Member 엔티티로 변환
         Member memberEntity = memberMapper.toMember(loginUser);
         memberRepository.save(memberEntity);
-        // 캐시 무효화 1: 본인 상세정보 캐시 삭제
-        String myDetailCacheKey = "myDetailInfo::" + loginUser.getId();
-        redisTemplate.delete(myDetailCacheKey);
-        // 캐시 무효화 2: 담임 선생님의 학생 목록 캐시 삭제
-        Integer studentYear = loginUser.getYear();
-        Integer studentClassId = loginUser.getClassId();
-        if (studentYear != null && studentClassId != null) {
-            // 해당 연도, 반, 그리고 ROLE_TEACHER인 선생님 1명 조회
-            Member teacher = memberRepository.findByYearAndClassIdAndRole(studentYear, studentClassId, Member.MemberRole.ROLE_TEACHER)
-                    .orElse(null);
-            if (teacher != null) {
-                String keyPattern = "myStudents::" + teacher.getId() + "::page::*";
-                Set<String> keys = redisTemplate.keys(keyPattern);
-                if (keys != null && !keys.isEmpty()) {
-                    redisTemplate.delete(keys);
-                }
-            }
+        // 상세회원정보 캐시 무효화
+        evictMyDetailCache(loginUser.getId(), loginUser.getRole());
+        // 학생이라면 담임 선생님 캐시 무효화
+        if (loginUser.getRole() == Member.MemberRole.ROLE_STUDENT) {
+            evictTeacherStudentCache(loginUser.getYear(), loginUser.getClassId());
         }
     }
 
     // 선생님 회원정보 수정 [선생님 권한]
     @Override
     @Transactional
-    public void teacherUpdateMemberInfo(TeacherUpdateForm teacherUpdateForm, MultipartFile imageFile, LoginUserDto loginUser){
+    public void teacherUpdateMemberInfo(TeacherUpdateRequest teacherUpdateRequest, MultipartFile imageFile, LoginUserDto loginUser){
         // ROLE_TEACHER 아닌 경우 예외 처리
         roleValidator.validateTeacherRole(loginUser);
         // 기존 이미지 삭제 후 입력 받은 이미지 S3에 저장
         String imageUrl = loginUser.getProfileImageUrl(); // 기본적으로 기존 이미지 URL을 사용
         if (imageFile != null && !imageFile.isEmpty()) {
             // 기존 이미지 없으면 바로 새로운 이미지 저장
-            if (imageUrl != null && !imageUrl.isEmpty()) {
-                s3Service.deleteFile(imageUrl);
-            }
+            if (imageUrl != null && !imageUrl.isEmpty()) s3Service.deleteFile(imageUrl);
             try {
                 imageUrl = s3Service.uploadImageFile(imageFile, "profile-image");
             } catch (IOException e) {
@@ -322,44 +253,27 @@ public class MemberServiceImpl implements MemberService {
             }
         } else {
             // imageFile이 없으면 기존 이미지가 있다면 삭제한다
-            if (imageUrl != null && !imageUrl.isEmpty()) {
-                s3Service.deleteFile(imageUrl); // 기존 이미지 삭제
-            }
+            if (imageUrl != null && !imageUrl.isEmpty()) s3Service.deleteFile(imageUrl); // 기존 이미지 삭제
             imageUrl = null;
         }
-        if (teacherUpdateForm.getPassword() != null) {
-            loginUser.setPassword(BCrypt.hashpw(teacherUpdateForm.getPassword(), BCrypt.gensalt()));
+        if (teacherUpdateRequest.getPassword() != null) {
+            loginUser.setPassword(BCrypt.hashpw(teacherUpdateRequest.getPassword(), BCrypt.gensalt()));
         }
-        if (teacherUpdateForm.getName() != null) {
-            loginUser.setName(teacherUpdateForm.getName());
-        }
-        if (teacherUpdateForm.getBirthday() != null) {
-            loginUser.setBirthday(teacherUpdateForm.getBirthday());
-        }
-        if (teacherUpdateForm.getSchoolName() != null) {
-            loginUser.setSchoolName(teacherUpdateForm.getSchoolName());
-        }
-        if (teacherUpdateForm.getYear() != null) {
-            loginUser.setYear(teacherUpdateForm.getYear());
-        }
-        if (teacherUpdateForm.getClassId() != null) {
-            loginUser.setClassId(teacherUpdateForm.getClassId());
-        }
-        if (teacherUpdateForm.getSubject() != null) {
-            loginUser.setSubject(teacherUpdateForm.getSubject());
-        }
-        if (teacherUpdateForm.getGender() != null) {
-            loginUser.setGender(teacherUpdateForm.getGender());
-        }
-        loginUser.setPhone(teacherUpdateForm.getPhone());
-        loginUser.setEmail(teacherUpdateForm.getEmail());
+        if (teacherUpdateRequest.getName() != null) loginUser.setName(teacherUpdateRequest.getName());
+        if (teacherUpdateRequest.getBirthday() != null) loginUser.setBirthday(teacherUpdateRequest.getBirthday());
+        if (teacherUpdateRequest.getSchoolName() != null) loginUser.setSchoolName(teacherUpdateRequest.getSchoolName());
+        if (teacherUpdateRequest.getYear() != null) loginUser.setYear(teacherUpdateRequest.getYear());
+        if (teacherUpdateRequest.getClassId() != null) loginUser.setClassId(teacherUpdateRequest.getClassId());
+        if (teacherUpdateRequest.getSubject() != null) loginUser.setSubject(teacherUpdateRequest.getSubject());
+        if (teacherUpdateRequest.getGender() != null) loginUser.setGender(teacherUpdateRequest.getGender());
+        loginUser.setPhone(teacherUpdateRequest.getPhone());
+        loginUser.setEmail(teacherUpdateRequest.getEmail());
         loginUser.setProfileImageUrl(imageUrl);
         // LoginUserDto를 Member 엔티티로 변환
         Member memberEntity = memberMapper.toMember(loginUser);
         memberRepository.save(memberEntity);
-        // 캐시 무효화 1: 본인 상세정보 캐시 삭제
-        String myDetailCacheKey = "myDetailInfo::" + loginUser.getId();
-        redisTemplate.delete(myDetailCacheKey);
+        // 상세회원정보 캐시 무효화
+        evictMyDetailCache(loginUser.getId(), loginUser.getRole());
     }
 
     // 회원탈퇴
@@ -371,16 +285,16 @@ public class MemberServiceImpl implements MemberService {
         // DB에서 회원 조회
         Member memberEntity = memberRepository.findById(loginUser.getId())
                 .orElseThrow(() -> new ServiceException(ReturnCode.USER_NOT_FOUND));
-
-        // 연관된 데이터 삭제
-
+        // ----- 연관된 데이터 삭제 -----
         memberRepository.delete(memberEntity);
+        // 상세회원정보 캐시 무효화
+        evictMyDetailCache(loginUser.getId(), loginUser.getRole());
     }
 
     // (학번/이름)으로 학생 검색하기 [학부모/선생님 권한]
     @Override
     @Transactional
-    public Page<MemberDto> searchMemberInfo(Pageable pageable, String keyword, LoginUserDto loginUser) {
+    public Page<MemberResponse> searchMemberInfo(Pageable pageable, String keyword, LoginUserDto loginUser) {
         // ROLE_PARENT이/ROLE_TEACHER 아닌 경우 예외 처리
         roleValidator.validateParentOrTeacherRole(loginUser);
         checkPageSize(pageable.getPageSize());
@@ -391,16 +305,16 @@ public class MemberServiceImpl implements MemberService {
     // 팔로우 요청하기 [학부모 권한]
     @Override
     @Transactional
-    public void followReq(FollowForm followForm, LoginUserDto loginUser){
+    public void followReq(FollowRequest followRequest, LoginUserDto loginUser){
         // ROLE_PARENT 아닌 경우 예외 처리
         roleValidator.validateParentRole(loginUser);
         Member followReq = memberMapper.toMember(loginUser);
         Member followRec = memberRepository.findByNameAndYearAndClassIdAndNumberAndBirthday(
-                followForm.getName(),
-                followForm.getYear(),
-                followForm.getClassId(),
-                followForm.getNumber(),
-                String.valueOf(followForm.getBirthday())
+                followRequest.getName(),
+                followRequest.getYear(),
+                followRequest.getClassId(),
+                followRequest.getNumber(),
+                String.valueOf(followRequest.getBirthday())
         ).orElseThrow(() -> new ServiceException(ReturnCode.USER_NOT_FOUND));
         // 기존 팔로우 여부 확인
         boolean already_follow = memberFollowRepository.existsByFollowAndFollowed(followReq, followRec);
@@ -525,5 +439,25 @@ public class MemberServiceImpl implements MemberService {
         if (pageSize > maxPageSize) {
             throw new ServiceException(ReturnCode.PAGE_REQUEST_FAIL);
         }
+    }
+
+    // 본인 캐시 무효화
+    private void evictMyDetailCache(Long memberId, Member.MemberRole role) {
+        String key = "myDetailInfo:" + role.name() + ":" + memberId;
+        cacheManager.getCache("member").evictIfPresent(key);
+        log.debug("Evicted detail cache: {}", key);
+    }
+
+    // 본인 담임교사 캐시 무효화
+    private void evictTeacherStudentCache(Integer year, Integer classId) {
+        if (year == null || classId == null) return;
+        memberRepository.findByYearAndClassIdAndRole(year, classId, Member.MemberRole.ROLE_TEACHER)
+                .ifPresent(teacher -> {
+                    // getMyStudentInfo 키는 pageable 포함 → prefix 단위로 날리기
+                    String prefix = "myStudents:ROLE_TEACHER:" + teacher.getId() + ":" + classId + ":";
+                    // prefix 기반으로 캐시 삭제
+                    redisCacheEvictHelper.evictByPrefix(prefix);
+                    log.debug("Evicted student list cache for teacherId={}, classId={}, prefix={}", teacher.getId(), classId, prefix);
+                });
     }
 }

@@ -14,7 +14,7 @@ import java.time.LocalDate;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class MemberForm {
+public class MemberRequest {
     @NotNull(message = "accountId는 필수입니다.")
     private Long accountId;
 

@@ -7,8 +7,8 @@ import com.iEdu.domain.account.member.entity.Member;
 import com.iEdu.domain.account.member.repository.MemberRepository;
 import com.iEdu.domain.account.member.service.MemberService;
 import com.iEdu.domain.notification.entity.Notification;
-import com.iEdu.domain.studentRecord.specialty.dto.req.SpecialtyForm;
-import com.iEdu.domain.studentRecord.specialty.dto.res.SpecialtyDto;
+import com.iEdu.domain.studentRecord.specialty.dto.req.SpecialtyRequest;
+import com.iEdu.domain.studentRecord.specialty.dto.res.SpecialtyResponse;
 import com.iEdu.domain.studentRecord.specialty.entity.Specialty;
 import com.iEdu.domain.studentRecord.specialty.entity.SpecialtyPage;
 import com.iEdu.domain.studentRecord.specialty.repository.SpecialtyRepository;
@@ -17,10 +17,10 @@ import com.iEdu.global.common.enums.Semester;
 import com.iEdu.global.common.utils.RoleValidator;
 import com.iEdu.global.exception.ReturnCode;
 import com.iEdu.global.exception.ServiceException;
+import com.iEdu.global.redis.helper.RedisCacheEvictHelper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.CacheManager;
-import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.*;
 import org.springframework.kafka.core.KafkaTemplate;
@@ -39,12 +39,12 @@ public class SpecialtyServiceImpl implements SpecialtyService {
     private final KafkaTemplate<String, String> kafkaTemplate;
     private final ObjectMapper objectMapper;
     private final RoleValidator roleValidator;
-    private final CacheManager cacheManager;
+    private final RedisCacheEvictHelper redisCacheEvictHelper;
 
     // 학생의 모든 특기사항 조회 [학부모/선생님 권한]
     @Override
     @Transactional(readOnly = true)
-    public Page<SpecialtyDto> getAllSpecialty(Long studentId, Pageable pageable, LoginUserDto loginUser) {
+    public Page<SpecialtyResponse> getAllSpecialty(Long studentId, Pageable pageable, LoginUserDto loginUser) {
         checkPageSize(pageable.getPageSize());
         // ROLE_PARENT/ROLE_TEACHER 아닌 경우 예외 처리
         roleValidator.validateAccessToStudent(loginUser, studentId);
@@ -62,9 +62,9 @@ public class SpecialtyServiceImpl implements SpecialtyService {
     @Transactional(readOnly = true)
     @Cacheable(
             value = "specialty",
-            key = "'specialty:' + #studentId + ':' + #year + ':' + #semester + ':' + #pageable.pageNumber + ':' + #pageable.pageSize + ':' + #loginUser.role.name()"
+            key = "'student:' + #studentId + ':' + #year + ':' + #semester + ':' + #pageable.pageNumber + ':' + #pageable.pageSize + ':' + #loginUser.role.name()"
     )
-    public Page<SpecialtyDto> getFilterSpecialty(Long studentId, Integer year, Semester semester, Pageable pageable, LoginUserDto loginUser) {
+    public Page<SpecialtyResponse> getFilterSpecialty(Long studentId, Integer year, Semester semester, Pageable pageable, LoginUserDto loginUser) {
         checkPageSize(pageable.getPageSize());
         roleValidator.validateAccessToStudent(loginUser, studentId);
         Pageable sortedPageable = PageRequest.of(
@@ -81,7 +81,7 @@ public class SpecialtyServiceImpl implements SpecialtyService {
     // 학생 특기사항 생성 [선생님 권한]
     @Override
     @Transactional
-    public void createSpecialty(Long studentId, SpecialtyForm specialtyForm, LoginUserDto loginUser) {
+    public void createSpecialty(Long studentId, SpecialtyRequest specialtyRequest, LoginUserDto loginUser) {
         // ROLE_TEACHER 아닌 경우 예외 처리
         roleValidator.validateTeacherRole(loginUser);
         Member student = memberRepository.findById(studentId)
@@ -89,10 +89,10 @@ public class SpecialtyServiceImpl implements SpecialtyService {
         Specialty specialty = Specialty.builder()
                 .member(student)
                 .teacherName(loginUser.getName())
-                .year(specialtyForm.getYear())
-                .semester(specialtyForm.getSemester())
-                .date(specialtyForm.getDate())
-                .content(specialtyForm.getContent())
+                .year(specialtyRequest.getYear())
+                .semester(specialtyRequest.getSemester())
+                .date(specialtyRequest.getDate())
+                .content(specialtyRequest.getContent())
                 .build();
         specialtyRepository.save(specialty);
 
@@ -103,15 +103,15 @@ public class SpecialtyServiceImpl implements SpecialtyService {
     // 학생 특기사항 수정 [선생님 권한]
     @Override
     @Transactional
-    public void updateSpecialty(Long specialtyId, SpecialtyForm specialtyForm, LoginUserDto loginUser) {
+    public void updateSpecialty(Long specialtyId, SpecialtyRequest specialtyRequest, LoginUserDto loginUser) {
         // ROLE_TEACHER 아닌 경우 예외 처리
         roleValidator.validateTeacherRole(loginUser);
         Specialty specialty = specialtyRepository.findById(specialtyId)
                 .orElseThrow(() -> new ServiceException(ReturnCode.SPECIALTY_NOT_FOUND));
-        specialty.setYear(specialtyForm.getYear());
-        specialty.setSemester(specialtyForm.getSemester());
-        specialty.setDate(specialtyForm.getDate());
-        specialty.setContent(specialtyForm.getContent());
+        specialty.setYear(specialtyRequest.getYear());
+        specialty.setSemester(specialtyRequest.getSemester());
+        specialty.setDate(specialtyRequest.getDate());
+        specialty.setContent(specialtyRequest.getContent());
 
         // 캐시 무효화
         evictSpecialtyCache(specialty.getMember().getId(), specialty.getYear(), specialty.getSemester());
@@ -144,9 +144,9 @@ public class SpecialtyServiceImpl implements SpecialtyService {
 
     // 캐시 무효화
     private void evictSpecialtyCache(Long studentId, Integer year, Semester semester) {
-        String cacheKey = "specialty:" + studentId + ":" + year + ":" + semester;
-        cacheManager.getCache("specialty").evictIfPresent(cacheKey);
-        log.debug("Specialty key evicted: {}", cacheKey);
+        String prefix = "student:" + studentId + ":" + year + ":" + semester + ":";
+        redisCacheEvictHelper.evictByPrefix(prefix);
+        log.debug("Specialty cache evicted for studentId={}, year={}, semester={}, prefix={}", studentId, year, semester, prefix);
     }
 
     // 특기사항 알림 이벤트 생성
@@ -175,8 +175,8 @@ public class SpecialtyServiceImpl implements SpecialtyService {
 
     // Specialty → SpecialtyDto 변환
     @Override
-    public SpecialtyDto convertToSpecialtyDto(Specialty specialty) {
-        return SpecialtyDto.builder()
+    public SpecialtyResponse convertToSpecialtyDto(Specialty specialty) {
+        return SpecialtyResponse.builder()
                 .id(specialty.getId())
                 .studentId(specialty.getMember().getId())
                 .teacherName(specialty.getTeacherName())

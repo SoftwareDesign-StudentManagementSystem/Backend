@@ -9,6 +9,6 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class GradeUpdateForm {
+public class GradeUpdateRequest {
     private Double score;
 }

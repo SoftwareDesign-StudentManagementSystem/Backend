@@ -11,7 +11,7 @@ import java.time.LocalDate;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class FeedbackForm {
+public class FeedbackRequest {
     private Integer year;
     private Semester semester;
     private LocalDate date;

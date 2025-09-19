@@ -2,13 +2,11 @@ package com.iEdu.domain.notification.controller;
 
 import com.iEdu.domain.account.auth.loginUser.LoginUser;
 import com.iEdu.domain.account.auth.loginUser.LoginUserDto;
-import com.iEdu.domain.notification.dto.req.NotificationForm;
-import com.iEdu.domain.notification.dto.res.NotificationDto;
+import com.iEdu.domain.notification.dto.req.NotificationRequest;
+import com.iEdu.domain.notification.dto.res.NotificationResponse;
 import com.iEdu.domain.notification.entity.NotificationPage;
 import com.iEdu.domain.notification.service.NotificationService;
 import com.iEdu.global.common.response.ApiResponse;
-import com.iEdu.global.common.response.IEduPage;
-import com.iEdu.global.exception.ReturnCode;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -16,6 +14,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/rest-api/v1/notification")
@@ -27,17 +27,17 @@ public class ApiV1NotificationController {
     // 알림 목록 조회 [학부모/학생 권한]
     @Operation(summary = "알림 목록 조회 [학부모/학생 권한]")
     @GetMapping
-    public ApiResponse<NotificationDto> getNotifications(@ModelAttribute NotificationPage request, @LoginUser LoginUserDto loginUser) {
+    public ApiResponse<List<NotificationResponse>> getNotifications(@ModelAttribute NotificationPage request, @LoginUser LoginUserDto loginUser) {
         Pageable pageable = PageRequest.of(request.getPage(), request.getSize());
-        return ApiResponse.of(IEduPage.of(notificationService.getNotifications(pageable, loginUser)));
+        return ApiResponse.success(notificationService.getNotifications(pageable, loginUser));
     }
 
     // 알림 읽음 처리 [학부모/학생 권한]
     @Operation(summary = "알림 읽음 처리 [학부모/학생 권한]")
-    @PutMapping
-    public ApiResponse<String> markAsRead(@RequestBody @Valid NotificationForm notificationForm,
+    @PatchMapping
+    public ApiResponse<Void> markAsRead(@RequestBody @Valid NotificationRequest notificationRequest,
                                           @LoginUser LoginUserDto loginUser) {
-        notificationService.markAsRead(notificationForm, loginUser);
-        return ApiResponse.of(ReturnCode.SUCCESS);
+        notificationService.markAsRead(notificationRequest, loginUser);
+        return ApiResponse.success();
     }
 }

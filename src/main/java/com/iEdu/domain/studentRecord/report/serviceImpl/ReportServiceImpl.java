@@ -3,15 +3,13 @@ package com.iEdu.domain.studentRecord.report.serviceImpl;
 import com.iEdu.domain.account.auth.loginUser.LoginUserDto;
 import com.iEdu.domain.account.member.entity.Member;
 import com.iEdu.domain.account.member.repository.MemberRepository;
-import com.iEdu.domain.studentRecord.report.dto.req.ReportForm;
-import com.iEdu.domain.studentRecord.report.dto.res.ReportDto;
+import com.iEdu.domain.studentRecord.report.dto.req.ReportRequest;
+import com.iEdu.domain.studentRecord.report.dto.res.ReportResponse;
 import com.iEdu.domain.studentRecord.report.service.ReportService;
 import com.iEdu.global.common.enums.ReportFormat;
 import com.iEdu.domain.studentRecord.report.service.ReportGenerator;
 import com.iEdu.global.common.enums.Semester;
 import com.iEdu.global.common.utils.RoleValidator;
-import com.iEdu.global.exception.ReturnCode;
-import com.iEdu.global.exception.ServiceException;
 import com.iEdu.global.s3.S3Service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -20,7 +18,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -34,7 +31,7 @@ public class ReportServiceImpl implements ReportService {
     // 학생 보고서 생성 및 다운로드 [선생님 권한]
     @Override
     @Transactional
-    public ReportDto generateReport(ReportForm form, LoginUserDto loginUser) {
+    public ReportResponse generateReport(ReportRequest form, LoginUserDto loginUser) {
         roleValidator.validateTeacherRole(loginUser);
         List<Member> students = memberRepository.findAllById(form.getStudentIdList());
         Map<String, String> reportUrls = new LinkedHashMap<>(); // 유지 순서 보장
@@ -70,7 +67,7 @@ public class ReportServiceImpl implements ReportService {
                 // 성적/상담/피드백/특기사항 → 통합 생성
                 for (String type : List.of("성적", "상담", "피드백", "특기사항")) {
                     if (isTypeEnabled(form, type)) {
-                        ReportForm singleForm = form.copyWithOnly(type);
+                        ReportRequest singleForm = form.copyWithOnly(type);
                         byte[] file = generator.generateSingleTypeReport(students, form.getYear(), semester, singleForm, type);
                         String fileKey = String.format("reports/%s_%s_%s.%s", type, semester.name().toLowerCase(), UUID.randomUUID(), generator.getFileExtension());
                         s3Service.uploadFile(file, fileKey, getContentType(generator.getFileExtension()), fileKey);
@@ -88,7 +85,7 @@ public class ReportServiceImpl implements ReportService {
                 }
             }
         }
-        return new ReportDto(reportUrls); // 변경된 생성자 사용
+        return new ReportResponse(reportUrls); // 변경된 생성자 사용
     }
 
     // ----------------- 헬퍼 메서드 -----------------
@@ -111,7 +108,7 @@ public class ReportServiceImpl implements ReportService {
             Member student,
             int year,
             Semester semester,
-            ReportForm form,
+            ReportRequest form,
             String type,
             String suffix,
             ReportFormat format,
@@ -119,7 +116,7 @@ public class ReportServiceImpl implements ReportService {
             Map<String, String> reportUrls
     ) {
         // form의 카피를 만들고 해당 type만 true로 설정
-        ReportForm singleForm = form.copyWithOnly(type);
+        ReportRequest singleForm = form.copyWithOnly(type);
         byte[] file = generator.generateReport(student, year, semester, singleForm);
         String fileKey = String.format("reports/%s_%s.%s", student.getId(), UUID.randomUUID(), extension);
         s3Service.uploadFile(file, fileKey, getContentType(extension), fileKey);
@@ -161,7 +158,7 @@ public class ReportServiceImpl implements ReportService {
         map.put(mapKey, presignedUrl);
     }
 
-    private boolean isTypeEnabled(ReportForm form, String type) {
+    private boolean isTypeEnabled(ReportRequest form, String type) {
         return switch (type) {
             case "성적" -> form.getGrade();
             case "상담" -> form.getCounsel();

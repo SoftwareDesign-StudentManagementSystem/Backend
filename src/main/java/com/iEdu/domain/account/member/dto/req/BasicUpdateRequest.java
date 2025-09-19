@@ -12,15 +12,12 @@ import java.time.LocalDate;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class TeacherUpdateForm {
+public class BasicUpdateRequest {
     private String password;
     private String name;
     private String phone;
     private String email;
     private LocalDate birthday;
     private String schoolName;
-    private Integer year;
-    private Integer classId;
-    private Member.Subject subject;
     private Member.Gender gender;
 }

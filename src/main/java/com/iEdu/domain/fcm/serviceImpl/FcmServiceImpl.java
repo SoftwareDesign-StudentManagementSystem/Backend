@@ -2,7 +2,7 @@ package com.iEdu.domain.fcm.serviceImpl;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.auth.oauth2.GoogleCredentials;
-import com.iEdu.domain.fcm.dto.FcmMessage;
+import com.iEdu.domain.fcm.dto.res.FcmMessageResponse;
 import com.iEdu.domain.fcm.service.FcmService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -30,7 +30,7 @@ public class FcmServiceImpl implements FcmService {
     private String projectId;
 
     @Override
-    public void sendMessageTo(FcmMessage message) {
+    public void sendMessageTo(FcmMessageResponse message) {
         try {
             String accessToken = getAccessToken();
             String json = objectMapper.writeValueAsString(createFcmRequestBody(message));
@@ -58,7 +58,7 @@ public class FcmServiceImpl implements FcmService {
     }
 
     // HTTP v1 API용 Body 생성
-    private Map<String, Object> createFcmRequestBody(FcmMessage message) {
+    private Map<String, Object> createFcmRequestBody(FcmMessageResponse message) {
         Map<String, Object> body = new HashMap<>();
         Map<String, Object> messageMap = new HashMap<>();
         messageMap.put("token", message.getTargetToken());

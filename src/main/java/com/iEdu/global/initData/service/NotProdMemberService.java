@@ -2,9 +2,9 @@ package com.iEdu.global.initData.service;
 
 import com.iEdu.domain.account.admin.service.AdminService;
 import com.iEdu.domain.account.auth.loginUser.LoginUserDto;
-import com.iEdu.domain.account.member.dto.req.FollowForm;
-import com.iEdu.domain.account.member.dto.req.MemberForm;
-import com.iEdu.domain.account.member.dto.req.ParentForm;
+import com.iEdu.domain.account.member.dto.req.FollowRequest;
+import com.iEdu.domain.account.member.dto.req.MemberRequest;
+import com.iEdu.domain.account.member.dto.req.ParentSignUpRequest;
 import com.iEdu.domain.account.member.entity.Member;
 import com.iEdu.domain.account.member.mapper.MemberMapper;
 import com.iEdu.domain.account.member.repository.MemberRepository;
@@ -63,7 +63,7 @@ public class NotProdMemberService {
                         studentIds.add(accountId);
                         studentPasswords.add(password);
                     }
-                    MemberForm student = MemberForm.builder()
+                    MemberRequest student = MemberRequest.builder()
                             .accountId(accountId)
                             .password(password)
                             .name(name)
@@ -94,7 +94,7 @@ public class NotProdMemberService {
             int randomTwoDigits = random.nextInt(90) + 10;
             Long parentAccountId = Long.parseLong(studentAccountId + String.valueOf(randomTwoDigits));
 
-            ParentForm parentForm = ParentForm.builder()
+            ParentSignUpRequest parentSignUpRequest = ParentSignUpRequest.builder()
                     .accountId(parentAccountId)
                     .password(studentPassword)
                     .name(name)
@@ -104,7 +104,7 @@ public class NotProdMemberService {
                     .schoolName("송도고등학교")
                     .gender(random.nextBoolean() ? Member.Gender.MALE : Member.Gender.FEMALE)
                     .build();
-            memberService.signup(parentForm);
+            memberService.signup(parentSignUpRequest);
             allParentIds.add(parentAccountId);
 
             // 1학년 1반 1번~3학년 1반 1번 학생 학부모만 별도 저장
@@ -134,14 +134,14 @@ public class NotProdMemberService {
             LoginUserDto parentLogin = memberMapper.toLoginUserDto(parent);
             LoginUserDto studentLogin = memberMapper.toLoginUserDto(student);
 
-            FollowForm followForm = new FollowForm();
-            followForm.setName(student.getName());
-            followForm.setYear(student.getYear());
-            followForm.setClassId(student.getClassId());
-            followForm.setNumber(student.getNumber());
-            followForm.setBirthday(student.getBirthday());
+            FollowRequest followRequest = new FollowRequest();
+            followRequest.setName(student.getName());
+            followRequest.setYear(student.getYear());
+            followRequest.setClassId(student.getClassId());
+            followRequest.setNumber(student.getNumber());
+            followRequest.setBirthday(student.getBirthday());
             try {
-                memberService.followReq(followForm, parentLogin);
+                memberService.followReq(followRequest, parentLogin);
                 memberService.acceptFollowReq(parent.getId(), studentLogin);
             } catch (Exception e) {
                 log.error("팔로우 처리 중 예외 발생 - studentId: {}, parentId: {}", studentId, parentId, e);
@@ -168,7 +168,7 @@ public class NotProdMemberService {
                 String phone = notProdUtils.generateRandomPhone();
                 String email = "teacher" + (teacherEmailCount++) + "@school.com";
 
-                MemberForm teacher = MemberForm.builder()
+                MemberRequest teacher = MemberRequest.builder()
                         .accountId(accountId)
                         .password(password)
                         .name(name)
@@ -203,7 +203,7 @@ public class NotProdMemberService {
         String password = "iEdu77";
         String phone = notProdUtils.generateRandomPhone();
 
-        MemberForm adminForm = MemberForm.builder()
+        MemberRequest adminForm = MemberRequest.builder()
                 .accountId(accountId)
                 .password(password)
                 .name("김송도")

@@ -9,7 +9,7 @@ import lombok.NoArgsConstructor;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-public class SubjectScore {
+public class SubjectScoreDto {
     private Double score;         // 개인 점수
     private Double average;       // 전체 평균
     private String achievementLevel; // 성취도 (A~E)

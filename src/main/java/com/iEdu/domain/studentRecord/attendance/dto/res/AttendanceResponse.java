@@ -14,7 +14,7 @@ import java.util.List;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-public class AttendanceDto {
+public class AttendanceResponse {
     private Long id;
     private Long studentId;
     private Integer year;

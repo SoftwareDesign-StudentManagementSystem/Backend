@@ -1,8 +1,8 @@
 package com.iEdu.domain.studentRecord.counsel.service;
 
 import com.iEdu.domain.account.auth.loginUser.LoginUserDto;
-import com.iEdu.domain.studentRecord.counsel.dto.req.CounselForm;
-import com.iEdu.domain.studentRecord.counsel.dto.res.CounselDto;
+import com.iEdu.domain.studentRecord.counsel.dto.req.CounselRequest;
+import com.iEdu.domain.studentRecord.counsel.dto.res.CounselResponse;
 import com.iEdu.domain.studentRecord.counsel.entity.Counsel;
 import com.iEdu.global.common.enums.Semester;
 import org.springframework.data.domain.Page;
@@ -12,23 +12,23 @@ import java.util.List;
 
 public interface CounselService {
     // 학생의 모든 상담 조회 [학부모/선생님 권한]
-    Page<CounselDto> getAllCounsel(Long studentId, Pageable pageable, LoginUserDto loginUser);
+    Page<CounselResponse> getAllCounsel(Long studentId, Pageable pageable, LoginUserDto loginUser);
 
     // (학년/반/번호/학기)로 학생들 상담 조회 [선생님 권한]
-    List<CounselDto> getStudentsCounsel(Integer year, Integer classId, Integer number, Semester semester, LoginUserDto loginUser);
+    List<CounselResponse> getStudentsCounsel(Integer year, Integer classId, Integer number, Semester semester, LoginUserDto loginUser);
 
     // (학년/학기)로 학생 상담 조회 [학부모/선생님 권한]
-    Page<CounselDto> getFilterCounsel(Long studentId, Integer year, Semester semester, Pageable pageable, LoginUserDto loginUser);
+    Page<CounselResponse> getFilterCounsel(Long studentId, Integer year, Semester semester, Pageable pageable, LoginUserDto loginUser);
 
     // 학생 상담 생성 [선생님 권한]
-    void createCounsel(Long studentId, CounselForm counselForm, LoginUserDto loginUser);
+    void createCounsel(Long studentId, CounselRequest counselRequest, LoginUserDto loginUser);
 
     // 학생 상담 수정 [선생님 권한]
-    void updateCounsel(Long counselId, CounselForm counselForm, LoginUserDto loginUser);
+    void updateCounsel(Long counselId, CounselRequest counselRequest, LoginUserDto loginUser);
 
     // 학생 상담 삭제 [선생님 권한]
     void deleteCounsel(Long counselId, LoginUserDto loginUser);
 
     // Counsel -> CounselDto 변환
-    CounselDto convertToCounselDto(Counsel counsel);
+    CounselResponse convertToCounselDto(Counsel counsel);
 }

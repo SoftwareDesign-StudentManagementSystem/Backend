@@ -10,7 +10,7 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class GradeForm {
+public class GradeRequest {
     private Integer year;
     private Semester semester;
     private Double score;

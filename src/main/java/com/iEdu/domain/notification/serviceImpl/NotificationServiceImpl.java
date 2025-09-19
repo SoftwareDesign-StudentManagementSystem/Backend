@@ -1,10 +1,9 @@
 package com.iEdu.domain.notification.serviceImpl;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.iEdu.domain.account.auth.loginUser.LoginUserDto;
 import com.iEdu.domain.account.member.entity.MemberPage;
-import com.iEdu.domain.notification.dto.req.NotificationForm;
-import com.iEdu.domain.notification.dto.res.NotificationDto;
+import com.iEdu.domain.notification.dto.req.NotificationRequest;
+import com.iEdu.domain.notification.dto.res.NotificationResponse;
 import com.iEdu.domain.notification.entity.Notification;
 import com.iEdu.domain.notification.repository.NotificationRepository;
 import com.iEdu.domain.notification.service.NotificationService;
@@ -14,10 +13,8 @@ import com.iEdu.global.exception.ServiceException;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -27,10 +24,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class NotificationServiceImpl implements NotificationService {
     private final NotificationRepository notificationRepository;
-    private final RedisTemplate<String, Object> redisTemplate;
     private final RoleValidator roleValidator;
-    @Autowired
-    private final ObjectMapper objectMapper;
 
     // 알림 생성 [선생님 권한]
     @Override
@@ -42,7 +36,7 @@ public class NotificationServiceImpl implements NotificationService {
     // 알림 목록 조회 [학부모/학생 권한]
     @Override
     @Transactional
-    public Page<NotificationDto> getNotifications(Pageable pageable, LoginUserDto loginUser) {
+    public Page<NotificationResponse> getNotifications(Pageable pageable, LoginUserDto loginUser) {
         checkPageSize(pageable.getPageSize());
         // ROLE_STUDENT, ROLE_PARENT가 아닌 경우 예외 처리
         roleValidator.validateStudentOrParentRole(loginUser);
@@ -55,11 +49,11 @@ public class NotificationServiceImpl implements NotificationService {
     // 알림 읽음 처리 [학부모/학생 권한]
     @Override
     @Transactional
-    public void markAsRead(NotificationForm notificationForm, LoginUserDto loginUser) {
+    public void markAsRead(NotificationRequest notificationRequest, LoginUserDto loginUser) {
         // ROLE_STUDENT, ROLE_PARENT가 아닌 경우 예외 처리
         roleValidator.validateStudentOrParentRole(loginUser);
         // 본인 알림인지 확인
-        List<Long> ids = notificationForm.getNotificationIdList();
+        List<Long> ids = notificationRequest.getNotificationIdList();
         List<Notification> notifications = notificationRepository.findAllByIdInAndReceiverId(ids, loginUser.getId());
         if (notifications.size() != ids.size()) {
             throw new ServiceException(ReturnCode.NOTIFICATION_NOT_FOUND);
@@ -79,8 +73,8 @@ public class NotificationServiceImpl implements NotificationService {
     }
 
     // Notification을 NotificationDto로 변환
-    public NotificationDto convertToNotificationDto(Notification notification) {
-        return NotificationDto.builder()
+    public NotificationResponse convertToNotificationDto(Notification notification) {
+        return NotificationResponse.builder()
                 .id(notification.getId())
                 .content(notification.getContent())
                 .isRead(notification.getIsRead())

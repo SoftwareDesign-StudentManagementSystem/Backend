@@ -15,14 +15,18 @@ import java.util.List;
 public class CounselQueryRepositoryImpl implements CounselQueryRepository {
     private final JPAQueryFactory queryFactory;
 
+    // 여러 학생 id를 한 번에 조회
     @Override
-    public List<Counsel> findByMemberIdAndYearAndSemester(Long memberId, Integer year, Semester semester) {
+    public List<Counsel> findByMemberIdInAndYearAndSemester(List<Long> memberIds, Integer year, Semester semester) {
+        if (memberIds == null || memberIds.isEmpty()) {
+            return List.of();
+        }
         QCounsel counsel = QCounsel.counsel;
 
         return queryFactory
                 .selectFrom(counsel)
                 .where(
-                        counsel.member.id.eq(memberId),
+                        counsel.member.id.in(memberIds),
                         counsel.year.eq(year),
                         counsel.semester.eq(semester)
                 )

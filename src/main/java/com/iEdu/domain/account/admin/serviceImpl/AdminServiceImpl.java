@@ -2,9 +2,9 @@ package com.iEdu.domain.account.admin.serviceImpl;
 
 import com.iEdu.domain.account.admin.service.AdminService;
 import com.iEdu.domain.account.auth.loginUser.LoginUserDto;
-import com.iEdu.domain.account.member.dto.req.MemberForm;
-import com.iEdu.domain.account.member.dto.res.DetailMemberDto;
-import com.iEdu.domain.account.member.dto.res.MemberDto;
+import com.iEdu.domain.account.member.dto.req.MemberRequest;
+import com.iEdu.domain.account.member.dto.res.DetailMemberResponse;
+import com.iEdu.domain.account.member.dto.res.MemberResponse;
 import com.iEdu.domain.account.member.entity.Member;
 import com.iEdu.domain.account.member.entity.MemberFollow;
 import com.iEdu.domain.account.member.entity.MemberPage;
@@ -40,27 +40,27 @@ public class AdminServiceImpl implements AdminService {
     // 회원가입 [가데이터/초기관리자 생성]
     @Override
     @Transactional
-    public Member sudoSignup(MemberForm memberForm) {
-        if (memberRepository.existsByAccountId((memberForm.getAccountId()))) {
+    public Member sudoSignup(MemberRequest memberRequest) {
+        if (memberRepository.existsByAccountId((memberRequest.getAccountId()))) {
             throw new ServiceException(ReturnCode.MEMBER_ALREADY_EXISTS);
         }
         // 비밀번호가 없으면 null로 처리하거나 다른 처리를 할 수 있습니다.
-        String encodedPassword = memberForm.getPassword() != null ? passwordEncoder.encode(memberForm.getPassword()) : null;
+        String encodedPassword = memberRequest.getPassword() != null ? passwordEncoder.encode(memberRequest.getPassword()) : null;
         Member member = Member.builder()
-                .accountId(memberForm.getAccountId())
+                .accountId(memberRequest.getAccountId())
                 .password(encodedPassword)
-                .name(memberForm.getName())
-                .phone(memberForm.getPhone())
-                .email(memberForm.getEmail())
-                .birthday(memberForm.getBirthday())
-                .schoolName(memberForm.getSchoolName())
-                .year(memberForm.getYear())
-                .classId(memberForm.getClassId())
-                .number(memberForm.getNumber())
-                .subject(memberForm.getSubject())
-                .gender(memberForm.getGender())
-                .role(memberForm.getRole())
-                .state(memberForm.getState())
+                .name(memberRequest.getName())
+                .phone(memberRequest.getPhone())
+                .email(memberRequest.getEmail())
+                .birthday(memberRequest.getBirthday())
+                .schoolName(memberRequest.getSchoolName())
+                .year(memberRequest.getYear())
+                .classId(memberRequest.getClassId())
+                .number(memberRequest.getNumber())
+                .subject(memberRequest.getSubject())
+                .gender(memberRequest.getGender())
+                .role(memberRequest.getRole())
+                .state(memberRequest.getState())
                 .build();
         memberRepository.save(member);
         return member;
@@ -69,29 +69,29 @@ public class AdminServiceImpl implements AdminService {
     // 회원가입 [관리자 권한]
     @Override
     @Transactional
-    public Member adminSignup(MemberForm memberForm, LoginUserDto loginUser){
+    public Member adminSignup(MemberRequest memberRequest, LoginUserDto loginUser){
         // ROLE_ADMIN이 아닌 경우 예외 처리
         roleValidator.validateAdminRole(loginUser);
-        if (memberRepository.existsByAccountId((memberForm.getAccountId()))) {
+        if (memberRepository.existsByAccountId((memberRequest.getAccountId()))) {
             throw new ServiceException(ReturnCode.MEMBER_ALREADY_EXISTS);
         }
         // 비밀번호가 없으면 null로 처리하거나 다른 처리를 할 수 있습니다.
-        String encodedPassword = memberForm.getPassword() != null ? passwordEncoder.encode(memberForm.getPassword()) : null;
+        String encodedPassword = memberRequest.getPassword() != null ? passwordEncoder.encode(memberRequest.getPassword()) : null;
         Member member = Member.builder()
-                .accountId(memberForm.getAccountId())
+                .accountId(memberRequest.getAccountId())
                 .password(encodedPassword)
-                .name(memberForm.getName())
-                .phone(memberForm.getPhone())
-                .email(memberForm.getEmail())
-                .birthday(memberForm.getBirthday())
-                .schoolName(memberForm.getSchoolName())
-                .year(memberForm.getYear())
-                .classId(memberForm.getClassId())
-                .number(memberForm.getNumber())
-                .subject(memberForm.getSubject())
-                .gender(memberForm.getGender())
-                .role(memberForm.getRole())
-                .state(memberForm.getState())
+                .name(memberRequest.getName())
+                .phone(memberRequest.getPhone())
+                .email(memberRequest.getEmail())
+                .birthday(memberRequest.getBirthday())
+                .schoolName(memberRequest.getSchoolName())
+                .year(memberRequest.getYear())
+                .classId(memberRequest.getClassId())
+                .number(memberRequest.getNumber())
+                .subject(memberRequest.getSubject())
+                .gender(memberRequest.getGender())
+                .role(memberRequest.getRole())
+                .state(memberRequest.getState())
                 .build();
         memberRepository.save(member);
         return member;
@@ -100,7 +100,7 @@ public class AdminServiceImpl implements AdminService {
     // 역할별 회원 조회 [관리자 권한]
     @Override
     @Transactional
-    public Page<DetailMemberDto> getMemberByRole(String role, Pageable pageable, LoginUserDto loginUser){
+    public Page<DetailMemberResponse> getMemberByRole(String role, Pageable pageable, LoginUserDto loginUser){
         checkPageSize(pageable.getPageSize());
         // ROLE_ADMIN이 아닌 경우 예외 처리
         roleValidator.validateAdminRole(loginUser);
@@ -118,7 +118,7 @@ public class AdminServiceImpl implements AdminService {
     // 다른 멤버의 회원정보 조회 [관리자 권한]
     @Override
     @Transactional
-    public MemberDto getMemberInfo(Long memberId, LoginUserDto loginUser) {
+    public MemberResponse getMemberInfo(Long memberId, LoginUserDto loginUser) {
         // ROLE_ADMIN이 아닌 경우 예외 처리
         roleValidator.validateAdminRole(loginUser);
         Member member = memberRepository.findById(memberId)
@@ -129,7 +129,7 @@ public class AdminServiceImpl implements AdminService {
     // 다른 멤버의 상세회원정보 조회 [관리자 권한]
     @Override
     @Transactional
-    public DetailMemberDto getMemberDetailInfo(Long memberId, LoginUserDto loginUser) {
+    public DetailMemberResponse getMemberDetailInfo(Long memberId, LoginUserDto loginUser) {
         // ROLE_ADMIN이 아닌 경우 예외 처리
         roleValidator.validateAdminRole(loginUser);
         Member member = memberRepository.findById(memberId)
@@ -140,52 +140,52 @@ public class AdminServiceImpl implements AdminService {
     // 회원정보 수정 [관리자 권한]
     @Override
     @Transactional
-    public void adminUpdateMemberInfo(MemberForm memberForm, Long memberId, LoginUserDto loginUser) {
+    public void adminUpdateMemberInfo(MemberRequest memberRequest, Long memberId, LoginUserDto loginUser) {
         // ROLE_ADMIN이 아닌 경우 예외 처리
         roleValidator.validateAdminRole(loginUser);
         Member member = memberRepository.findById(memberId)
                 .orElseThrow(() -> new ServiceException(ReturnCode.USER_NOT_FOUND));
-        if (memberForm.getAccountId() != null) {
-            member.setAccountId(memberForm.getAccountId());
+        if (memberRequest.getAccountId() != null) {
+            member.setAccountId(memberRequest.getAccountId());
         }
-        if (memberForm.getPassword() != null) {
-            member.setPassword(BCrypt.hashpw(memberForm.getPassword(), BCrypt.gensalt()));
+        if (memberRequest.getPassword() != null) {
+            member.setPassword(BCrypt.hashpw(memberRequest.getPassword(), BCrypt.gensalt()));
         }
-        if (memberForm.getName() != null) {
-            member.setName(memberForm.getName());
+        if (memberRequest.getName() != null) {
+            member.setName(memberRequest.getName());
         }
-        if (memberForm.getPhone() != null) {
-            member.setPhone(memberForm.getPhone());
+        if (memberRequest.getPhone() != null) {
+            member.setPhone(memberRequest.getPhone());
         }
-        if (memberForm.getEmail() != null) {
-            member.setEmail(memberForm.getEmail());
+        if (memberRequest.getEmail() != null) {
+            member.setEmail(memberRequest.getEmail());
         }
-        if (memberForm.getBirthday() != null) {
-            member.setBirthday(memberForm.getBirthday());
+        if (memberRequest.getBirthday() != null) {
+            member.setBirthday(memberRequest.getBirthday());
         }
-        if (memberForm.getSchoolName() != null) {
-            member.setSchoolName(memberForm.getSchoolName());
+        if (memberRequest.getSchoolName() != null) {
+            member.setSchoolName(memberRequest.getSchoolName());
         }
-        if (memberForm.getYear() != null) {
-            member.setYear(memberForm.getYear());
+        if (memberRequest.getYear() != null) {
+            member.setYear(memberRequest.getYear());
         }
-        if (memberForm.getClassId() != null) {
-            member.setClassId(memberForm.getClassId());
+        if (memberRequest.getClassId() != null) {
+            member.setClassId(memberRequest.getClassId());
         }
-        if (memberForm.getNumber() != null) {
-            member.setNumber(memberForm.getNumber());
+        if (memberRequest.getNumber() != null) {
+            member.setNumber(memberRequest.getNumber());
         }
-        if (memberForm.getSubject() != null) {
-            member.setSubject(memberForm.getSubject());
+        if (memberRequest.getSubject() != null) {
+            member.setSubject(memberRequest.getSubject());
         }
-        if (memberForm.getGender() != null) {
-            member.setGender(memberForm.getGender());
+        if (memberRequest.getGender() != null) {
+            member.setGender(memberRequest.getGender());
         }
-        if (memberForm.getRole() != null) {
-            member.setRole(memberForm.getRole());
+        if (memberRequest.getRole() != null) {
+            member.setRole(memberRequest.getRole());
         }
-        if (memberForm.getState() != null) {
-            member.setState(memberForm.getState());
+        if (memberRequest.getState() != null) {
+            member.setState(memberRequest.getState());
         }
         memberRepository.save(member);
     }
@@ -193,7 +193,7 @@ public class AdminServiceImpl implements AdminService {
     // 계정ID&이름으로 회원 검색하기 [관리자 권한]
     @Override
     @Transactional
-    public Page<MemberDto> searchMemberInfo(Pageable pageable, String keyword, LoginUserDto loginUser) {
+    public Page<MemberResponse> searchMemberInfo(Pageable pageable, String keyword, LoginUserDto loginUser) {
         checkPageSize(pageable.getPageSize());
         // ROLE_ADMIN이 아닌 경우 예외 처리
         roleValidator.validateAdminRole(loginUser);
