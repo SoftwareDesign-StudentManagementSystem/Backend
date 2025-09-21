@@ -8,6 +8,7 @@ import com.iEdu.domain.account.member.dto.req.TeacherUpdateRequest;
 import com.iEdu.domain.account.member.dto.res.DetailMemberResponse;
 import com.iEdu.domain.account.member.dto.res.MemberResponse;
 import com.iEdu.domain.account.member.entity.Member;
+import com.iEdu.global.common.response.PageResponse;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.web.multipart.MultipartFile;
@@ -25,10 +26,10 @@ public interface MemberService {
     DetailMemberResponse getMyDetailInfo(LoginUserDto loginUser);
 
     // 담당 학생들의 회원정보 조회 [선생님 권한]
-    Page<MemberResponse> getMyStudentInfo(Pageable pageable, LoginUserDto loginUser);
+    PageResponse<MemberResponse> getMyStudentInfo(Pageable pageable, LoginUserDto loginUser);
 
     // (학년/반/번호)로 학생 조회 [선생님 권한]
-    Page<MemberResponse> getMyFilterInfo(Integer year, Integer classId, Integer number, Pageable pageable, LoginUserDto loginUser);
+    PageResponse<MemberResponse> getMyFilterInfo(Integer year, Integer classId, Integer number, Pageable pageable, LoginUserDto loginUser);
 
     // 학생의 회원정보 조회 [학부모/선생님 권한]
     MemberResponse getMemberInfo(Long studentId, LoginUserDto loginUser);
@@ -46,7 +47,7 @@ public interface MemberService {
     void deleteMember(LoginUserDto loginUser);
 
     // (학번/이름)으로 학생 검색하기 [학부모/선생님 권한]
-    Page<MemberResponse> searchMemberInfo(Pageable pageable, String keyword, LoginUserDto loginUser);
+    PageResponse<MemberResponse> searchMemberInfo(Pageable pageable, String keyword, LoginUserDto loginUser);
 
     // 팔로우 요청하기 [학부모 권한]
     void followReq(FollowRequest followRequest, LoginUserDto loginUser);

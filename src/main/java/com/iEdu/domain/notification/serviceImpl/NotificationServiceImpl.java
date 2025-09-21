@@ -7,6 +7,7 @@ import com.iEdu.domain.notification.dto.res.NotificationResponse;
 import com.iEdu.domain.notification.entity.Notification;
 import com.iEdu.domain.notification.repository.NotificationRepository;
 import com.iEdu.domain.notification.service.NotificationService;
+import com.iEdu.global.common.response.PageResponse;
 import com.iEdu.global.common.utils.RoleValidator;
 import com.iEdu.global.exception.ReturnCode;
 import com.iEdu.global.exception.ServiceException;
@@ -36,14 +37,14 @@ public class NotificationServiceImpl implements NotificationService {
     // 알림 목록 조회 [학부모/학생 권한]
     @Override
     @Transactional
-    public Page<NotificationResponse> getNotifications(Pageable pageable, LoginUserDto loginUser) {
+    public PageResponse<NotificationResponse> getNotifications(Pageable pageable, LoginUserDto loginUser) {
         checkPageSize(pageable.getPageSize());
         // ROLE_STUDENT, ROLE_PARENT가 아닌 경우 예외 처리
         roleValidator.validateStudentOrParentRole(loginUser);
         // DB에서 조회
         Page<Notification> notificationPage = notificationRepository
                 .findByReceiverIdOrderByCreatedAtDesc(loginUser.getId(), pageable);
-        return notificationPage.map(this::convertToNotificationDto);
+        return PageResponse.of(notificationPage.map(this::convertToNotificationDto));
     }
 
     // 알림 읽음 처리 [학부모/학생 권한]

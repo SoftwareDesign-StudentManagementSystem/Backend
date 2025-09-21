@@ -15,6 +15,7 @@ import com.iEdu.domain.studentRecord.feedback.entity.FeedbackPage;
 import com.iEdu.domain.studentRecord.feedback.repository.FeedbackRepository;
 import com.iEdu.domain.studentRecord.feedback.service.FeedbackService;
 import com.iEdu.global.common.enums.Semester;
+import com.iEdu.global.common.response.PageResponse;
 import com.iEdu.global.common.utils.RoleValidator;
 import com.iEdu.global.exception.ReturnCode;
 import com.iEdu.global.exception.ServiceException;
@@ -45,7 +46,7 @@ public class FeedbackServiceImpl implements FeedbackService {
     // 본인의 모든 피드백 조회 [학생 권한]
     @Override
     @Transactional(readOnly = true)
-    public Page<FeedbackResponse> getMyAllFeedback(Pageable pageable, LoginUserDto loginUser) {
+    public PageResponse<FeedbackResponse> getMyAllFeedback(Pageable pageable, LoginUserDto loginUser) {
         checkPageSize(pageable.getPageSize());
         // 정렬 조건 추가: year(내림차순), semester(SECOND_SEMESTER 우선), createdAt(내림차순)
         Pageable sortedPageable = PageRequest.of(
@@ -57,13 +58,13 @@ public class FeedbackServiceImpl implements FeedbackService {
         roleValidator.validateStudentRole(loginUser);
         // visibleToStudent == true 조건 포함
         Page<Feedback> feedbackPage = feedbackRepository.findByMemberIdAndVisibleToStudentTrue(loginUser.getId(), sortedPageable);
-        return feedbackPage.map(this::convertToFeedbackDto);
+        return PageResponse.of(feedbackPage.map(this::convertToFeedbackDto));
     }
 
     // 학생의 모든 피드백 조회 [학부모/선생님 권한]
     @Override
     @Transactional(readOnly = true)
-    public Page<FeedbackResponse> getAllFeedback(Long studentId, Pageable pageable, LoginUserDto loginUser){
+    public PageResponse<FeedbackResponse> getAllFeedback(Long studentId, Pageable pageable, LoginUserDto loginUser){
         checkPageSize(pageable.getPageSize());
         // 정렬 조건 추가: year(내림차순), semester(SECOND_SEMESTER 우선), createdAt(내림차순)
         Pageable sortedPageable = PageRequest.of(
@@ -84,7 +85,7 @@ public class FeedbackServiceImpl implements FeedbackService {
             // 접근 권한 없음
             throw new ServiceException(ReturnCode.NOT_AUTHORIZED);
         }
-        return feedbackPage.map(this::convertToFeedbackDto);
+        return PageResponse.of(feedbackPage.map(this::convertToFeedbackDto));
     }
 
     // (학년/학기)로 본인 피드백 조회 [학생 권한]
@@ -94,7 +95,7 @@ public class FeedbackServiceImpl implements FeedbackService {
             value = "feedback",
             key = "'student:' + #loginUser.id + ':year:' + #year + ':semester:' + #semester + ':' + #pageable.pageNumber + ':' + #pageable.pageSize"
     )
-    public Page<FeedbackResponse> getMyFilterFeedback(Integer year, Semester semester, Pageable pageable, LoginUserDto loginUser) {
+    public PageResponse<FeedbackResponse> getMyFilterFeedback(Integer year, Semester semester, Pageable pageable, LoginUserDto loginUser) {
         checkPageSize(pageable.getPageSize());
         roleValidator.validateStudentRole(loginUser);
 
@@ -103,10 +104,9 @@ public class FeedbackServiceImpl implements FeedbackService {
                 pageable.getPageSize(),
                 Sort.by(Sort.Direction.DESC, "createdAt")
         );
-        return feedbackRepository.findByMemberIdAndYearAndSemesterAndVisibleToStudentTrue(
+        return PageResponse.of(feedbackRepository.findByMemberIdAndYearAndSemesterAndVisibleToStudentTrue(
                         loginUser.getId(), year, semester, sortedPageable
-                )
-                .map(this::convertToFeedbackDto);
+                ).map(this::convertToFeedbackDto));
     }
 
     // (학년/학기)로 학생 피드백 조회 [학부모/선생님 권한]
@@ -116,7 +116,7 @@ public class FeedbackServiceImpl implements FeedbackService {
             value = "feedback",
             key = "'student:' + #studentId + ':year:' + #year + ':semester:' + #semester + ':role:' + #loginUser.role + ':' + #pageable.pageNumber + ':' + #pageable.pageSize"
     )
-    public Page<FeedbackResponse> getFilterFeedback(Long studentId, Integer year, Semester semester, Pageable pageable, LoginUserDto loginUser) {
+    public PageResponse<FeedbackResponse> getFilterFeedback(Long studentId, Integer year, Semester semester, Pageable pageable, LoginUserDto loginUser) {
         checkPageSize(pageable.getPageSize());
         roleValidator.validateAccessToStudent(loginUser, studentId);
 
@@ -137,7 +137,7 @@ public class FeedbackServiceImpl implements FeedbackService {
         } else {
             throw new ServiceException(ReturnCode.NOT_AUTHORIZED);
         }
-        return feedbackPage.map(this::convertToFeedbackDto);
+        return PageResponse.of(feedbackPage.map(this::convertToFeedbackDto));
     }
 
     // 학생 피드백 생성 [선생님 권한]
@@ -173,14 +173,13 @@ public class FeedbackServiceImpl implements FeedbackService {
         roleValidator.validateTeacherRole(loginUser);
         Feedback feedback = feedbackRepository.findById(feedbackId)
                 .orElseThrow(() -> new ServiceException(ReturnCode.FEEDBACK_NOT_FOUND));
-        feedback.setYear(feedbackRequest.getYear());
-        feedback.setSemester(feedbackRequest.getSemester());
-        feedback.setDate(feedbackRequest.getDate());
-        feedback.setCategory(feedbackRequest.getCategory());
-        feedback.setContent(feedbackRequest.getContent());
-        feedback.setVisibleToStudent(feedbackRequest.getVisibleToStudent());
-        feedback.setVisibleToParent(feedbackRequest.getVisibleToParent());
-
+        if (feedbackRequest.getYear() != null) feedback.setYear(feedbackRequest.getYear());
+        if (feedbackRequest.getSemester() != null) feedback.setSemester(feedbackRequest.getSemester());
+        if (feedbackRequest.getDate() != null) feedback.setDate(feedbackRequest.getDate());
+        if (feedbackRequest.getCategory() != null) feedback.setCategory(feedbackRequest.getCategory());
+        if (feedbackRequest.getContent() != null) feedback.setContent(feedbackRequest.getContent());
+        if (feedbackRequest.getVisibleToStudent() != null) feedback.setVisibleToStudent(feedbackRequest.getVisibleToStudent());
+        if (feedbackRequest.getVisibleToParent() != null) feedback.setVisibleToParent(feedbackRequest.getVisibleToParent());
         // 캐시 무효화
         evictFeedbackCache(feedback.getMember().getId(), feedback.getYear(), feedback.getSemester());
         // 피드백 알림 수정 & 이벤트 생성
@@ -212,7 +211,7 @@ public class FeedbackServiceImpl implements FeedbackService {
 
     // 캐시 무효화
     private void evictFeedbackCache(Long studentId, Integer year, Semester semester) {
-        String prefix = "student:" + studentId + ":year:" + year + ":semester:" + semester + ":";
+        String prefix = "feedback::student:" + studentId + ":year:" + year + ":semester:" + semester;
         redisCacheEvictHelper.evictByPrefix(prefix);
         log.debug("Feedback cache evicted for studentId={}, year={}, semester={}, prefix={}", studentId, year, semester, prefix);
     }

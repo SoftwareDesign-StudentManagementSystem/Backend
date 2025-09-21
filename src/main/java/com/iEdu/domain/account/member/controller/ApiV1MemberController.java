@@ -54,7 +54,7 @@ public class ApiV1MemberController {
     public ApiResponse<List<MemberResponse>> getMyStudentInfo(@ModelAttribute MemberPage request,
                                                               @LoginUser LoginUserDto loginUser) {
         Pageable pageable = PageRequest.of(request.getPage(), request.getSize());
-        return ApiResponse.success(memberService.getMyStudentInfo(pageable, loginUser));
+        return ApiResponse.success(memberService.getMyStudentInfo(pageable, loginUser).getContent());
     }
 
     // (학년/반/번호)로 학생 조회 [선생님 권한]
@@ -86,7 +86,7 @@ public class ApiV1MemberController {
     // 학생/학부모 회원정보 수정 [학생/학부모 권한]
     @Operation(summary = "학생/학부모 회원정보 수정 [학생/학부모 권한]")
     @PatchMapping("/basic")
-    public ApiResponse<Void> basicUpdateMemberInfo(@RequestPart(value = "basicUpdateForm") @Valid BasicUpdateRequest basicUpdateRequest,
+    public ApiResponse<Void> basicUpdateMemberInfo(@RequestPart(value = "basicUpdateRequest") @Valid BasicUpdateRequest basicUpdateRequest,
                                                      @RequestPart(value = "imageFile", required = false) MultipartFile imageFile,
                                                      @LoginUser LoginUserDto loginUser) {
         memberService.basicUpdateMemberInfo(basicUpdateRequest, imageFile, loginUser);
@@ -96,7 +96,7 @@ public class ApiV1MemberController {
     // 선생님 회원정보 수정 [선생님 권한]
     @Operation(summary = "선생님 회원정보 수정 [선생님 권한]")
     @PatchMapping("/teacher")
-    public ApiResponse<Void> teacherUpdateMemberInfo(@RequestPart(value = "teacherUpdateForm") @Valid TeacherUpdateRequest teacherUpdateRequest,
+    public ApiResponse<Void> teacherUpdateMemberInfo(@RequestPart(value = "teacherUpdateRequest") @Valid TeacherUpdateRequest teacherUpdateRequest,
                                                        @RequestPart(value = "imageFile", required = false) MultipartFile imageFile,
                                                        @LoginUser LoginUserDto loginUser) {
         memberService.teacherUpdateMemberInfo(teacherUpdateRequest, imageFile, loginUser);

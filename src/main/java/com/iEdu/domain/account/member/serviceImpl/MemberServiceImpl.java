@@ -21,6 +21,7 @@ import com.iEdu.domain.account.member.repository.MemberRepository;
 import com.iEdu.domain.account.member.service.MemberService;
 import com.iEdu.domain.notification.entity.Notification;
 import com.iEdu.domain.account.member.entity.QMember;
+import com.iEdu.global.common.response.PageResponse;
 import com.iEdu.global.common.utils.RoleValidator;
 import com.iEdu.global.exception.ReturnCode;
 import com.iEdu.global.exception.ServiceException;
@@ -131,9 +132,9 @@ public class MemberServiceImpl implements MemberService {
     @Transactional(readOnly = true)
     @Cacheable(
             value = "member",
-            key = "'myStudents:' + #loginUser.role.name() + ':' + #loginUser.id + ':' + #pageable.pageNumber + ':' + #pageable.pageSize + ':' + #loginUser.classId"
+            key = "'myStudents:' + #loginUser.role.name() + ':' + #loginUser.id + ':' + #loginUser.classId + ':' + #pageable.pageNumber + ':' + #pageable.pageSize"
     )
-    public Page<MemberResponse> getMyStudentInfo(Pageable pageable, LoginUserDto loginUser) {
+    public PageResponse<MemberResponse> getMyStudentInfo(Pageable pageable, LoginUserDto loginUser) {
         checkPageSize(pageable.getPageSize());
         roleValidator.validateTeacherRole(loginUser);
 
@@ -145,13 +146,13 @@ public class MemberServiceImpl implements MemberService {
         Page<Member> students = memberRepository.findAllByYearAndClassIdAndRole(
                 year, classId, Member.MemberRole.ROLE_STUDENT, pageable
         );
-        return students.map(memberMapper::toMemberDto);
+        return PageResponse.of(students.map(memberMapper::toMemberDto));
     }
 
     // (학년/반/번호)로 학생 조회 [선생님 권한]
     @Override
     @Transactional
-    public Page<MemberResponse> getMyFilterInfo(Integer year, Integer classId, Integer number, Pageable pageable, LoginUserDto loginUser){
+    public PageResponse<MemberResponse> getMyFilterInfo(Integer year, Integer classId, Integer number, Pageable pageable, LoginUserDto loginUser){
         checkPageSize(pageable.getPageSize());
         // ROLE_TEACHER 아닌 경우 예외 처리
         roleValidator.validateTeacherRole(loginUser);
@@ -168,7 +169,7 @@ public class MemberServiceImpl implements MemberService {
             builder.and(member.number.eq(number));
         }
         Page<Member> memberPage = memberRepository.findAll(builder, pageable);
-        return memberPage.map(memberMapper::toMemberDto);
+        return PageResponse.of(memberPage.map(memberMapper::toMemberDto));
     }
 
     // 학생의 회원정보 조회 [학부모/선생님 권한]
@@ -221,8 +222,8 @@ public class MemberServiceImpl implements MemberService {
         if (basicUpdateRequest.getBirthday() != null) loginUser.setBirthday(basicUpdateRequest.getBirthday());
         if (basicUpdateRequest.getSchoolName() != null) loginUser.setSchoolName(basicUpdateRequest.getSchoolName());
         if (basicUpdateRequest.getGender() != null) loginUser.setGender(basicUpdateRequest.getGender());
-        loginUser.setPhone(basicUpdateRequest.getPhone());
-        loginUser.setEmail(basicUpdateRequest.getEmail());
+        if (basicUpdateRequest.getPhone() != null) loginUser.setPhone(basicUpdateRequest.getPhone());
+        if (basicUpdateRequest.getEmail() != null) loginUser.setEmail(basicUpdateRequest.getEmail());
         loginUser.setProfileImageUrl(imageUrl);
         // LoginUserDto를 Member 엔티티로 변환
         Member memberEntity = memberMapper.toMember(loginUser);
@@ -266,8 +267,8 @@ public class MemberServiceImpl implements MemberService {
         if (teacherUpdateRequest.getClassId() != null) loginUser.setClassId(teacherUpdateRequest.getClassId());
         if (teacherUpdateRequest.getSubject() != null) loginUser.setSubject(teacherUpdateRequest.getSubject());
         if (teacherUpdateRequest.getGender() != null) loginUser.setGender(teacherUpdateRequest.getGender());
-        loginUser.setPhone(teacherUpdateRequest.getPhone());
-        loginUser.setEmail(teacherUpdateRequest.getEmail());
+        if (teacherUpdateRequest.getPhone() != null) loginUser.setPhone(teacherUpdateRequest.getPhone());
+        if (teacherUpdateRequest.getEmail() != null) loginUser.setEmail(teacherUpdateRequest.getEmail());
         loginUser.setProfileImageUrl(imageUrl);
         // LoginUserDto를 Member 엔티티로 변환
         Member memberEntity = memberMapper.toMember(loginUser);
@@ -294,12 +295,12 @@ public class MemberServiceImpl implements MemberService {
     // (학번/이름)으로 학생 검색하기 [학부모/선생님 권한]
     @Override
     @Transactional
-    public Page<MemberResponse> searchMemberInfo(Pageable pageable, String keyword, LoginUserDto loginUser) {
+    public PageResponse<MemberResponse> searchMemberInfo(Pageable pageable, String keyword, LoginUserDto loginUser) {
         // ROLE_PARENT이/ROLE_TEACHER 아닌 경우 예외 처리
         roleValidator.validateParentOrTeacherRole(loginUser);
         checkPageSize(pageable.getPageSize());
         Page<Member> members = memberRepository.findByKeywordAndRole(pageable, keyword, Member.MemberRole.ROLE_STUDENT);
-        return members.map(memberMapper::toMemberDto);
+        return PageResponse.of(members.map(memberMapper::toMemberDto));
     }
 
     // 팔로우 요청하기 [학부모 권한]
@@ -454,7 +455,7 @@ public class MemberServiceImpl implements MemberService {
         memberRepository.findByYearAndClassIdAndRole(year, classId, Member.MemberRole.ROLE_TEACHER)
                 .ifPresent(teacher -> {
                     // getMyStudentInfo 키는 pageable 포함 → prefix 단위로 날리기
-                    String prefix = "myStudents:ROLE_TEACHER:" + teacher.getId() + ":" + classId + ":";
+                    String prefix = "member::myStudents:ROLE_TEACHER:" + teacher.getId() + ":" + classId;
                     // prefix 기반으로 캐시 삭제
                     redisCacheEvictHelper.evictByPrefix(prefix);
                     log.debug("Evicted student list cache for teacherId={}, classId={}, prefix={}", teacher.getId(), classId, prefix);

@@ -3,6 +3,7 @@ package com.iEdu.domain.studentRecord.attendance.controller;
 import com.iEdu.domain.account.auth.loginUser.LoginUser;
 import com.iEdu.domain.account.auth.loginUser.LoginUserDto;
 import com.iEdu.domain.studentRecord.attendance.dto.req.AttendanceRequest;
+import com.iEdu.domain.studentRecord.attendance.dto.req.AttendanceUpdateRequest;
 import com.iEdu.domain.studentRecord.attendance.dto.res.AttendanceResponse;
 import com.iEdu.domain.studentRecord.attendance.entity.AttendancePage;
 import com.iEdu.domain.studentRecord.attendance.service.AttendanceService;
@@ -52,7 +53,7 @@ public class ApiV1AttendanceController {
                                                                        @RequestParam(value = "month", required = false) Integer month,
                                                                        @LoginUser LoginUserDto loginUser){
         Pageable pageable = PageRequest.of(request.getPage(), request.getSize());
-        return ApiResponse.success(attendanceService.getMyFilterAttendance(year, semester, month, pageable, loginUser));
+        return ApiResponse.success(attendanceService.getMyFilterAttendance(year, semester, month, pageable, loginUser).getContent());
     }
 
     // (학년/학기/월)로 학생 출결 조회 [학부모/선생님 권한]
@@ -65,7 +66,7 @@ public class ApiV1AttendanceController {
                                                                      @RequestParam(value = "month", required = false) Integer month,
                                                                      @LoginUser LoginUserDto loginUser){
         Pageable pageable = PageRequest.of(request.getPage(), request.getSize());
-        return ApiResponse.success(attendanceService.getFilterAttendance(studentId, year, semester, month, pageable, loginUser));
+        return ApiResponse.success(attendanceService.getFilterAttendance(studentId, year, semester, month, pageable, loginUser).getContent());
     }
 
     // 학생 출결 생성 [선생님 권한]
@@ -82,9 +83,9 @@ public class ApiV1AttendanceController {
     @Operation(summary = "학생 출결 수정 [선생님 권한]")
     @PatchMapping("/{attendanceId}")
     public ApiResponse<Void> updateAttendance(@PathVariable("attendanceId") Long attendanceId,
-                                                @RequestBody @Valid AttendanceRequest attendanceRequest,
+                                                @RequestBody @Valid AttendanceUpdateRequest attendanceUpdateRequest,
                                                 @LoginUser LoginUserDto loginUser){
-        attendanceService.updateAttendance(attendanceId, attendanceRequest, loginUser);
+        attendanceService.updateAttendance(attendanceId, attendanceUpdateRequest, loginUser);
         return ApiResponse.success();
     }
 

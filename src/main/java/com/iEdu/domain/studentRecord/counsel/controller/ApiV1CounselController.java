@@ -57,7 +57,7 @@ public class ApiV1CounselController {
                                                                @RequestParam(value = "semester") Semester semester,
                                                                @LoginUser LoginUserDto loginUser) {
         Pageable pageable = PageRequest.of(request.getPage(), request.getSize());
-        return ApiResponse.success(counselService.getFilterCounsel(studentId, year, semester, pageable, loginUser));
+        return ApiResponse.success(counselService.getFilterCounsel(studentId, year, semester, pageable, loginUser).getContent());
     }
 
     // 학생 상담 생성 [선생님 권한]

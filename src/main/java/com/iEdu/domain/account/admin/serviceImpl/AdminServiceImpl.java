@@ -12,6 +12,7 @@ import com.iEdu.domain.account.member.mapper.MemberMapper;
 import com.iEdu.domain.account.member.repository.MemberFollowRepository;
 import com.iEdu.domain.account.member.repository.MemberRepository;
 import com.iEdu.domain.account.member.service.MemberService;
+import com.iEdu.global.common.response.PageResponse;
 import com.iEdu.global.common.utils.RoleValidator;
 import com.iEdu.global.exception.ReturnCode;
 import com.iEdu.global.exception.ServiceException;
@@ -100,7 +101,7 @@ public class AdminServiceImpl implements AdminService {
     // 역할별 회원 조회 [관리자 권한]
     @Override
     @Transactional
-    public Page<DetailMemberResponse> getMemberByRole(String role, Pageable pageable, LoginUserDto loginUser){
+    public PageResponse<DetailMemberResponse> getMemberByRole(String role, Pageable pageable, LoginUserDto loginUser){
         checkPageSize(pageable.getPageSize());
         // ROLE_ADMIN이 아닌 경우 예외 처리
         roleValidator.validateAdminRole(loginUser);
@@ -112,7 +113,7 @@ public class AdminServiceImpl implements AdminService {
             throw new ServiceException(ReturnCode.INVALID_ROLE);
         }
         Page<Member> members = memberRepository.findByRoleOrderByIdAsc(memberRole, pageable);
-        return members.map(memberMapper::toDetailMemberDto);
+        return PageResponse.of(members.map(memberMapper::toDetailMemberDto));
     }
 
     // 다른 멤버의 회원정보 조회 [관리자 권한]
@@ -193,12 +194,12 @@ public class AdminServiceImpl implements AdminService {
     // 계정ID&이름으로 회원 검색하기 [관리자 권한]
     @Override
     @Transactional
-    public Page<MemberResponse> searchMemberInfo(Pageable pageable, String keyword, LoginUserDto loginUser) {
+    public PageResponse<MemberResponse> searchMemberInfo(Pageable pageable, String keyword, LoginUserDto loginUser) {
         checkPageSize(pageable.getPageSize());
         // ROLE_ADMIN이 아닌 경우 예외 처리
         roleValidator.validateAdminRole(loginUser);
         Page<Member> members = memberRepository.findByKeyword(pageable, keyword);
-        return members.map(memberMapper::toMemberDto);
+        return PageResponse.of(members.map(memberMapper::toMemberDto));
     }
 
     // 유저의 프로필 사진 삭제하기 [관리자 권한]

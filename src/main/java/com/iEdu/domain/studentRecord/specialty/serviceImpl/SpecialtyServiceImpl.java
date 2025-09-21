@@ -14,6 +14,7 @@ import com.iEdu.domain.studentRecord.specialty.entity.SpecialtyPage;
 import com.iEdu.domain.studentRecord.specialty.repository.SpecialtyRepository;
 import com.iEdu.domain.studentRecord.specialty.service.SpecialtyService;
 import com.iEdu.global.common.enums.Semester;
+import com.iEdu.global.common.response.PageResponse;
 import com.iEdu.global.common.utils.RoleValidator;
 import com.iEdu.global.exception.ReturnCode;
 import com.iEdu.global.exception.ServiceException;
@@ -44,7 +45,7 @@ public class SpecialtyServiceImpl implements SpecialtyService {
     // 학생의 모든 특기사항 조회 [학부모/선생님 권한]
     @Override
     @Transactional(readOnly = true)
-    public Page<SpecialtyResponse> getAllSpecialty(Long studentId, Pageable pageable, LoginUserDto loginUser) {
+    public PageResponse<SpecialtyResponse> getAllSpecialty(Long studentId, Pageable pageable, LoginUserDto loginUser) {
         checkPageSize(pageable.getPageSize());
         // ROLE_PARENT/ROLE_TEACHER 아닌 경우 예외 처리
         roleValidator.validateAccessToStudent(loginUser, studentId);
@@ -54,7 +55,7 @@ public class SpecialtyServiceImpl implements SpecialtyService {
                 Sort.by(Sort.Order.desc("year"), Sort.Order.desc("semester"), Sort.Order.desc("createdAt"))
         );
         Page<Specialty> specialtyPage = specialtyRepository.findByMemberId(studentId, sortedPageable);
-        return specialtyPage.map(this::convertToSpecialtyDto);
+        return PageResponse.of(specialtyPage.map(this::convertToSpecialtyDto));
     }
 
     // (학년/학기)로 학생 특기사항 조회 [학부모/선생님 권한]
@@ -62,9 +63,9 @@ public class SpecialtyServiceImpl implements SpecialtyService {
     @Transactional(readOnly = true)
     @Cacheable(
             value = "specialty",
-            key = "'student:' + #studentId + ':' + #year + ':' + #semester + ':' + #pageable.pageNumber + ':' + #pageable.pageSize + ':' + #loginUser.role.name()"
+            key = "'student:' + #studentId + ':' + #year + ':' + #semester + ':' + #loginUser.role.name() + ':' + #pageable.pageNumber + ':' + #pageable.pageSize"
     )
-    public Page<SpecialtyResponse> getFilterSpecialty(Long studentId, Integer year, Semester semester, Pageable pageable, LoginUserDto loginUser) {
+    public PageResponse<SpecialtyResponse> getFilterSpecialty(Long studentId, Integer year, Semester semester, Pageable pageable, LoginUserDto loginUser) {
         checkPageSize(pageable.getPageSize());
         roleValidator.validateAccessToStudent(loginUser, studentId);
         Pageable sortedPageable = PageRequest.of(
@@ -75,7 +76,7 @@ public class SpecialtyServiceImpl implements SpecialtyService {
         Page<Specialty> specialtyPage = specialtyRepository.findByMemberIdAndYearAndSemester(
                 studentId, year, semester, sortedPageable
         );
-        return specialtyPage.map(this::convertToSpecialtyDto);
+        return PageResponse.of(specialtyPage.map(this::convertToSpecialtyDto));
     }
 
     // 학생 특기사항 생성 [선생님 권한]
@@ -108,10 +109,10 @@ public class SpecialtyServiceImpl implements SpecialtyService {
         roleValidator.validateTeacherRole(loginUser);
         Specialty specialty = specialtyRepository.findById(specialtyId)
                 .orElseThrow(() -> new ServiceException(ReturnCode.SPECIALTY_NOT_FOUND));
-        specialty.setYear(specialtyRequest.getYear());
-        specialty.setSemester(specialtyRequest.getSemester());
-        specialty.setDate(specialtyRequest.getDate());
-        specialty.setContent(specialtyRequest.getContent());
+        if (specialtyRequest.getYear() != null) specialty.setYear(specialtyRequest.getYear());
+        if (specialtyRequest.getSemester() != null) specialty.setSemester(specialtyRequest.getSemester());
+        if (specialtyRequest.getDate() != null) specialty.setDate(specialtyRequest.getDate());
+        if (specialtyRequest.getContent() != null) specialty.setContent(specialtyRequest.getContent());
 
         // 캐시 무효화
         evictSpecialtyCache(specialty.getMember().getId(), specialty.getYear(), specialty.getSemester());
@@ -144,7 +145,7 @@ public class SpecialtyServiceImpl implements SpecialtyService {
 
     // 캐시 무효화
     private void evictSpecialtyCache(Long studentId, Integer year, Semester semester) {
-        String prefix = "student:" + studentId + ":" + year + ":" + semester + ":";
+        String prefix = "specialty::student:" + studentId + ":" + year + ":" + semester;
         redisCacheEvictHelper.evictByPrefix(prefix);
         log.debug("Specialty cache evicted for studentId={}, year={}, semester={}, prefix={}", studentId, year, semester, prefix);
     }

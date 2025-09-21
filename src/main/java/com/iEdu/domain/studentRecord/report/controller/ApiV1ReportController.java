@@ -23,7 +23,7 @@ public class ApiV1ReportController {
     private final ReportService reportService;
 
     // 학생 보고서 생성 및 다운로드 [선생님 권한]
-    @Operation(summary = "학생 보고서 생성 및 다운로드 [선생님 권한]")
+    @Operation(summary = "학생 보고서 생성 및 다운로드 [선생님 권한]", description = "최대 25명까지 선택 가능")
     @PostMapping
     public ApiResponse<ReportResponse> generateReport(@RequestBody @Valid ReportRequest reportRequest, @LoginUser LoginUserDto loginUser) {
         return ApiResponse.success(reportService.generateReport(reportRequest, loginUser));

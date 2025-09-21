@@ -6,6 +6,7 @@ import com.iEdu.domain.studentRecord.grade.dto.req.GradeUpdateRequest;
 import com.iEdu.domain.studentRecord.grade.dto.res.GradeResponse;
 import com.iEdu.domain.studentRecord.grade.entity.Grade;
 import com.iEdu.global.common.enums.Semester;
+import com.iEdu.global.common.response.PageResponse;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
@@ -13,10 +14,10 @@ import java.util.List;
 
 public interface GradeService {
     // 본인의 모든 성적 조회 [학생 권한]
-    Page<GradeResponse> getMyAllGrade(Pageable pageable, LoginUserDto loginUser);
+    PageResponse<GradeResponse> getMyAllGrade(Pageable pageable, LoginUserDto loginUser);
 
     // 학생의 모든 성적 조회 [학부모/선생님 권한]
-    Page<GradeResponse> getAllGrade(Long studentId, Pageable pageable, LoginUserDto loginUser);
+    PageResponse<GradeResponse> getAllGrade(Long studentId, Pageable pageable, LoginUserDto loginUser);
 
     // (학년/학기)로 본인 성적 조회 [학생 권한]
     GradeResponse getMyFilterGrade(Integer year, Semester semester, LoginUserDto loginUser);
