@@ -17,6 +17,7 @@ import com.iEdu.domain.studentRecord.grade.repository.GradeQueryRepository;
 import com.iEdu.domain.studentRecord.grade.repository.GradeRepository;
 import com.iEdu.domain.studentRecord.grade.service.GradeService;
 import com.iEdu.global.common.enums.Semester;
+import com.iEdu.global.common.response.PageResponse;
 import com.iEdu.global.common.utils.RoleValidator;
 import com.iEdu.global.exception.ReturnCode;
 import com.iEdu.global.exception.ServiceException;
@@ -51,7 +52,7 @@ public class GradeServiceImpl implements GradeService {
     // 본인의 모든 성적 조회 [학생 권한]
     @Override
     @Transactional
-    public Page<GradeResponse> getMyAllGrade(Pageable pageable, LoginUserDto loginUser){
+    public PageResponse<GradeResponse> getMyAllGrade(Pageable pageable, LoginUserDto loginUser){
         checkPageSize(pageable.getPageSize());
         // 정렬 조건 추가: year(내림차순), semester(SECOND_SEMESTER 우선)
         Pageable sortedPageable = PageRequest.of(
@@ -64,16 +65,16 @@ public class GradeServiceImpl implements GradeService {
         Page<Grade> gradePage = gradeRepository.findAllByMemberId(loginUser.getId(), sortedPageable);
         // 각 성적의 year/semester 조합별로 성적 리스트 미리 조회
         Map<String, List<Grade>> gradeMap = preloadAllGrades(gradePage.getContent());
-        return gradePage.map(grade ->
+        return PageResponse.of(gradePage.map(grade ->
                 convertToGradeDto(grade, loginUser.getAccountId(),
                         gradeMap.get(grade.getYear() + ":" + grade.getSemester()))
-        );
+        ));
     }
 
     // 학생의 모든 성적 조회 [학부모/선생님 권한]
     @Override
     @Transactional
-    public Page<GradeResponse> getAllGrade(Long studentId, Pageable pageable, LoginUserDto loginUser){
+    public PageResponse<GradeResponse> getAllGrade(Long studentId, Pageable pageable, LoginUserDto loginUser){
         checkPageSize(pageable.getPageSize());
         // 정렬 조건 추가: year(내림차순), semester(SECOND_SEMESTER 우선)
         Pageable sortedPageable = PageRequest.of(
@@ -87,10 +88,10 @@ public class GradeServiceImpl implements GradeService {
         Page<Grade> gradePage = gradeRepository.findAllByMemberId(studentId, sortedPageable);
         // 각 성적의 year/semester 조합별로 성적 리스트 미리 조회
         Map<String, List<Grade>> gradeMap = preloadAllGrades(gradePage.getContent());
-        return gradePage.map(grade ->
+        return PageResponse.of(gradePage.map(grade ->
                 convertToGradeDto(grade, student.getAccountId(),
                         gradeMap.get(grade.getYear() + ":" + grade.getSemester()))
-        );
+        ));
     }
 
     // (학년/학기)로 본인 성적 조회 [학생 권한]

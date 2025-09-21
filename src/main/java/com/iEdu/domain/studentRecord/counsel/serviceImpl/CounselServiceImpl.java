@@ -15,6 +15,7 @@ import com.iEdu.domain.studentRecord.counsel.repository.CounselQueryRepository;
 import com.iEdu.domain.studentRecord.counsel.repository.CounselRepository;
 import com.iEdu.domain.studentRecord.counsel.service.CounselService;
 import com.iEdu.global.common.enums.Semester;
+import com.iEdu.global.common.response.PageResponse;
 import com.iEdu.global.common.utils.RoleValidator;
 import com.iEdu.global.exception.ReturnCode;
 import com.iEdu.global.exception.ServiceException;
@@ -47,7 +48,7 @@ public class CounselServiceImpl implements CounselService {
     // 학생의 모든 상담 조회 [학부모/선생님 권한]
     @Override
     @Transactional(readOnly = true)
-    public Page<CounselResponse> getAllCounsel(Long studentId, Pageable pageable, LoginUserDto loginUser) {
+    public PageResponse<CounselResponse> getAllCounsel(Long studentId, Pageable pageable, LoginUserDto loginUser) {
         checkPageSize(pageable.getPageSize());
         // ROLE_PARENT/ROLE_TEACHER 아닌 경우 예외 처리
         roleValidator.validateAccessToStudent(loginUser, studentId);
@@ -58,7 +59,7 @@ public class CounselServiceImpl implements CounselService {
                 Sort.by(Sort.Order.desc("year"), Sort.Order.desc("semester"), Sort.Order.desc("createdAt"))
         );
         Page<Counsel> counselPage = counselRepository.findByMemberId(studentId, sortedPageable);
-        return counselPage.map(this::convertToCounselDto);
+        return PageResponse.of(counselPage.map(this::convertToCounselDto));
     }
 
     // (학년/반/번호/학기)로 학생들 상담 조회 [선생님 권한]
@@ -87,7 +88,7 @@ public class CounselServiceImpl implements CounselService {
             cacheNames = "counsel",
             key = "'student:' + #studentId + ':' + #year + ':' + #semester + ':' + #pageable.pageNumber + ':' + #pageable.pageSize"
     )
-    public Page<CounselResponse> getFilterCounsel(Long studentId, Integer year, Semester semester, Pageable pageable, LoginUserDto loginUser) {
+    public PageResponse<CounselResponse> getFilterCounsel(Long studentId, Integer year, Semester semester, Pageable pageable, LoginUserDto loginUser) {
         checkPageSize(pageable.getPageSize());
         // ROLE_PARENT/ROLE_TEACHER 아닌 경우 예외 처리
         roleValidator.validateAccessToStudent(loginUser, studentId);
@@ -97,7 +98,7 @@ public class CounselServiceImpl implements CounselService {
                 Sort.by(Sort.Order.desc("createdAt"))
         );
         Page<Counsel> counselPage = counselRepository.findByMemberIdAndYearAndSemester(studentId, year, semester, sortedPageable);
-        return counselPage.map(this::convertToCounselDto);
+        return PageResponse.of(counselPage.map(this::convertToCounselDto));
     }
 
     // 학생 상담 생성 [선생님 권한]
@@ -131,12 +132,11 @@ public class CounselServiceImpl implements CounselService {
         roleValidator.validateTeacherRole(loginUser);
         Counsel counsel = counselRepository.findById(counselId)
                 .orElseThrow(() -> new ServiceException(ReturnCode.COUNSEL_NOT_FOUND));
-        counsel.setYear(counselRequest.getYear());
-        counsel.setSemester(counselRequest.getSemester());
-        counsel.setDate(counselRequest.getDate());
-        counsel.setContent(counselRequest.getContent());
-        counsel.setNextCounselDate(counselRequest.getNextCounselDate());
-
+        if (counselRequest.getYear() != null) counsel.setYear(counselRequest.getYear());
+        if (counselRequest.getSemester() != null) counsel.setSemester(counselRequest.getSemester());
+        if (counselRequest.getDate() != null) counsel.setDate(counselRequest.getDate());
+        if (counselRequest.getContent() != null) counsel.setContent(counselRequest.getContent());
+        if (counselRequest.getNextCounselDate() != null) counsel.setNextCounselDate(counselRequest.getNextCounselDate());
         // 캐시 무효화
         evictCounselCache(counsel.getMember().getId(), counsel.getYear(), counsel.getSemester());
         // 상담 알림 수정 & Kafka 이벤트 생성
@@ -168,7 +168,7 @@ public class CounselServiceImpl implements CounselService {
 
     // 캐시 무효화
     private void evictCounselCache(Long studentId, Integer year, Semester semester) {
-        String prefix = "student:" + studentId + ":" + year + ":" + semester + ":";
+        String prefix = "counsel::student:" + studentId + ":" + year + ":" + semester;
         redisCacheEvictHelper.evictByPrefix(prefix);
         log.debug("Counsel cache evicted for studentId={}, year={}, semester={}, prefix={}", studentId, year, semester, prefix);
     }

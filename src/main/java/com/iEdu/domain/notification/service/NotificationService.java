@@ -4,6 +4,7 @@ import com.iEdu.domain.account.auth.loginUser.LoginUserDto;
 import com.iEdu.domain.notification.dto.req.NotificationRequest;
 import com.iEdu.domain.notification.dto.res.NotificationResponse;
 import com.iEdu.domain.notification.entity.Notification;
+import com.iEdu.global.common.response.PageResponse;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
@@ -12,7 +13,7 @@ public interface NotificationService {
     void createNotification(Notification notification);
 
     // 알림 목록 조회 [학부모/학생 권한]
-    Page<NotificationResponse> getNotifications(Pageable pageable, LoginUserDto loginUser);
+    PageResponse<NotificationResponse> getNotifications(Pageable pageable, LoginUserDto loginUser);
 
     // 알림 읽음 처리 [학부모/학생 권한]
     void markAsRead(NotificationRequest notificationRequest, LoginUserDto loginUser);

@@ -1,14 +1,18 @@
 package com.iEdu.domain.account.member.dto.res;
 
 import com.iEdu.domain.account.member.entity.Member;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
 import java.util.List;
 
 @Data
 @Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class DetailMemberResponse {
     private Long id;
     private Long accountId;

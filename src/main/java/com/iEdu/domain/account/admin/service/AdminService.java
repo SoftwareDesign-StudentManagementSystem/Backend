@@ -5,6 +5,7 @@ import com.iEdu.domain.account.member.dto.req.MemberRequest;
 import com.iEdu.domain.account.member.dto.res.DetailMemberResponse;
 import com.iEdu.domain.account.member.dto.res.MemberResponse;
 import com.iEdu.domain.account.member.entity.Member;
+import com.iEdu.global.common.response.PageResponse;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
@@ -16,7 +17,7 @@ public interface AdminService {
     Member adminSignup(MemberRequest memberRequest, LoginUserDto loginUser);
 
     // 역할별 회원 조회 [관리자 권한]
-    Page<DetailMemberResponse> getMemberByRole(String role, Pageable pageable, LoginUserDto loginUser);
+    PageResponse<DetailMemberResponse> getMemberByRole(String role, Pageable pageable, LoginUserDto loginUser);
 
     // 다른 멤버의 회원정보 조회 [관리자 권한]
     MemberResponse getMemberInfo(Long memberId, LoginUserDto loginUser);
@@ -28,7 +29,7 @@ public interface AdminService {
     void adminUpdateMemberInfo(MemberRequest memberRequest, Long memberId, LoginUserDto loginUser);
 
     // 계정ID&이름으로 회원 검색하기 [관리자 권한]
-    Page<MemberResponse> searchMemberInfo(Pageable pageable, String keyword, LoginUserDto loginUser);
+    PageResponse<MemberResponse> searchMemberInfo(Pageable pageable, String keyword, LoginUserDto loginUser);
 
     // 유저의 프로필 사진 삭제하기 [관리자 권한]
     void deleteUserProfileImage(Long memberId, LoginUserDto loginUser);

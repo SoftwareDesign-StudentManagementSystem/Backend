@@ -4,6 +4,7 @@ import com.iEdu.domain.account.auth.loginUser.LoginUserDto;
 import com.iEdu.domain.account.member.entity.Member;
 import com.iEdu.domain.account.member.repository.MemberRepository;
 import com.iEdu.domain.studentRecord.attendance.dto.req.AttendanceRequest;
+import com.iEdu.domain.studentRecord.attendance.dto.req.AttendanceUpdateRequest;
 import com.iEdu.domain.studentRecord.attendance.dto.res.AttendanceResponse;
 import com.iEdu.domain.studentRecord.attendance.dto.res.PeriodAttendanceDto;
 import com.iEdu.domain.studentRecord.attendance.entity.Attendance;
@@ -12,6 +13,7 @@ import com.iEdu.domain.studentRecord.attendance.entity.PeriodAttendance;
 import com.iEdu.domain.studentRecord.attendance.repository.AttendanceRepository;
 import com.iEdu.domain.studentRecord.attendance.service.AttendanceService;
 import com.iEdu.global.common.enums.Semester;
+import com.iEdu.global.common.response.PageResponse;
 import com.iEdu.global.common.utils.RoleValidator;
 import com.iEdu.global.exception.ReturnCode;
 import com.iEdu.global.exception.ServiceException;
@@ -39,7 +41,7 @@ public class AttendanceServiceImpl implements AttendanceService {
     // 본인의 모든 출결 조회 [학생 권한]
     @Override
     @Transactional(readOnly = true)
-    public Page<AttendanceResponse> getMyAllAttendance(Pageable pageable, LoginUserDto loginUser) {
+    public PageResponse<AttendanceResponse> getMyAllAttendance(Pageable pageable, LoginUserDto loginUser) {
         checkPageSize(pageable.getPageSize());
         // ROLE_STUDENT 아닌 경우 예외 처리
         roleValidator.validateStudentRole(loginUser);
@@ -50,13 +52,13 @@ public class AttendanceServiceImpl implements AttendanceService {
                 Sort.by(Sort.Order.asc("year"), Sort.Order.asc("semester"), Sort.Order.asc("date"))
         );
         Page<Attendance> attendancePage = attendanceRepository.findByMemberId(loginUser.getId(), sortedPageable);
-        return attendancePage.map(this::convertToAttendanceDto);
+        return PageResponse.of(attendancePage.map(this::convertToAttendanceDto));
     }
 
     // 학생의 모든 출결 조회 [학부모/선생님 권한]
     @Override
     @Transactional(readOnly = true)
-    public Page<AttendanceResponse> getAllAttendance(Long studentId, Pageable pageable, LoginUserDto loginUser) {
+    public PageResponse<AttendanceResponse> getAllAttendance(Long studentId, Pageable pageable, LoginUserDto loginUser) {
         checkPageSize(pageable.getPageSize());
         // ROLE_PARENT/ROLE_TEACHER 아닌 경우 예외 처리
         roleValidator.validateAccessToStudent(loginUser, studentId);
@@ -67,7 +69,7 @@ public class AttendanceServiceImpl implements AttendanceService {
                 Sort.by(Sort.Order.asc("year"), Sort.Order.asc("semester"), Sort.Order.asc("date"))
         );
         Page<Attendance> attendancePage = attendanceRepository.findByMemberId(studentId, sortedPageable);
-        return attendancePage.map(this::convertToAttendanceDto);
+        return PageResponse.of(attendancePage.map(this::convertToAttendanceDto));
     }
 
     // (학년/학기/월)로 본인 출결 조회 [학생 권한]
@@ -77,7 +79,7 @@ public class AttendanceServiceImpl implements AttendanceService {
             cacheNames = "attendance",
             key = "'student:' + #loginUser.id + ':' + #year + ':' + #semester + ':' + (#month != null ? #month : 'all') + ':' + #pageable.pageNumber + ':' + #pageable.pageSize"
     )
-    public Page<AttendanceResponse> getMyFilterAttendance(
+    public PageResponse<AttendanceResponse> getMyFilterAttendance(
             Integer year, Semester semester, Integer month, Pageable pageable, LoginUserDto loginUser
     ) {
         checkPageSize(pageable.getPageSize());
@@ -93,7 +95,7 @@ public class AttendanceServiceImpl implements AttendanceService {
                 attendanceRepository.findFilteredAttendancesByMemberAndYearAndSemesterAndOptionalMonth(
                         loginUser.getId(), year, semester, month, sortedPageable
                 );
-        return attendancePage.map(this::convertToAttendanceDto);
+        return PageResponse.of(attendancePage.map(this::convertToAttendanceDto));
     }
 
     // (학년/학기/월)로 학생 출결 조회 [학부모/선생님 권한]
@@ -103,7 +105,7 @@ public class AttendanceServiceImpl implements AttendanceService {
             cacheNames = "attendance",
             key = "'student:' + #studentId + ':' + #year + ':' + #semester + ':' + (#month != null ? #month : 'all') + ':' + #pageable.pageNumber + ':' + #pageable.pageSize"
     )
-    public Page<AttendanceResponse> getFilterAttendance(
+    public PageResponse<AttendanceResponse> getFilterAttendance(
             Long studentId, Integer year, Semester semester, Integer month, Pageable pageable, LoginUserDto loginUser
     ) {
         checkPageSize(pageable.getPageSize());
@@ -119,7 +121,7 @@ public class AttendanceServiceImpl implements AttendanceService {
                 attendanceRepository.findFilteredAttendancesByMemberAndYearAndSemesterAndOptionalMonth(
                         studentId, year, semester, month, sortedPageable
                 );
-        return attendancePage.map(this::convertToAttendanceDto);
+        return PageResponse.of(attendancePage.map(this::convertToAttendanceDto));
     }
 
     // 학생 출결 생성 [선생님 권한]
@@ -146,20 +148,18 @@ public class AttendanceServiceImpl implements AttendanceService {
     // 학생 출결 수정 [선생님 권한]
     @Override
     @Transactional
-    public void updateAttendance(Long attendanceId, AttendanceRequest attendanceRequest, LoginUserDto loginUser){
+    public void updateAttendance(Long attendanceId, AttendanceUpdateRequest attendanceUpdateRequest, LoginUserDto loginUser){
         // ROLE_TEACHER 아닌 경우 예외 처리
         roleValidator.validateTeacherRole(loginUser);
         Attendance attendance = attendanceRepository.findById(attendanceId)
                 .orElseThrow(() -> new ServiceException(ReturnCode.ATTENDANCE_NOT_FOUND));
-        attendance.setYear(attendanceRequest.getYear());
-        attendance.setSemester(attendanceRequest.getSemester());
-        attendance.setDate(attendanceRequest.getDate());
-        attendance.getPeriodAttendances().clear();
-        for (PeriodAttendance pa : attendanceRequest.getPeriodAttendances()) {
-            pa.setAttendance(attendance);
-            attendance.getPeriodAttendances().add(pa);
+        if (attendanceUpdateRequest.getPeriodAttendances() != null) {
+            attendance.getPeriodAttendances().clear();
+            for (PeriodAttendance pa : attendanceUpdateRequest.getPeriodAttendances()) {
+                pa.setAttendance(attendance);
+                attendance.getPeriodAttendances().add(pa);
+            }
         }
-        attendanceRepository.save(attendance);
         // 캐시 무효화
         evictAttendanceCache(attendance.getMember().getId(), attendance.getYear(), attendance.getSemester());
     }
@@ -189,7 +189,7 @@ public class AttendanceServiceImpl implements AttendanceService {
 
     // 캐시 무효화
     private void evictAttendanceCache(Long studentId, Integer year, Semester semester) {
-        String prefix = "student:" + studentId + ":" + year + ":" + semester + ":";
+        String prefix = "attendance::student:" + studentId + ":" + year + ":" + semester;
         redisCacheEvictHelper.evictByPrefix(prefix);
         log.debug("Attendance cache evicted for studentId={}, year={}, semester={}, prefix={}", studentId, year, semester, prefix);
     }
