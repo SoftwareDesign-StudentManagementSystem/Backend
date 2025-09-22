@@ -48,6 +48,8 @@ public class FcmServiceImpl implements FcmService {
         }
     }
 
+    // ----------------- 헬퍼 메서드 -----------------
+
     // JWT 토큰 발급
     private String getAccessToken() throws IOException {
         GoogleCredentials googleCredentials = GoogleCredentials

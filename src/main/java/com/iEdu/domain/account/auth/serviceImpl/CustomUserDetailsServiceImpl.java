@@ -17,7 +17,7 @@ public class CustomUserDetailsServiceImpl implements UserDetailsService {
     private final MemberRepository memberRepository;
 
     @Override
-    @Transactional
+    @Transactional(readOnly = true)
     public UserDetails loadUserByUsername(String accountIdStr) throws UsernameNotFoundException {
         Long accountId;
         try {

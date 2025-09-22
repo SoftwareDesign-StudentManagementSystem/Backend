@@ -89,6 +89,8 @@ public class ExcelReportGenerator implements ReportGenerator {
         return "xlsx";
     }
 
+    // ----------------- 헬퍼 메서드 -----------------
+
     private void writeFeedbackSection(Sheet sheet, List<Member> students, Integer year, Semester semester) {
         Row header = sheet.createRow(0);
         String[] columns = {"날짜", "학생 이름", "학년", "반", "번호", "학기", "선생님 이름", "카테고리", "내용"};
