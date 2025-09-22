@@ -90,9 +90,6 @@ dependencies {
 	// flyway
 	implementation("org.flywaydb:flyway-core:9.22.0")
 
-	// Jackson - LocalDate, LocalDateTime 직렬화/역직렬화
-//	implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310")
-
     // MapStruct
     implementation("org.mapstruct:mapstruct:1.5.5.Final")
     annotationProcessor("org.mapstruct:mapstruct-processor:1.5.5.Final")

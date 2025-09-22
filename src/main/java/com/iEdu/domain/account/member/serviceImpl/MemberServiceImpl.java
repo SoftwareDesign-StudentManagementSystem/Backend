@@ -116,7 +116,7 @@ public class MemberServiceImpl implements MemberService {
     @Override
     @Transactional
     public MemberResponse getMyInfo(LoginUserDto loginUser) {
-        return memberMapper.toMemberDto(loginUser);
+        return memberMapper.toMemberResponse(loginUser);
     }
 
     // 본인 상세회원정보 조회
@@ -124,7 +124,7 @@ public class MemberServiceImpl implements MemberService {
     @Transactional(readOnly = true)
     @Cacheable(value = "member", key = "'myDetailInfo:' + #loginUser.role.name() + ':' + #loginUser.id")
     public DetailMemberResponse getMyDetailInfo(LoginUserDto loginUser) {
-        return memberMapper.toDetailMemberDto(loginUser);
+        return memberMapper.toDetailMemberResponse(loginUser);
     }
 
     // 담당 학생들의 회원정보 조회 [선생님 권한]
@@ -146,7 +146,7 @@ public class MemberServiceImpl implements MemberService {
         Page<Member> students = memberRepository.findAllByYearAndClassIdAndRole(
                 year, classId, Member.MemberRole.ROLE_STUDENT, pageable
         );
-        return PageResponse.of(students.map(memberMapper::toMemberDto));
+        return PageResponse.of(students.map(memberMapper::toMemberResponse));
     }
 
     // (학년/반/번호)로 학생 조회 [선생님 권한]
@@ -169,7 +169,7 @@ public class MemberServiceImpl implements MemberService {
             builder.and(member.number.eq(number));
         }
         Page<Member> memberPage = memberRepository.findAll(builder, pageable);
-        return PageResponse.of(memberPage.map(memberMapper::toMemberDto));
+        return PageResponse.of(memberPage.map(memberMapper::toMemberResponse));
     }
 
     // 학생의 회원정보 조회 [학부모/선생님 권한]
@@ -180,7 +180,7 @@ public class MemberServiceImpl implements MemberService {
         roleValidator.validateAccessToStudent(loginUser, studentId);
         Member student = memberRepository.findByIdAndRole(studentId, Member.MemberRole.ROLE_STUDENT)
                 .orElseThrow(() -> new ServiceException(ReturnCode.USER_NOT_FOUND));
-        return memberMapper.toMemberDto(student);
+        return memberMapper.toMemberResponse(student);
     }
 
     // 학생의 상세회원정보 조회 [학부모/선생님 권한]
@@ -191,7 +191,7 @@ public class MemberServiceImpl implements MemberService {
         roleValidator.validateAccessToStudent(loginUser, studentId);
         Member student = memberRepository.findByIdAndRole(studentId, Member.MemberRole.ROLE_STUDENT)
                 .orElseThrow(() -> new ServiceException(ReturnCode.USER_NOT_FOUND));
-        return memberMapper.toDetailMemberDto(student);
+        return memberMapper.toDetailMemberResponse(student);
     }
 
     // 학생/학부모 회원정보 수정 [학생/학부모 권한]
@@ -300,7 +300,7 @@ public class MemberServiceImpl implements MemberService {
         roleValidator.validateParentOrTeacherRole(loginUser);
         checkPageSize(pageable.getPageSize());
         Page<Member> members = memberRepository.findByKeywordAndRole(pageable, keyword, Member.MemberRole.ROLE_STUDENT);
-        return PageResponse.of(members.map(memberMapper::toMemberDto));
+        return PageResponse.of(members.map(memberMapper::toMemberResponse));
     }
 
     // 팔로우 요청하기 [학부모 권한]
