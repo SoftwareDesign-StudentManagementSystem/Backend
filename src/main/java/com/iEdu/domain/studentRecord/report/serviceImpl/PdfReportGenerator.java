@@ -112,6 +112,8 @@ public class PdfReportGenerator implements ReportGenerator {
         return "pdf";
     }
 
+    // ----------------- 헬퍼 메서드 -----------------
+
     private void addFeedbackSection(Document doc, List<Member> students, Integer year, Semester semester,
                                     PdfFont fontBold, PdfFont fontRegular) {
         doc.add(new Paragraph("피드백").setFont(fontBold).setFontSize(7));

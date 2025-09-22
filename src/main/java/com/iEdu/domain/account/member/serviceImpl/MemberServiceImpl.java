@@ -114,7 +114,7 @@ public class MemberServiceImpl implements MemberService {
 
     // 본인 회원정보 조회
     @Override
-    @Transactional
+    @Transactional(readOnly = true)
     public MemberResponse getMyInfo(LoginUserDto loginUser) {
         return memberMapper.toMemberResponse(loginUser);
     }
@@ -151,7 +151,7 @@ public class MemberServiceImpl implements MemberService {
 
     // (학년/반/번호)로 학생 조회 [선생님 권한]
     @Override
-    @Transactional
+    @Transactional(readOnly = true)
     public PageResponse<MemberResponse> getMyFilterInfo(Integer year, Integer classId, Integer number, Pageable pageable, LoginUserDto loginUser){
         checkPageSize(pageable.getPageSize());
         // ROLE_TEACHER 아닌 경우 예외 처리
@@ -174,7 +174,7 @@ public class MemberServiceImpl implements MemberService {
 
     // 학생의 회원정보 조회 [학부모/선생님 권한]
     @Override
-    @Transactional
+    @Transactional(readOnly = true)
     public MemberResponse getMemberInfo(Long studentId, LoginUserDto loginUser) {
         // ROLE_PARENT/ROLE_TEACHER 아닌 경우 예외 처리
         roleValidator.validateAccessToStudent(loginUser, studentId);
@@ -185,7 +185,7 @@ public class MemberServiceImpl implements MemberService {
 
     // 학생의 상세회원정보 조회 [학부모/선생님 권한]
     @Override
-    @Transactional
+    @Transactional(readOnly = true)
     public DetailMemberResponse getMemberDetailInfo(Long studentId, LoginUserDto loginUser) {
         // ROLE_PARENT/ROLE_TEACHER 아닌 경우 예외 처리
         roleValidator.validateAccessToStudent(loginUser, studentId);
@@ -294,7 +294,7 @@ public class MemberServiceImpl implements MemberService {
 
     // (학번/이름)으로 학생 검색하기 [학부모/선생님 권한]
     @Override
-    @Transactional
+    @Transactional(readOnly = true)
     public PageResponse<MemberResponse> searchMemberInfo(Pageable pageable, String keyword, LoginUserDto loginUser) {
         // ROLE_PARENT이/ROLE_TEACHER 아닌 경우 예외 처리
         roleValidator.validateParentOrTeacherRole(loginUser);

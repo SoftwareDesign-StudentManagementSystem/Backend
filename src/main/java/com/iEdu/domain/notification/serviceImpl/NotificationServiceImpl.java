@@ -74,6 +74,7 @@ public class NotificationServiceImpl implements NotificationService {
     }
 
     // Notification을 NotificationDto로 변환
+    @Override
     public NotificationResponse convertToNotificationDto(Notification notification) {
         return NotificationResponse.builder()
                 .id(notification.getId())

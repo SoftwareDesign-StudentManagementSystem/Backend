@@ -23,7 +23,7 @@ public class FcmTokenServiceImpl implements FcmTokenService {
 
     // FCM Token 조회
     @Override
-    @Transactional
+    @Transactional(readOnly = true)
     public String getFcmToken(Long memberId) {
         ValueOperations<String, Object> ops = redisTemplate.opsForValue();
         String key = getFcmTokenKey(memberId);
@@ -47,6 +47,8 @@ public class FcmTokenServiceImpl implements FcmTokenService {
         String key = getFcmTokenKey(memberId);
         redisTemplate.delete(key);
     }
+
+    // ----------------- 헬퍼 메서드 -----------------
 
     private String getFcmTokenKey(Long memberId) {
         return FCM_TOKEN_PREFIX + memberId; // e.g., fcm:123

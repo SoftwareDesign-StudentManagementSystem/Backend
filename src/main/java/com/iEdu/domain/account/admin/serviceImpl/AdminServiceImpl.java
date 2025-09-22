@@ -100,7 +100,7 @@ public class AdminServiceImpl implements AdminService {
 
     // 역할별 회원 조회 [관리자 권한]
     @Override
-    @Transactional
+    @Transactional(readOnly = true)
     public PageResponse<DetailMemberResponse> getMemberByRole(String role, Pageable pageable, LoginUserDto loginUser){
         checkPageSize(pageable.getPageSize());
         // ROLE_ADMIN이 아닌 경우 예외 처리
@@ -113,29 +113,29 @@ public class AdminServiceImpl implements AdminService {
             throw new ServiceException(ReturnCode.INVALID_ROLE);
         }
         Page<Member> members = memberRepository.findByRoleOrderByIdAsc(memberRole, pageable);
-        return PageResponse.of(members.map(memberMapper::toDetailMemberDto));
+        return PageResponse.of(members.map(memberMapper::toDetailMemberResponse));
     }
 
     // 다른 멤버의 회원정보 조회 [관리자 권한]
     @Override
-    @Transactional
+    @Transactional(readOnly = true)
     public MemberResponse getMemberInfo(Long memberId, LoginUserDto loginUser) {
         // ROLE_ADMIN이 아닌 경우 예외 처리
         roleValidator.validateAdminRole(loginUser);
         Member member = memberRepository.findById(memberId)
                 .orElseThrow(() -> new ServiceException(ReturnCode.USER_NOT_FOUND));
-        return memberMapper.toMemberDto(member);
+        return memberMapper.toMemberResponse(member);
     }
 
     // 다른 멤버의 상세회원정보 조회 [관리자 권한]
     @Override
-    @Transactional
+    @Transactional(readOnly = true)
     public DetailMemberResponse getMemberDetailInfo(Long memberId, LoginUserDto loginUser) {
         // ROLE_ADMIN이 아닌 경우 예외 처리
         roleValidator.validateAdminRole(loginUser);
         Member member = memberRepository.findById(memberId)
                 .orElseThrow(() -> new ServiceException(ReturnCode.USER_NOT_FOUND));
-        return memberMapper.toDetailMemberDto(member);
+        return memberMapper.toDetailMemberResponse(member);
     }
 
     // 회원정보 수정 [관리자 권한]
@@ -193,13 +193,13 @@ public class AdminServiceImpl implements AdminService {
 
     // 계정ID&이름으로 회원 검색하기 [관리자 권한]
     @Override
-    @Transactional
+    @Transactional(readOnly = true)
     public PageResponse<MemberResponse> searchMemberInfo(Pageable pageable, String keyword, LoginUserDto loginUser) {
         checkPageSize(pageable.getPageSize());
         // ROLE_ADMIN이 아닌 경우 예외 처리
         roleValidator.validateAdminRole(loginUser);
         Page<Member> members = memberRepository.findByKeyword(pageable, keyword);
-        return PageResponse.of(members.map(memberMapper::toMemberDto));
+        return PageResponse.of(members.map(memberMapper::toMemberResponse));
     }
 
     // 유저의 프로필 사진 삭제하기 [관리자 권한]
@@ -232,6 +232,8 @@ public class AdminServiceImpl implements AdminService {
     }
 
     // 회원 삭제하기 [관리자 권한]
+    @Override
+    @Transactional
     public void removeMember(Long memberId, LoginUserDto loginUser){
         // ROLE_ADMIN이 아닌 경우 예외 처리
         roleValidator.validateAdminRole(loginUser);

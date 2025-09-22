@@ -34,7 +34,7 @@ public class AuthServiceImpl implements AuthService {
 
     // 로그인
     @Override
-    @Transactional
+    @Transactional(readOnly = true)
     public LoginResponse login(LoginRequest loginRequest, boolean isSocialLogin) {
         Member member = memberRepository.findByAccountId(loginRequest.getAccountId())
                 .orElseThrow(() -> new ServiceException(ReturnCode.USER_NOT_FOUND));
@@ -51,7 +51,6 @@ public class AuthServiceImpl implements AuthService {
 
     // 로그아웃
     @Override
-    @Transactional
     public void logout(LoginUserDto loginUser) {
         // Redis에서 Refresh Token 삭제
         refreshTokenService.deleteRefreshToken(loginUser.getId().toString());
@@ -59,7 +58,6 @@ public class AuthServiceImpl implements AuthService {
 
     // accessToken 재발급
     @Override
-    @Transactional
     public LoginResponse refreshToken(String refreshToken, LoginUserDto loginUser) {
         // "Bearer "가 붙어있다면 제거
         if (refreshToken.startsWith("Bearer ")) {

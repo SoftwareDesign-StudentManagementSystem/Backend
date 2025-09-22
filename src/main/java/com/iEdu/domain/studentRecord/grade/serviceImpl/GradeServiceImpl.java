@@ -51,7 +51,7 @@ public class GradeServiceImpl implements GradeService {
 
     // 본인의 모든 성적 조회 [학생 권한]
     @Override
-    @Transactional
+    @Transactional(readOnly = true)
     public PageResponse<GradeResponse> getMyAllGrade(Pageable pageable, LoginUserDto loginUser){
         checkPageSize(pageable.getPageSize());
         // 정렬 조건 추가: year(내림차순), semester(SECOND_SEMESTER 우선)
@@ -73,7 +73,7 @@ public class GradeServiceImpl implements GradeService {
 
     // 학생의 모든 성적 조회 [학부모/선생님 권한]
     @Override
-    @Transactional
+    @Transactional(readOnly = true)
     public PageResponse<GradeResponse> getAllGrade(Long studentId, Pageable pageable, LoginUserDto loginUser){
         checkPageSize(pageable.getPageSize());
         // 정렬 조건 추가: year(내림차순), semester(SECOND_SEMESTER 우선)
@@ -123,7 +123,7 @@ public class GradeServiceImpl implements GradeService {
 
     // (학년/반/번호/학기)로 학생들 성적 조회 [선생님 권한]
     @Override
-    @Transactional
+    @Transactional(readOnly = true)
     public List<GradeResponse> getStudentsGrade(Integer year, Integer classId, Integer number, Semester semester, LoginUserDto loginUser){
         // ROLE_TEACHER 아닌 경우 예외 처리
         roleValidator.validateTeacherRole(loginUser);
