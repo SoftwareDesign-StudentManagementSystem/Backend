@@ -20,7 +20,7 @@ spring:
       region:
         static: ap-northeast-2  # AWS 서울 리전
       s3:
-        bucket: iedu-bucket-v-1 # S3 버킷명
+        bucket: iedu-bucket-v1 # S3 버킷명
 
 custom:
   jwt:
