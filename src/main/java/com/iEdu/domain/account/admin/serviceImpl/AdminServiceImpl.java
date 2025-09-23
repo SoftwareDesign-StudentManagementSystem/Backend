@@ -146,48 +146,22 @@ public class AdminServiceImpl implements AdminService {
         roleValidator.validateAdminRole(loginUser);
         Member member = memberRepository.findById(memberId)
                 .orElseThrow(() -> new ServiceException(ReturnCode.USER_NOT_FOUND));
-        if (memberRequest.getAccountId() != null) {
-            member.setAccountId(memberRequest.getAccountId());
-        }
+        if (memberRequest.getAccountId() != null) member.setAccountId(memberRequest.getAccountId());
         if (memberRequest.getPassword() != null) {
             member.setPassword(BCrypt.hashpw(memberRequest.getPassword(), BCrypt.gensalt()));
         }
-        if (memberRequest.getName() != null) {
-            member.setName(memberRequest.getName());
-        }
-        if (memberRequest.getPhone() != null) {
-            member.setPhone(memberRequest.getPhone());
-        }
-        if (memberRequest.getEmail() != null) {
-            member.setEmail(memberRequest.getEmail());
-        }
-        if (memberRequest.getBirthday() != null) {
-            member.setBirthday(memberRequest.getBirthday());
-        }
-        if (memberRequest.getSchoolName() != null) {
-            member.setSchoolName(memberRequest.getSchoolName());
-        }
-        if (memberRequest.getYear() != null) {
-            member.setYear(memberRequest.getYear());
-        }
-        if (memberRequest.getClassId() != null) {
-            member.setClassId(memberRequest.getClassId());
-        }
-        if (memberRequest.getNumber() != null) {
-            member.setNumber(memberRequest.getNumber());
-        }
-        if (memberRequest.getSubject() != null) {
-            member.setSubject(memberRequest.getSubject());
-        }
-        if (memberRequest.getGender() != null) {
-            member.setGender(memberRequest.getGender());
-        }
-        if (memberRequest.getRole() != null) {
-            member.setRole(memberRequest.getRole());
-        }
-        if (memberRequest.getState() != null) {
-            member.setState(memberRequest.getState());
-        }
+        if (memberRequest.getName() != null) member.setName(memberRequest.getName());
+        if (memberRequest.getPhone() != null) member.setPhone(memberRequest.getPhone());
+        if (memberRequest.getEmail() != null) member.setEmail(memberRequest.getEmail());
+        if (memberRequest.getBirthday() != null) member.setBirthday(memberRequest.getBirthday());
+        if (memberRequest.getSchoolName() != null) member.setSchoolName(memberRequest.getSchoolName());
+        if (memberRequest.getYear() != null) member.setYear(memberRequest.getYear());
+        if (memberRequest.getClassId() != null) member.setClassId(memberRequest.getClassId());
+        if (memberRequest.getNumber() != null) member.setNumber(memberRequest.getNumber());
+        if (memberRequest.getSubject() != null) member.setSubject(memberRequest.getSubject());
+        if (memberRequest.getGender() != null) member.setGender(memberRequest.getGender());
+        if (memberRequest.getRole() != null) member.setRole(memberRequest.getRole());
+        if (memberRequest.getState() != null) member.setState(memberRequest.getState());
         memberRepository.save(member);
     }
 

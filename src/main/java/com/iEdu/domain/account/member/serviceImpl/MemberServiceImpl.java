@@ -124,7 +124,9 @@ public class MemberServiceImpl implements MemberService {
     @Transactional(readOnly = true)
     @Cacheable(value = "member", key = "'myDetailInfo:' + #loginUser.role.name() + ':' + #loginUser.id")
     public DetailMemberResponse getMyDetailInfo(LoginUserDto loginUser) {
-        return memberMapper.toDetailMemberResponse(loginUser);
+        Member member = memberRepository.findById(loginUser.getId())
+                .orElseThrow(() -> new ServiceException(ReturnCode.USER_NOT_FOUND));
+        return memberMapper.toDetailMemberResponse(member);
     }
 
     // 담당 학생들의 회원정보 조회 [선생님 권한]
