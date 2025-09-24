@@ -2,7 +2,7 @@ package com.iEdu.domain.studentRecord.counsel.serviceImpl;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.iEdu.domain.account.auth.loginUser.LoginUserDto;
+import com.iEdu.domain.account.auth.currentUser.CurrentUserDto;
 import com.iEdu.domain.account.member.entity.Member;
 import com.iEdu.domain.account.member.repository.MemberRepository;
 import com.iEdu.domain.account.member.service.MemberService;
@@ -22,7 +22,6 @@ import com.iEdu.global.exception.ServiceException;
 import com.iEdu.global.redis.helper.RedisCacheEvictHelper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.*;
 import org.springframework.kafka.core.KafkaTemplate;
@@ -48,10 +47,10 @@ public class CounselServiceImpl implements CounselService {
     // 학생의 모든 상담 조회 [학부모/선생님 권한]
     @Override
     @Transactional(readOnly = true)
-    public PageResponse<CounselResponse> getAllCounsel(Long studentId, Pageable pageable, LoginUserDto loginUser) {
+    public PageResponse<CounselResponse> getAllCounsel(Long studentId, Pageable pageable, CurrentUserDto currentUser) {
         checkPageSize(pageable.getPageSize());
         // ROLE_PARENT/ROLE_TEACHER 아닌 경우 예외 처리
-        roleValidator.validateAccessToStudent(loginUser, studentId);
+        roleValidator.validateAccessToStudent(currentUser, studentId);
         // 정렬 조건 추가: year(내림차순), semester(SECOND_SEMESTER 우선), createdAt(내림차순)
         Pageable sortedPageable = PageRequest.of(
                 pageable.getPageNumber(),
@@ -65,9 +64,9 @@ public class CounselServiceImpl implements CounselService {
     // (학년/반/번호/학기)로 학생들 상담 조회 [선생님 권한]
     @Override
     @Transactional(readOnly = true)
-    public List<CounselResponse> getStudentsCounsel(Integer year, Integer classId, Integer number, Semester semester, LoginUserDto loginUser) {
+    public List<CounselResponse> getStudentsCounsel(Integer year, Integer classId, Integer number, Semester semester, CurrentUserDto currentUser) {
         // ROLE_TEACHER 아닌 경우 예외 처리
-        roleValidator.validateTeacherRole(loginUser);
+        roleValidator.validateTeacherRole(currentUser);
         // 학생 목록 조회
         List<Member> students = memberRepository.findStudentsByYearClassNumber(year, classId, number);
         List<Long> studentIds = students.stream()
@@ -88,10 +87,10 @@ public class CounselServiceImpl implements CounselService {
             cacheNames = "counsel",
             key = "'student:' + #studentId + ':' + #year + ':' + #semester + ':' + #pageable.pageNumber + ':' + #pageable.pageSize"
     )
-    public PageResponse<CounselResponse> getFilterCounsel(Long studentId, Integer year, Semester semester, Pageable pageable, LoginUserDto loginUser) {
+    public PageResponse<CounselResponse> getFilterCounsel(Long studentId, Integer year, Semester semester, Pageable pageable, CurrentUserDto currentUser) {
         checkPageSize(pageable.getPageSize());
         // ROLE_PARENT/ROLE_TEACHER 아닌 경우 예외 처리
-        roleValidator.validateAccessToStudent(loginUser, studentId);
+        roleValidator.validateAccessToStudent(currentUser, studentId);
         Pageable sortedPageable = PageRequest.of(
                 pageable.getPageNumber(),
                 pageable.getPageSize(),
@@ -104,14 +103,14 @@ public class CounselServiceImpl implements CounselService {
     // 학생 상담 생성 [선생님 권한]
     @Override
     @Transactional
-    public void createCounsel(Long studentId, CounselRequest counselRequest, LoginUserDto loginUser) {
+    public void createCounsel(Long studentId, CounselRequest counselRequest, CurrentUserDto currentUser) {
         // ROLE_TEACHER 아닌 경우 예외 처리
-        roleValidator.validateTeacherRole(loginUser);
+        roleValidator.validateTeacherRole(currentUser);
         Member student = memberRepository.findById(studentId)
                 .orElseThrow(() -> new ServiceException(ReturnCode.USER_NOT_FOUND));
         Counsel counsel = Counsel.builder()
                 .member(student)
-                .teacherName(loginUser.getName())
+                .teacherName(currentUser.getName())
                 .year(counselRequest.getYear())
                 .semester(counselRequest.getSemester())
                 .date(counselRequest.getDate())
@@ -127,9 +126,9 @@ public class CounselServiceImpl implements CounselService {
     // 학생 상담 수정 [선생님 권한]
     @Override
     @Transactional
-    public void updateCounsel(Long counselId, CounselRequest counselRequest, LoginUserDto loginUser) {
+    public void updateCounsel(Long counselId, CounselRequest counselRequest, CurrentUserDto currentUser) {
         // ROLE_TEACHER 아닌 경우 예외 처리
-        roleValidator.validateTeacherRole(loginUser);
+        roleValidator.validateTeacherRole(currentUser);
         Counsel counsel = counselRepository.findById(counselId)
                 .orElseThrow(() -> new ServiceException(ReturnCode.COUNSEL_NOT_FOUND));
         if (counselRequest.getYear() != null) counsel.setYear(counselRequest.getYear());
@@ -146,9 +145,9 @@ public class CounselServiceImpl implements CounselService {
     // 학생 상담 삭제 [선생님 권한]
     @Override
     @Transactional
-    public void deleteCounsel(Long counselId, LoginUserDto loginUser) {
+    public void deleteCounsel(Long counselId, CurrentUserDto currentUser) {
         // ROLE_TEACHER 아닌 경우 예외 처리
-        roleValidator.validateTeacherRole(loginUser);
+        roleValidator.validateTeacherRole(currentUser);
         Counsel counsel = counselRepository.findById(counselId)
                 .orElseThrow(() -> new ServiceException(ReturnCode.COUNSEL_NOT_FOUND));
         counselRepository.delete(counsel);

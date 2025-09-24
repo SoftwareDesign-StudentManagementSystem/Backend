@@ -1,7 +1,7 @@
 package com.iEdu.global.initData.service;
 
 import com.iEdu.domain.account.admin.service.AdminService;
-import com.iEdu.domain.account.auth.loginUser.LoginUserDto;
+import com.iEdu.domain.account.auth.currentUser.CurrentUserDto;
 import com.iEdu.domain.account.member.dto.req.FollowRequest;
 import com.iEdu.domain.account.member.dto.req.MemberRequest;
 import com.iEdu.domain.account.member.dto.req.ParentSignUpRequest;
@@ -131,8 +131,8 @@ public class NotProdMemberService {
 
             Member student = optionalStudent.get();
             Member parent = optionalParent.get();
-            LoginUserDto parentLogin = memberMapper.toLoginUserDto(parent);
-            LoginUserDto studentLogin = memberMapper.toLoginUserDto(student);
+            CurrentUserDto parentLogin = memberMapper.toLoginUserDto(parent);
+            CurrentUserDto studentLogin = memberMapper.toLoginUserDto(student);
 
             FollowRequest followRequest = new FollowRequest();
             followRequest.setName(student.getName());

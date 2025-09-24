@@ -1,7 +1,7 @@
 package com.iEdu.domain.studentRecord.grade.controller;
 
-import com.iEdu.domain.account.auth.loginUser.LoginUser;
-import com.iEdu.domain.account.auth.loginUser.LoginUserDto;
+import com.iEdu.domain.account.auth.currentUser.CurrentUser;
+import com.iEdu.domain.account.auth.currentUser.CurrentUserDto;
 import com.iEdu.domain.studentRecord.grade.dto.req.GradeRequest;
 import com.iEdu.domain.studentRecord.grade.dto.req.GradeUpdateRequest;
 import com.iEdu.domain.studentRecord.grade.dto.res.GradeResponse;
@@ -29,9 +29,9 @@ public class ApiV1GradeController {
     // 본인의 모든 성적 조회 [학생 권한]
     @Operation(summary = "본인의 모든 성적 조회 [학생 권한]")
     @GetMapping
-    public ApiResponse<List<GradeResponse>> getMyAllGrade(@ModelAttribute GradePage request, @LoginUser LoginUserDto loginUser){
+    public ApiResponse<List<GradeResponse>> getMyAllGrade(@ModelAttribute GradePage request, @CurrentUser CurrentUserDto currentUser){
         Pageable pageable = PageRequest.of(request.getPage(), request.getSize());
-        return ApiResponse.success(gradeService.getMyAllGrade(pageable, loginUser));
+        return ApiResponse.success(gradeService.getMyAllGrade(pageable, currentUser));
     }
 
     // 학생의 모든 성적 조회 [학부모/선생님 권한]
@@ -39,9 +39,9 @@ public class ApiV1GradeController {
     @GetMapping("/{studentId}")
     public ApiResponse<List<GradeResponse>> getAllGrade(@ModelAttribute GradePage request,
                                                         @PathVariable("studentId") Long studentId,
-                                                        @LoginUser LoginUserDto loginUser){
+                                                        @CurrentUser CurrentUserDto currentUser){
         Pageable pageable = PageRequest.of(request.getPage(), request.getSize());
-        return ApiResponse.success(gradeService.getAllGrade(studentId, pageable, loginUser));
+        return ApiResponse.success(gradeService.getAllGrade(studentId, pageable, currentUser));
     }
 
     // (학년/학기)로 본인 성적 조회 [학생 권한]
@@ -49,8 +49,8 @@ public class ApiV1GradeController {
     @GetMapping("/filter")
     public ApiResponse<GradeResponse> getMyFilterGrade(@RequestParam(value = "year") Integer year,
                                                        @RequestParam(value = "semester") Semester semester,
-                                                       @LoginUser LoginUserDto loginUser) {
-        return ApiResponse.success(gradeService.getMyFilterGrade(year, semester, loginUser));
+                                                       @CurrentUser CurrentUserDto currentUser) {
+        return ApiResponse.success(gradeService.getMyFilterGrade(year, semester, currentUser));
     }
 
     // (학년/학기)로 학생 성적 조회 [학부모/선생님 권한]
@@ -59,8 +59,8 @@ public class ApiV1GradeController {
     public ApiResponse<GradeResponse> getFilterGrade(@PathVariable("studentId") Long studentId,
                                                      @RequestParam(value = "year") Integer year,
                                                      @RequestParam(value = "semester") Semester semester,
-                                                     @LoginUser LoginUserDto loginUser) {
-        return ApiResponse.success(gradeService.getFilterGrade(studentId, year, semester, loginUser));
+                                                     @CurrentUser CurrentUserDto currentUser) {
+        return ApiResponse.success(gradeService.getFilterGrade(studentId, year, semester, currentUser));
     }
 
     // (학년/반/번호/학기)로 학생들 성적 조회 [선생님 권한]
@@ -70,8 +70,8 @@ public class ApiV1GradeController {
                                                              @RequestParam(value = "classId") Integer classId,
                                                              @RequestParam(value = "number", required = false) Integer number,
                                                              @RequestParam(value = "semester") Semester semester,
-                                                             @LoginUser LoginUserDto loginUser){
-        return ApiResponse.success(gradeService.getStudentsGrade(year, classId, number, semester, loginUser));
+                                                             @CurrentUser CurrentUserDto currentUser){
+        return ApiResponse.success(gradeService.getStudentsGrade(year, classId, number, semester, currentUser));
     }
 
     // 학생 성적 생성 [선생님 권한]
@@ -79,8 +79,8 @@ public class ApiV1GradeController {
     @PostMapping("/{studentId}")
     public ApiResponse<Void> createGrade(@PathVariable("studentId") Long studentId,
                                            @RequestBody @Valid GradeRequest gradeRequest,
-                                           @LoginUser LoginUserDto loginUser) {
-        gradeService.createGrade(studentId, gradeRequest, loginUser);
+                                           @CurrentUser CurrentUserDto currentUser) {
+        gradeService.createGrade(studentId, gradeRequest, currentUser);
         return ApiResponse.success();
     }
 
@@ -89,16 +89,16 @@ public class ApiV1GradeController {
     @PatchMapping("/{gradeId}")
     public ApiResponse<Void> updateGrade(@PathVariable("gradeId") Long gradeId,
                                            @RequestBody @Valid GradeUpdateRequest gradeUpdateRequest,
-                                           @LoginUser LoginUserDto loginUser){
-        gradeService.updateGrade(gradeId, gradeUpdateRequest, loginUser);
+                                           @CurrentUser CurrentUserDto currentUser){
+        gradeService.updateGrade(gradeId, gradeUpdateRequest, currentUser);
         return ApiResponse.success();
     }
 
     // 학생 성적 삭제 [선생님 권한]
     @Operation(summary = "학생 성적 삭제 [선생님 권한]")
     @DeleteMapping("/{gradeId}")
-    public ApiResponse<Void> deleteGrade(@PathVariable("gradeId") Long gradeId, @LoginUser LoginUserDto loginUser){
-        gradeService.deleteGrade(gradeId, loginUser);
+    public ApiResponse<Void> deleteGrade(@PathVariable("gradeId") Long gradeId, @CurrentUser CurrentUserDto currentUser){
+        gradeService.deleteGrade(gradeId, currentUser);
         return ApiResponse.success();
     }
 }

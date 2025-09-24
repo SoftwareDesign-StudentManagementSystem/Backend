@@ -1,6 +1,6 @@
 package com.iEdu.global.initData.service;
 
-import com.iEdu.domain.account.auth.loginUser.LoginUserDto;
+import com.iEdu.domain.account.auth.currentUser.CurrentUserDto;
 import com.iEdu.domain.account.member.entity.Member;
 import com.iEdu.domain.account.member.mapper.MemberMapper;
 import com.iEdu.domain.account.member.repository.MemberRepository;
@@ -60,7 +60,7 @@ public class NotProdStudentRecordService {
 
                     for (int subjectIdx = 0; subjectIdx < subjectList.size(); subjectIdx++) {
                         Member teacher = teachersForGrade.get(subjectIdx);
-                        LoginUserDto loginUser = memberMapper.toLoginUserDto(teacher);
+                        CurrentUserDto loginUser = memberMapper.toLoginUserDto(teacher);
 
                         for (Semester semester : Semester.values()) {
                             if (semester == Semester.ALL) continue; // ALL 제외
@@ -96,7 +96,7 @@ public class NotProdStudentRecordService {
                     .filter(s -> Objects.equals(s.getYear(), teacherYear) &&
                             Objects.equals(s.getClassId(), teacherClassId))
                     .toList();
-            LoginUserDto loginUser = memberMapper.toLoginUserDto(teacher);
+            CurrentUserDto loginUser = memberMapper.toLoginUserDto(teacher);
 
             for (int targetYear = 1; targetYear <= teacherYear; targetYear++) {
                 int baseYear = 2025 - (teacherYear - targetYear);  // 출결 대상 학년이 있었던 실제 연도
@@ -155,7 +155,7 @@ public class NotProdStudentRecordService {
                     .filter(s -> Objects.equals(s.getYear(), teacherYear) &&
                             Objects.equals(s.getClassId(), teacherClassId))
                     .toList();
-            LoginUserDto loginUser = memberMapper.toLoginUserDto(teacher);
+            CurrentUserDto loginUser = memberMapper.toLoginUserDto(teacher);
             for (int targetYear = 1; targetYear <= teacherYear; targetYear++) {
                 int baseYear = 2025 - (teacherYear - targetYear);
 
@@ -242,7 +242,7 @@ public class NotProdStudentRecordService {
                     .filter(s -> Objects.equals(s.getYear(), teacherYear) &&
                             Objects.equals(s.getClassId(), teacherClassId))
                     .toList();
-            LoginUserDto loginUser = memberMapper.toLoginUserDto(teacher);
+            CurrentUserDto loginUser = memberMapper.toLoginUserDto(teacher);
             for (int targetYear = 1; targetYear <= teacherYear; targetYear++) {
                 int baseYear = 2025 - (teacherYear - targetYear);
 
@@ -294,7 +294,7 @@ public class NotProdStudentRecordService {
                     .filter(s -> Objects.equals(s.getYear(), teacherYear) &&
                             Objects.equals(s.getClassId(), teacherClassId))
                     .toList();
-            LoginUserDto loginUser = memberMapper.toLoginUserDto(teacher);
+            CurrentUserDto loginUser = memberMapper.toLoginUserDto(teacher);
             for (int targetYear = 1; targetYear <= teacherYear; targetYear++) {
                 int baseYear = 2025 - (teacherYear - targetYear);
 

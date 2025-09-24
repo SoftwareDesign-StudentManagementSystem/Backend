@@ -1,6 +1,6 @@
 package com.iEdu.global.config;
 
-import com.iEdu.domain.account.auth.loginUser.LoginUserArgumentResolver;
+import com.iEdu.domain.account.auth.currentUser.CurrentUserArgumentResolver;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.method.support.HandlerMethodArgumentResolver;
@@ -12,10 +12,10 @@ import java.util.List;
 @RequiredArgsConstructor
 public class WebConfig implements WebMvcConfigurer {
 
-    private final LoginUserArgumentResolver loginUserArgumentResolver;
+    private final CurrentUserArgumentResolver currentUserArgumentResolver;
 
     @Override
     public void addArgumentResolvers(List<HandlerMethodArgumentResolver> resolvers) {
-        resolvers.add(loginUserArgumentResolver);
+        resolvers.add(currentUserArgumentResolver);
     }
 }

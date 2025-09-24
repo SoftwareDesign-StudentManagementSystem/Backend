@@ -1,7 +1,7 @@
 package com.iEdu.domain.studentRecord.specialty.controller;
 
-import com.iEdu.domain.account.auth.loginUser.LoginUser;
-import com.iEdu.domain.account.auth.loginUser.LoginUserDto;
+import com.iEdu.domain.account.auth.currentUser.CurrentUser;
+import com.iEdu.domain.account.auth.currentUser.CurrentUserDto;
 import com.iEdu.domain.studentRecord.specialty.dto.req.SpecialtyRequest;
 
 import com.iEdu.domain.studentRecord.specialty.dto.res.SpecialtyResponse;
@@ -31,9 +31,9 @@ public class ApiV1SpecialtyController {
     @GetMapping("/{studentId}")
     public ApiResponse<List<SpecialtyResponse>> getAllSpecialty(@ModelAttribute SpecialtyPage request,
                                                                 @PathVariable("studentId") Long studentId,
-                                                                @LoginUser LoginUserDto loginUser) {
+                                                                @CurrentUser CurrentUserDto currentUser) {
         Pageable pageable = PageRequest.of(request.getPage(), request.getSize());
-        return ApiResponse.success(specialtyService.getAllSpecialty(studentId, pageable, loginUser));
+        return ApiResponse.success(specialtyService.getAllSpecialty(studentId, pageable, currentUser));
     }
 
     // (학년/학기)로 학생 특기사항 조회 [학부모/선생님 권한]
@@ -43,9 +43,9 @@ public class ApiV1SpecialtyController {
                                                                    @PathVariable("studentId") Long studentId,
                                                                    @RequestParam(value = "year") Integer year,
                                                                    @RequestParam(value = "semester") Semester semester,
-                                                                   @LoginUser LoginUserDto loginUser) {
+                                                                   @CurrentUser CurrentUserDto currentUser) {
         Pageable pageable = PageRequest.of(request.getPage(), request.getSize());
-        return ApiResponse.success(specialtyService.getFilterSpecialty(studentId, year, semester, pageable, loginUser));
+        return ApiResponse.success(specialtyService.getFilterSpecialty(studentId, year, semester, pageable, currentUser));
     }
 
     // 학생 특기사항 생성 [선생님 권한]
@@ -53,8 +53,8 @@ public class ApiV1SpecialtyController {
     @PostMapping("/{studentId}")
     public ApiResponse<Void> createSpecialty(@PathVariable("studentId") Long studentId,
                                                @RequestBody @Valid SpecialtyRequest specialtyRequest,
-                                               @LoginUser LoginUserDto loginUser) {
-        specialtyService.createSpecialty(studentId, specialtyRequest, loginUser);
+                                               @CurrentUser CurrentUserDto currentUser) {
+        specialtyService.createSpecialty(studentId, specialtyRequest, currentUser);
         return ApiResponse.success();
     }
 
@@ -63,8 +63,8 @@ public class ApiV1SpecialtyController {
     @PatchMapping("/{specialtyId}")
     public ApiResponse<Void> updateSpecialty(@PathVariable("specialtyId") Long specialtyId,
                                                @RequestBody @Valid SpecialtyRequest specialtyRequest,
-                                               @LoginUser LoginUserDto loginUser) {
-        specialtyService.updateSpecialty(specialtyId, specialtyRequest, loginUser);
+                                               @CurrentUser CurrentUserDto currentUser) {
+        specialtyService.updateSpecialty(specialtyId, specialtyRequest, currentUser);
         return ApiResponse.success();
     }
 
@@ -72,8 +72,8 @@ public class ApiV1SpecialtyController {
     @Operation(summary = "학생 특기사항 삭제 [선생님 권한]")
     @DeleteMapping("/{specialtyId}")
     public ApiResponse<Void> deleteSpecialty(@PathVariable("specialtyId") Long specialtyId,
-                                               @LoginUser LoginUserDto loginUser) {
-        specialtyService.deleteSpecialty(specialtyId, loginUser);
+                                               @CurrentUser CurrentUserDto currentUser) {
+        specialtyService.deleteSpecialty(specialtyId, currentUser);
         return ApiResponse.success();
     }
 }

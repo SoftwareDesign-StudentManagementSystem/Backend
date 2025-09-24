@@ -1,4 +1,4 @@
-package com.iEdu.domain.account.auth.loginUser;
+package com.iEdu.domain.account.auth.currentUser;
 
 import com.iEdu.domain.account.member.entity.Member;
 import com.iEdu.domain.account.member.entity.MemberFollow;
@@ -11,7 +11,7 @@ import java.util.List;
 
 @Data
 @Builder
-public class LoginUserDto {
+public class CurrentUserDto {
     private Long id;
     private Long accountId;
     private String password;

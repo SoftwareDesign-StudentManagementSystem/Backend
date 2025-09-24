@@ -1,7 +1,7 @@
 package com.iEdu.domain.account.admin.serviceImpl;
 
 import com.iEdu.domain.account.admin.service.AdminService;
-import com.iEdu.domain.account.auth.loginUser.LoginUserDto;
+import com.iEdu.domain.account.auth.currentUser.CurrentUserDto;
 import com.iEdu.domain.account.member.dto.req.MemberRequest;
 import com.iEdu.domain.account.member.dto.res.DetailMemberResponse;
 import com.iEdu.domain.account.member.dto.res.MemberResponse;
@@ -70,9 +70,9 @@ public class AdminServiceImpl implements AdminService {
     // 회원가입 [관리자 권한]
     @Override
     @Transactional
-    public Member adminSignup(MemberRequest memberRequest, LoginUserDto loginUser){
+    public Member adminSignup(MemberRequest memberRequest, CurrentUserDto currentUser){
         // ROLE_ADMIN이 아닌 경우 예외 처리
-        roleValidator.validateAdminRole(loginUser);
+        roleValidator.validateAdminRole(currentUser);
         if (memberRepository.existsByAccountId((memberRequest.getAccountId()))) {
             throw new ServiceException(ReturnCode.MEMBER_ALREADY_EXISTS);
         }
@@ -101,10 +101,10 @@ public class AdminServiceImpl implements AdminService {
     // 역할별 회원 조회 [관리자 권한]
     @Override
     @Transactional(readOnly = true)
-    public PageResponse<DetailMemberResponse> getMemberByRole(String role, Pageable pageable, LoginUserDto loginUser){
+    public PageResponse<DetailMemberResponse> getMemberByRole(String role, Pageable pageable, CurrentUserDto currentUser){
         checkPageSize(pageable.getPageSize());
         // ROLE_ADMIN이 아닌 경우 예외 처리
-        roleValidator.validateAdminRole(loginUser);
+        roleValidator.validateAdminRole(currentUser);
         // 문자열 role을 Enum으로 변환
         Member.MemberRole memberRole;
         try {
@@ -119,9 +119,9 @@ public class AdminServiceImpl implements AdminService {
     // 다른 멤버의 회원정보 조회 [관리자 권한]
     @Override
     @Transactional(readOnly = true)
-    public MemberResponse getMemberInfo(Long memberId, LoginUserDto loginUser) {
+    public MemberResponse getMemberInfo(Long memberId, CurrentUserDto currentUser) {
         // ROLE_ADMIN이 아닌 경우 예외 처리
-        roleValidator.validateAdminRole(loginUser);
+        roleValidator.validateAdminRole(currentUser);
         Member member = memberRepository.findById(memberId)
                 .orElseThrow(() -> new ServiceException(ReturnCode.USER_NOT_FOUND));
         return memberMapper.toMemberResponse(member);
@@ -130,9 +130,9 @@ public class AdminServiceImpl implements AdminService {
     // 다른 멤버의 상세회원정보 조회 [관리자 권한]
     @Override
     @Transactional(readOnly = true)
-    public DetailMemberResponse getMemberDetailInfo(Long memberId, LoginUserDto loginUser) {
+    public DetailMemberResponse getMemberDetailInfo(Long memberId, CurrentUserDto currentUser) {
         // ROLE_ADMIN이 아닌 경우 예외 처리
-        roleValidator.validateAdminRole(loginUser);
+        roleValidator.validateAdminRole(currentUser);
         Member member = memberRepository.findById(memberId)
                 .orElseThrow(() -> new ServiceException(ReturnCode.USER_NOT_FOUND));
         return memberMapper.toDetailMemberResponse(member);
@@ -141,9 +141,9 @@ public class AdminServiceImpl implements AdminService {
     // 회원정보 수정 [관리자 권한]
     @Override
     @Transactional
-    public void adminUpdateMemberInfo(MemberRequest memberRequest, Long memberId, LoginUserDto loginUser) {
+    public void adminUpdateMemberInfo(MemberRequest memberRequest, Long memberId, CurrentUserDto currentUser) {
         // ROLE_ADMIN이 아닌 경우 예외 처리
-        roleValidator.validateAdminRole(loginUser);
+        roleValidator.validateAdminRole(currentUser);
         Member member = memberRepository.findById(memberId)
                 .orElseThrow(() -> new ServiceException(ReturnCode.USER_NOT_FOUND));
         if (memberRequest.getAccountId() != null) member.setAccountId(memberRequest.getAccountId());
@@ -168,10 +168,10 @@ public class AdminServiceImpl implements AdminService {
     // 계정ID&이름으로 회원 검색하기 [관리자 권한]
     @Override
     @Transactional(readOnly = true)
-    public PageResponse<MemberResponse> searchMemberInfo(Pageable pageable, String keyword, LoginUserDto loginUser) {
+    public PageResponse<MemberResponse> searchMemberInfo(Pageable pageable, String keyword, CurrentUserDto currentUser) {
         checkPageSize(pageable.getPageSize());
         // ROLE_ADMIN이 아닌 경우 예외 처리
-        roleValidator.validateAdminRole(loginUser);
+        roleValidator.validateAdminRole(currentUser);
         Page<Member> members = memberRepository.findByKeyword(pageable, keyword);
         return PageResponse.of(members.map(memberMapper::toMemberResponse));
     }
@@ -179,9 +179,9 @@ public class AdminServiceImpl implements AdminService {
     // 유저의 프로필 사진 삭제하기 [관리자 권한]
     @Override
     @Transactional
-    public void deleteUserProfileImage(Long memberId, LoginUserDto loginUser){
+    public void deleteUserProfileImage(Long memberId, CurrentUserDto currentUser){
         // ROLE_ADMIN이 아닌 경우 예외 처리
-        roleValidator.validateAdminRole(loginUser);
+        roleValidator.validateAdminRole(currentUser);
         Member member = memberRepository.findById(memberId)
                 .orElseThrow(() -> new ServiceException(ReturnCode.USER_NOT_FOUND));
         if(member.getProfileImageUrl() != null){
@@ -193,9 +193,9 @@ public class AdminServiceImpl implements AdminService {
     // 학생의 팔로워 목록에서 학부모 삭제하기 [관리자 권한]
     @Override
     @Transactional
-    public void removeFollowed(Long studentId, Long parentId, LoginUserDto loginUser){
+    public void removeFollowed(Long studentId, Long parentId, CurrentUserDto currentUser){
         // ROLE_ADMIN이 아닌 경우 예외 처리
-        roleValidator.validateAdminRole(loginUser);
+        roleValidator.validateAdminRole(currentUser);
         Member followed = memberRepository.findById(studentId)
                 .orElseThrow(() -> new ServiceException(ReturnCode.USER_NOT_FOUND));
         Member follow = memberRepository.findById(parentId)
@@ -208,9 +208,9 @@ public class AdminServiceImpl implements AdminService {
     // 회원 삭제하기 [관리자 권한]
     @Override
     @Transactional
-    public void removeMember(Long memberId, LoginUserDto loginUser){
+    public void removeMember(Long memberId, CurrentUserDto currentUser){
         // ROLE_ADMIN이 아닌 경우 예외 처리
-        roleValidator.validateAdminRole(loginUser);
+        roleValidator.validateAdminRole(currentUser);
         Member member = memberRepository.findById(memberId)
                 .orElseThrow(() -> new ServiceException(ReturnCode.USER_NOT_FOUND));
         memberService.deleteMember(memberMapper.toLoginUserDto(member));

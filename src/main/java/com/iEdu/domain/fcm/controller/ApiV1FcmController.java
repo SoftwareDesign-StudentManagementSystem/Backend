@@ -1,7 +1,7 @@
 package com.iEdu.domain.fcm.controller;
 
-import com.iEdu.domain.account.auth.loginUser.LoginUser;
-import com.iEdu.domain.account.auth.loginUser.LoginUserDto;
+import com.iEdu.domain.account.auth.currentUser.CurrentUser;
+import com.iEdu.domain.account.auth.currentUser.CurrentUserDto;
 import com.iEdu.global.common.response.ApiResponse;
 import com.iEdu.domain.fcm.dto.req.FcmTokenRequest;
 import com.iEdu.domain.fcm.service.FcmTokenService;
@@ -21,16 +21,16 @@ public class ApiV1FcmController {
     // FCM Token 저장
     @Operation(summary = "FCM Token 저장")
     @PostMapping
-    public ApiResponse<Void> saveFcmToken(@RequestBody @Valid FcmTokenRequest fcmTokenRequest, @LoginUser LoginUserDto loginUser) {
-        fcmTokenService.saveFcmToken(loginUser.getId(), fcmTokenRequest.getFcmToken());
+    public ApiResponse<Void> saveFcmToken(@RequestBody @Valid FcmTokenRequest fcmTokenRequest, @CurrentUser CurrentUserDto currentUser) {
+        fcmTokenService.saveFcmToken(currentUser.getId(), fcmTokenRequest.getFcmToken());
         return ApiResponse.success();
     }
 
     // FCM Token 삭제
     @Operation(summary = "FCM Token 삭제")
     @DeleteMapping
-    public ApiResponse<Void> deleteFcmToken(@LoginUser LoginUserDto loginUser) {
-        fcmTokenService.deleteFcmToken(loginUser.getId());
+    public ApiResponse<Void> deleteFcmToken(@CurrentUser CurrentUserDto currentUser) {
+        fcmTokenService.deleteFcmToken(currentUser.getId());
         return ApiResponse.success();
     }
 }

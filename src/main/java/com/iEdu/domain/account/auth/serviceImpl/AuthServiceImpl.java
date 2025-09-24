@@ -1,8 +1,8 @@
 package com.iEdu.domain.account.auth.serviceImpl;
 
+import com.iEdu.domain.account.auth.currentUser.CurrentUserDto;
 import com.iEdu.domain.account.auth.dto.req.LoginRequest;
 import com.iEdu.domain.account.auth.dto.res.LoginResponse;
-import com.iEdu.domain.account.auth.loginUser.LoginUserDto;
 import com.iEdu.domain.account.auth.security.JwtTokenProvider;
 import com.iEdu.domain.account.auth.service.AuthService;
 import com.iEdu.domain.account.auth.service.RefreshTokenService;
@@ -51,19 +51,19 @@ public class AuthServiceImpl implements AuthService {
 
     // 로그아웃
     @Override
-    public void logout(LoginUserDto loginUser) {
+    public void logout(CurrentUserDto currentUser) {
         // Redis에서 Refresh Token 삭제
-        refreshTokenService.deleteRefreshToken(loginUser.getId().toString());
+        refreshTokenService.deleteRefreshToken(currentUser.getId().toString());
     }
 
     // accessToken 재발급
     @Override
-    public LoginResponse refreshToken(String refreshToken, LoginUserDto loginUser) {
+    public LoginResponse refreshToken(String refreshToken, CurrentUserDto currentUser) {
         // "Bearer "가 붙어있다면 제거
         if (refreshToken.startsWith("Bearer ")) {
             refreshToken = refreshToken.substring(7);
         }
-        String storedRefreshToken = refreshTokenService.getRefreshToken(loginUser.getId().toString());
+        String storedRefreshToken = refreshTokenService.getRefreshToken(currentUser.getId().toString());
         if (storedRefreshToken == null || !storedRefreshToken.equals(refreshToken)) {
             throw new RuntimeException("유효하지 않은 리프레시 토큰입니다.");
         }

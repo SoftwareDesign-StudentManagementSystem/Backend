@@ -1,7 +1,7 @@
 package com.iEdu.domain.studentRecord.counsel.controller;
 
-import com.iEdu.domain.account.auth.loginUser.LoginUser;
-import com.iEdu.domain.account.auth.loginUser.LoginUserDto;
+import com.iEdu.domain.account.auth.currentUser.CurrentUser;
+import com.iEdu.domain.account.auth.currentUser.CurrentUserDto;
 import com.iEdu.domain.studentRecord.counsel.dto.req.CounselRequest;
 import com.iEdu.domain.studentRecord.counsel.dto.res.CounselResponse;
 import com.iEdu.domain.studentRecord.counsel.entity.CounselPage;
@@ -32,9 +32,9 @@ public class ApiV1CounselController {
     @GetMapping("/{studentId}")
     public ApiResponse<List<CounselResponse>> getAllCounsel(@ModelAttribute CounselPage request,
                                                             @PathVariable("studentId") Long studentId,
-                                                            @LoginUser LoginUserDto loginUser) {
+                                                            @CurrentUser CurrentUserDto currentUser) {
         Pageable pageable = PageRequest.of(request.getPage(), request.getSize());
-        return ApiResponse.success(counselService.getAllCounsel(studentId, pageable, loginUser));
+        return ApiResponse.success(counselService.getAllCounsel(studentId, pageable, currentUser));
     }
 
     // (학년/반/번호/학기)로 학생들 상담 조회 [선생님 권한]
@@ -44,8 +44,8 @@ public class ApiV1CounselController {
                                                                  @RequestParam(value = "classId") Integer classId,
                                                                  @RequestParam(value = "number", required = false) Integer number,
                                                                  @RequestParam(value = "semester") Semester semester,
-                                                                 @LoginUser LoginUserDto loginUser) {
-        return ApiResponse.success(counselService.getStudentsCounsel(year, classId, number, semester, loginUser));
+                                                                 @CurrentUser CurrentUserDto currentUser) {
+        return ApiResponse.success(counselService.getStudentsCounsel(year, classId, number, semester, currentUser));
     }
 
     // (학년/학기)로 학생 상담 조회 [학부모/선생님 권한]
@@ -55,9 +55,9 @@ public class ApiV1CounselController {
                                                                @PathVariable("studentId") Long studentId,
                                                                @RequestParam(value = "year") Integer year,
                                                                @RequestParam(value = "semester") Semester semester,
-                                                               @LoginUser LoginUserDto loginUser) {
+                                                               @CurrentUser CurrentUserDto currentUser) {
         Pageable pageable = PageRequest.of(request.getPage(), request.getSize());
-        return ApiResponse.success(counselService.getFilterCounsel(studentId, year, semester, pageable, loginUser).getContent());
+        return ApiResponse.success(counselService.getFilterCounsel(studentId, year, semester, pageable, currentUser).getContent());
     }
 
     // 학생 상담 생성 [선생님 권한]
@@ -65,8 +65,8 @@ public class ApiV1CounselController {
     @PostMapping("/{studentId}")
     public ApiResponse<Void> createCounsel(@PathVariable("studentId") Long studentId,
                                              @RequestBody @Valid CounselRequest counselRequest,
-                                             @LoginUser LoginUserDto loginUser) {
-        counselService.createCounsel(studentId, counselRequest, loginUser);
+                                             @CurrentUser CurrentUserDto currentUser) {
+        counselService.createCounsel(studentId, counselRequest, currentUser);
         return ApiResponse.success();
     }
 
@@ -75,8 +75,8 @@ public class ApiV1CounselController {
     @PatchMapping("/{counselId}")
     public ApiResponse<Void> updateCounsel(@PathVariable("counselId") Long counselId,
                                              @RequestBody @Valid CounselRequest counselRequest,
-                                             @LoginUser LoginUserDto loginUser) {
-        counselService.updateCounsel(counselId, counselRequest, loginUser);
+                                             @CurrentUser CurrentUserDto currentUser) {
+        counselService.updateCounsel(counselId, counselRequest, currentUser);
         return ApiResponse.success();
     }
 
@@ -84,8 +84,8 @@ public class ApiV1CounselController {
     @Operation(summary = "학생 상담 삭제 [선생님 권한]")
     @DeleteMapping("/{counselId}")
     public ApiResponse<Void> deleteCounsel(@PathVariable("counselId") Long counselId,
-                                             @LoginUser LoginUserDto loginUser) {
-        counselService.deleteCounsel(counselId, loginUser);
+                                             @CurrentUser CurrentUserDto currentUser) {
+        counselService.deleteCounsel(counselId, currentUser);
         return ApiResponse.success();
     }
 }

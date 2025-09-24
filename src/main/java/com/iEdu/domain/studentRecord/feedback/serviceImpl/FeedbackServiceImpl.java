@@ -2,7 +2,7 @@ package com.iEdu.domain.studentRecord.feedback.serviceImpl;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.iEdu.domain.account.auth.loginUser.LoginUserDto;
+import com.iEdu.domain.account.auth.currentUser.CurrentUserDto;
 import com.iEdu.domain.account.member.entity.Member;
 import com.iEdu.domain.account.member.repository.MemberRepository;
 import com.iEdu.domain.account.member.service.MemberService;
@@ -22,7 +22,6 @@ import com.iEdu.global.exception.ServiceException;
 import com.iEdu.global.redis.helper.RedisCacheEvictHelper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.*;
 import org.springframework.kafka.core.KafkaTemplate;
@@ -46,7 +45,7 @@ public class FeedbackServiceImpl implements FeedbackService {
     // 본인의 모든 피드백 조회 [학생 권한]
     @Override
     @Transactional(readOnly = true)
-    public PageResponse<FeedbackResponse> getMyAllFeedback(Pageable pageable, LoginUserDto loginUser) {
+    public PageResponse<FeedbackResponse> getMyAllFeedback(Pageable pageable, CurrentUserDto currentUser) {
         checkPageSize(pageable.getPageSize());
         // 정렬 조건 추가: year(내림차순), semester(SECOND_SEMESTER 우선), createdAt(내림차순)
         Pageable sortedPageable = PageRequest.of(
@@ -55,16 +54,16 @@ public class FeedbackServiceImpl implements FeedbackService {
                 Sort.by(Sort.Order.desc("year"), Sort.Order.desc("semester"), Sort.Order.desc("createdAt"))
         );
         // ROLE_STUDENT 아닌 경우 예외 처리
-        roleValidator.validateStudentRole(loginUser);
+        roleValidator.validateStudentRole(currentUser);
         // visibleToStudent == true 조건 포함
-        Page<Feedback> feedbackPage = feedbackRepository.findByMemberIdAndVisibleToStudentTrue(loginUser.getId(), sortedPageable);
+        Page<Feedback> feedbackPage = feedbackRepository.findByMemberIdAndVisibleToStudentTrue(currentUser.getId(), sortedPageable);
         return PageResponse.of(feedbackPage.map(this::convertToFeedbackDto));
     }
 
     // 학생의 모든 피드백 조회 [학부모/선생님 권한]
     @Override
     @Transactional(readOnly = true)
-    public PageResponse<FeedbackResponse> getAllFeedback(Long studentId, Pageable pageable, LoginUserDto loginUser){
+    public PageResponse<FeedbackResponse> getAllFeedback(Long studentId, Pageable pageable, CurrentUserDto currentUser){
         checkPageSize(pageable.getPageSize());
         // 정렬 조건 추가: year(내림차순), semester(SECOND_SEMESTER 우선), createdAt(내림차순)
         Pageable sortedPageable = PageRequest.of(
@@ -73,12 +72,12 @@ public class FeedbackServiceImpl implements FeedbackService {
                 Sort.by(Sort.Order.desc("year"), Sort.Order.desc("semester"), Sort.Order.desc("createdAt"))
         );
         // ROLE_PARENT/ROLE_TEACHER 아닌 경우 예외 처리
-        roleValidator.validateAccessToStudent(loginUser, studentId);
+        roleValidator.validateAccessToStudent(currentUser, studentId);
         Page<Feedback> feedbackPage;
-        if (loginUser.getRole() == Member.MemberRole.ROLE_TEACHER) {
+        if (currentUser.getRole() == Member.MemberRole.ROLE_TEACHER) {
             // 선생님은 모든 피드백 조회 가능
             feedbackPage = feedbackRepository.findByMemberId(studentId, sortedPageable);
-        } else if (loginUser.getRole() == Member.MemberRole.ROLE_PARENT) {
+        } else if (currentUser.getRole() == Member.MemberRole.ROLE_PARENT) {
             // 학부모: visibleToParent == true 조건 포함
             feedbackPage = feedbackRepository.findByMemberIdAndVisibleToParentTrue(studentId, sortedPageable);
         } else {
@@ -93,11 +92,11 @@ public class FeedbackServiceImpl implements FeedbackService {
     @Transactional(readOnly = true)
     @Cacheable(
             value = "feedback",
-            key = "'student:' + #loginUser.id + ':year:' + #year + ':semester:' + #semester + ':' + #pageable.pageNumber + ':' + #pageable.pageSize"
+            key = "'student:' + #currentUser.id + ':year:' + #year + ':semester:' + #semester + ':' + #pageable.pageNumber + ':' + #pageable.pageSize"
     )
-    public PageResponse<FeedbackResponse> getMyFilterFeedback(Integer year, Semester semester, Pageable pageable, LoginUserDto loginUser) {
+    public PageResponse<FeedbackResponse> getMyFilterFeedback(Integer year, Semester semester, Pageable pageable, CurrentUserDto currentUser) {
         checkPageSize(pageable.getPageSize());
-        roleValidator.validateStudentRole(loginUser);
+        roleValidator.validateStudentRole(currentUser);
 
         Pageable sortedPageable = PageRequest.of(
                 pageable.getPageNumber(),
@@ -105,7 +104,7 @@ public class FeedbackServiceImpl implements FeedbackService {
                 Sort.by(Sort.Direction.DESC, "createdAt")
         );
         return PageResponse.of(feedbackRepository.findByMemberIdAndYearAndSemesterAndVisibleToStudentTrue(
-                        loginUser.getId(), year, semester, sortedPageable
+                        currentUser.getId(), year, semester, sortedPageable
                 ).map(this::convertToFeedbackDto));
     }
 
@@ -114,11 +113,11 @@ public class FeedbackServiceImpl implements FeedbackService {
     @Transactional(readOnly = true)
     @Cacheable(
             value = "feedback",
-            key = "'student:' + #studentId + ':year:' + #year + ':semester:' + #semester + ':role:' + #loginUser.role + ':' + #pageable.pageNumber + ':' + #pageable.pageSize"
+            key = "'student:' + #studentId + ':year:' + #year + ':semester:' + #semester + ':role:' + #currentUser.role + ':' + #pageable.pageNumber + ':' + #pageable.pageSize"
     )
-    public PageResponse<FeedbackResponse> getFilterFeedback(Long studentId, Integer year, Semester semester, Pageable pageable, LoginUserDto loginUser) {
+    public PageResponse<FeedbackResponse> getFilterFeedback(Long studentId, Integer year, Semester semester, Pageable pageable, CurrentUserDto currentUser) {
         checkPageSize(pageable.getPageSize());
-        roleValidator.validateAccessToStudent(loginUser, studentId);
+        roleValidator.validateAccessToStudent(currentUser, studentId);
 
         Pageable sortedPageable = PageRequest.of(
                 pageable.getPageNumber(),
@@ -126,11 +125,11 @@ public class FeedbackServiceImpl implements FeedbackService {
                 Sort.by(Sort.Order.desc("createdAt"))
         );
         Page<Feedback> feedbackPage;
-        if (loginUser.getRole() == Member.MemberRole.ROLE_TEACHER) {
+        if (currentUser.getRole() == Member.MemberRole.ROLE_TEACHER) {
             feedbackPage = feedbackRepository.findByMemberIdAndYearAndSemester(
                     studentId, year, semester, sortedPageable
             );
-        } else if (loginUser.getRole() == Member.MemberRole.ROLE_PARENT) {
+        } else if (currentUser.getRole() == Member.MemberRole.ROLE_PARENT) {
             feedbackPage = feedbackRepository.findByMemberIdAndYearAndSemesterAndVisibleToParentTrue(
                     studentId, year, semester, sortedPageable
             );
@@ -143,14 +142,14 @@ public class FeedbackServiceImpl implements FeedbackService {
     // 학생 피드백 생성 [선생님 권한]
     @Override
     @Transactional
-    public void createFeedback(Long studentId, FeedbackRequest feedbackRequest, LoginUserDto loginUser) {
+    public void createFeedback(Long studentId, FeedbackRequest feedbackRequest, CurrentUserDto currentUser) {
         // ROLE_TEACHER 아닌 경우 예외 처리
-        roleValidator.validateTeacherRole(loginUser);
+        roleValidator.validateTeacherRole(currentUser);
         Member student = memberRepository.findById(studentId)
                 .orElseThrow(() -> new ServiceException(ReturnCode.USER_NOT_FOUND));
         Feedback feedback = Feedback.builder()
                 .member(student)
-                .teacherName(loginUser.getName())
+                .teacherName(currentUser.getName())
                 .year(feedbackRequest.getYear())
                 .semester(feedbackRequest.getSemester())
                 .date(feedbackRequest.getDate())
@@ -168,9 +167,9 @@ public class FeedbackServiceImpl implements FeedbackService {
     // 학생 피드백 수정 [선생님 권한]
     @Override
     @Transactional
-    public void updateFeedback(Long feedbackId, FeedbackRequest feedbackRequest, LoginUserDto loginUser) {
+    public void updateFeedback(Long feedbackId, FeedbackRequest feedbackRequest, CurrentUserDto currentUser) {
         // ROLE_TEACHER 아닌 경우 예외 처리
-        roleValidator.validateTeacherRole(loginUser);
+        roleValidator.validateTeacherRole(currentUser);
         Feedback feedback = feedbackRepository.findById(feedbackId)
                 .orElseThrow(() -> new ServiceException(ReturnCode.FEEDBACK_NOT_FOUND));
         if (feedbackRequest.getYear() != null) feedback.setYear(feedbackRequest.getYear());
@@ -189,9 +188,9 @@ public class FeedbackServiceImpl implements FeedbackService {
     // 학생 피드백 삭제 [선생님 권한]
     @Override
     @Transactional
-    public void deleteFeedback(Long feedbackId, LoginUserDto loginUser) {
+    public void deleteFeedback(Long feedbackId, CurrentUserDto currentUser) {
         // ROLE_TEACHER 아닌 경우 예외 처리
-        roleValidator.validateTeacherRole(loginUser);
+        roleValidator.validateTeacherRole(currentUser);
         Feedback feedback = feedbackRepository.findById(feedbackId)
                 .orElseThrow(() -> new ServiceException(ReturnCode.FEEDBACK_NOT_FOUND));
         feedbackRepository.delete(feedback);

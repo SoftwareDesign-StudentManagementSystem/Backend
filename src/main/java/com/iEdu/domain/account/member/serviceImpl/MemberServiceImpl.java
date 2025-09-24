@@ -2,7 +2,7 @@ package com.iEdu.domain.account.member.serviceImpl;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.iEdu.domain.account.auth.loginUser.LoginUserDto;
+import com.iEdu.domain.account.auth.currentUser.CurrentUserDto;
 import com.iEdu.domain.account.auth.service.AuthService;
 import com.iEdu.domain.account.member.dto.req.BasicUpdateRequest;
 import com.iEdu.domain.account.member.dto.req.FollowRequest;
@@ -115,16 +115,16 @@ public class MemberServiceImpl implements MemberService {
     // 본인 회원정보 조회
     @Override
     @Transactional(readOnly = true)
-    public MemberResponse getMyInfo(LoginUserDto loginUser) {
-        return memberMapper.toMemberResponse(loginUser);
+    public MemberResponse getMyInfo(CurrentUserDto currentUser) {
+        return memberMapper.toMemberResponse(currentUser);
     }
 
     // 본인 상세회원정보 조회
     @Override
     @Transactional(readOnly = true)
-    @Cacheable(value = "member", key = "'myDetailInfo:' + #loginUser.role.name() + ':' + #loginUser.id")
-    public DetailMemberResponse getMyDetailInfo(LoginUserDto loginUser) {
-        Member member = memberRepository.findById(loginUser.getId())
+    @Cacheable(value = "member", key = "'myDetailInfo:' + #currentUser.role.name() + ':' + #currentUser.id")
+    public DetailMemberResponse getMyDetailInfo(CurrentUserDto currentUser) {
+        Member member = memberRepository.findById(currentUser.getId())
                 .orElseThrow(() -> new ServiceException(ReturnCode.USER_NOT_FOUND));
         return memberMapper.toDetailMemberResponse(member);
     }
@@ -134,14 +134,14 @@ public class MemberServiceImpl implements MemberService {
     @Transactional(readOnly = true)
     @Cacheable(
             value = "member",
-            key = "'myStudents:' + #loginUser.role.name() + ':' + #loginUser.id + ':' + #loginUser.classId + ':' + #pageable.pageNumber + ':' + #pageable.pageSize"
+            key = "'myStudents:' + #currentUser.role.name() + ':' + #currentUser.id + ':' + #currentUser.classId + ':' + #pageable.pageNumber + ':' + #pageable.pageSize"
     )
-    public PageResponse<MemberResponse> getMyStudentInfo(Pageable pageable, LoginUserDto loginUser) {
+    public PageResponse<MemberResponse> getMyStudentInfo(Pageable pageable, CurrentUserDto currentUser) {
         checkPageSize(pageable.getPageSize());
-        roleValidator.validateTeacherRole(loginUser);
+        roleValidator.validateTeacherRole(currentUser);
 
-        Integer year = loginUser.getYear();
-        Integer classId = loginUser.getClassId();
+        Integer year = currentUser.getYear();
+        Integer classId = currentUser.getClassId();
         if (classId == null) {
             throw new ServiceException(ReturnCode.CLASSID_NOT_FOUND);
         }
@@ -154,10 +154,10 @@ public class MemberServiceImpl implements MemberService {
     // (학년/반/번호)로 학생 조회 [선생님 권한]
     @Override
     @Transactional(readOnly = true)
-    public PageResponse<MemberResponse> getMyFilterInfo(Integer year, Integer classId, Integer number, Pageable pageable, LoginUserDto loginUser){
+    public PageResponse<MemberResponse> getMyFilterInfo(Integer year, Integer classId, Integer number, Pageable pageable, CurrentUserDto currentUser){
         checkPageSize(pageable.getPageSize());
         // ROLE_TEACHER 아닌 경우 예외 처리
-        roleValidator.validateTeacherRole(loginUser);
+        roleValidator.validateTeacherRole(currentUser);
         QMember member = QMember.member;
         BooleanBuilder builder = new BooleanBuilder();
         builder.and(member.role.eq(Member.MemberRole.ROLE_STUDENT));
@@ -177,9 +177,9 @@ public class MemberServiceImpl implements MemberService {
     // 학생의 회원정보 조회 [학부모/선생님 권한]
     @Override
     @Transactional(readOnly = true)
-    public MemberResponse getMemberInfo(Long studentId, LoginUserDto loginUser) {
+    public MemberResponse getMemberInfo(Long studentId, CurrentUserDto currentUser) {
         // ROLE_PARENT/ROLE_TEACHER 아닌 경우 예외 처리
-        roleValidator.validateAccessToStudent(loginUser, studentId);
+        roleValidator.validateAccessToStudent(currentUser, studentId);
         Member student = memberRepository.findByIdAndRole(studentId, Member.MemberRole.ROLE_STUDENT)
                 .orElseThrow(() -> new ServiceException(ReturnCode.USER_NOT_FOUND));
         return memberMapper.toMemberResponse(student);
@@ -188,9 +188,9 @@ public class MemberServiceImpl implements MemberService {
     // 학생의 상세회원정보 조회 [학부모/선생님 권한]
     @Override
     @Transactional(readOnly = true)
-    public DetailMemberResponse getMemberDetailInfo(Long studentId, LoginUserDto loginUser) {
+    public DetailMemberResponse getMemberDetailInfo(Long studentId, CurrentUserDto currentUser) {
         // ROLE_PARENT/ROLE_TEACHER 아닌 경우 예외 처리
-        roleValidator.validateAccessToStudent(loginUser, studentId);
+        roleValidator.validateAccessToStudent(currentUser, studentId);
         Member student = memberRepository.findByIdAndRole(studentId, Member.MemberRole.ROLE_STUDENT)
                 .orElseThrow(() -> new ServiceException(ReturnCode.USER_NOT_FOUND));
         return memberMapper.toDetailMemberResponse(student);
@@ -199,11 +199,11 @@ public class MemberServiceImpl implements MemberService {
     // 학생/학부모 회원정보 수정 [학생/학부모 권한]
     @Override
     @Transactional
-    public void basicUpdateMemberInfo(BasicUpdateRequest basicUpdateRequest, MultipartFile imageFile, LoginUserDto loginUser){
+    public void basicUpdateMemberInfo(BasicUpdateRequest basicUpdateRequest, MultipartFile imageFile, CurrentUserDto currentUser){
         // ROLE_STUDENT/ROLE_PARENT 아닌 경우 예외 처리
-        roleValidator.validateStudentOrParentRole(loginUser);
+        roleValidator.validateStudentOrParentRole(currentUser);
         // 기존 이미지 삭제 후 입력 받은 이미지 S3에 저장
-        String imageUrl = loginUser.getProfileImageUrl(); // 기본적으로 기존 이미지 URL을 사용
+        String imageUrl = currentUser.getProfileImageUrl(); // 기본적으로 기존 이미지 URL을 사용
         if (imageFile != null && !imageFile.isEmpty()) {
             // 기존 이미지 없으면 바로 새로운 이미지 저장
             if (imageUrl != null && !imageUrl.isEmpty()) s3Service.deleteFile(imageUrl);
@@ -218,34 +218,34 @@ public class MemberServiceImpl implements MemberService {
             imageUrl = null;
         }
         if (basicUpdateRequest.getPassword() != null) {
-            loginUser.setPassword(BCrypt.hashpw(basicUpdateRequest.getPassword(), BCrypt.gensalt()));
+            currentUser.setPassword(BCrypt.hashpw(basicUpdateRequest.getPassword(), BCrypt.gensalt()));
         }
-        if (basicUpdateRequest.getName() != null) loginUser.setName(basicUpdateRequest.getName());
-        if (basicUpdateRequest.getBirthday() != null) loginUser.setBirthday(basicUpdateRequest.getBirthday());
-        if (basicUpdateRequest.getSchoolName() != null) loginUser.setSchoolName(basicUpdateRequest.getSchoolName());
-        if (basicUpdateRequest.getGender() != null) loginUser.setGender(basicUpdateRequest.getGender());
-        if (basicUpdateRequest.getPhone() != null) loginUser.setPhone(basicUpdateRequest.getPhone());
-        if (basicUpdateRequest.getEmail() != null) loginUser.setEmail(basicUpdateRequest.getEmail());
-        loginUser.setProfileImageUrl(imageUrl);
+        if (basicUpdateRequest.getName() != null) currentUser.setName(basicUpdateRequest.getName());
+        if (basicUpdateRequest.getBirthday() != null) currentUser.setBirthday(basicUpdateRequest.getBirthday());
+        if (basicUpdateRequest.getSchoolName() != null) currentUser.setSchoolName(basicUpdateRequest.getSchoolName());
+        if (basicUpdateRequest.getGender() != null) currentUser.setGender(basicUpdateRequest.getGender());
+        if (basicUpdateRequest.getPhone() != null) currentUser.setPhone(basicUpdateRequest.getPhone());
+        if (basicUpdateRequest.getEmail() != null) currentUser.setEmail(basicUpdateRequest.getEmail());
+        currentUser.setProfileImageUrl(imageUrl);
         // LoginUserDto를 Member 엔티티로 변환
-        Member memberEntity = memberMapper.toMember(loginUser);
+        Member memberEntity = memberMapper.toMember(currentUser);
         memberRepository.save(memberEntity);
         // 상세회원정보 캐시 무효화
-        evictMyDetailCache(loginUser.getId(), loginUser.getRole());
+        evictMyDetailCache(currentUser.getId(), currentUser.getRole());
         // 학생이라면 담임 선생님 캐시 무효화
-        if (loginUser.getRole() == Member.MemberRole.ROLE_STUDENT) {
-            evictTeacherStudentCache(loginUser.getYear(), loginUser.getClassId());
+        if (currentUser.getRole() == Member.MemberRole.ROLE_STUDENT) {
+            evictTeacherStudentCache(currentUser.getYear(), currentUser.getClassId());
         }
     }
 
     // 선생님 회원정보 수정 [선생님 권한]
     @Override
     @Transactional
-    public void teacherUpdateMemberInfo(TeacherUpdateRequest teacherUpdateRequest, MultipartFile imageFile, LoginUserDto loginUser){
+    public void teacherUpdateMemberInfo(TeacherUpdateRequest teacherUpdateRequest, MultipartFile imageFile, CurrentUserDto currentUser){
         // ROLE_TEACHER 아닌 경우 예외 처리
-        roleValidator.validateTeacherRole(loginUser);
+        roleValidator.validateTeacherRole(currentUser);
         // 기존 이미지 삭제 후 입력 받은 이미지 S3에 저장
-        String imageUrl = loginUser.getProfileImageUrl(); // 기본적으로 기존 이미지 URL을 사용
+        String imageUrl = currentUser.getProfileImageUrl(); // 기본적으로 기존 이미지 URL을 사용
         if (imageFile != null && !imageFile.isEmpty()) {
             // 기존 이미지 없으면 바로 새로운 이미지 저장
             if (imageUrl != null && !imageUrl.isEmpty()) s3Service.deleteFile(imageUrl);
@@ -260,46 +260,46 @@ public class MemberServiceImpl implements MemberService {
             imageUrl = null;
         }
         if (teacherUpdateRequest.getPassword() != null) {
-            loginUser.setPassword(BCrypt.hashpw(teacherUpdateRequest.getPassword(), BCrypt.gensalt()));
+            currentUser.setPassword(BCrypt.hashpw(teacherUpdateRequest.getPassword(), BCrypt.gensalt()));
         }
-        if (teacherUpdateRequest.getName() != null) loginUser.setName(teacherUpdateRequest.getName());
-        if (teacherUpdateRequest.getBirthday() != null) loginUser.setBirthday(teacherUpdateRequest.getBirthday());
-        if (teacherUpdateRequest.getSchoolName() != null) loginUser.setSchoolName(teacherUpdateRequest.getSchoolName());
-        if (teacherUpdateRequest.getYear() != null) loginUser.setYear(teacherUpdateRequest.getYear());
-        if (teacherUpdateRequest.getClassId() != null) loginUser.setClassId(teacherUpdateRequest.getClassId());
-        if (teacherUpdateRequest.getSubject() != null) loginUser.setSubject(teacherUpdateRequest.getSubject());
-        if (teacherUpdateRequest.getGender() != null) loginUser.setGender(teacherUpdateRequest.getGender());
-        if (teacherUpdateRequest.getPhone() != null) loginUser.setPhone(teacherUpdateRequest.getPhone());
-        if (teacherUpdateRequest.getEmail() != null) loginUser.setEmail(teacherUpdateRequest.getEmail());
-        loginUser.setProfileImageUrl(imageUrl);
+        if (teacherUpdateRequest.getName() != null) currentUser.setName(teacherUpdateRequest.getName());
+        if (teacherUpdateRequest.getBirthday() != null) currentUser.setBirthday(teacherUpdateRequest.getBirthday());
+        if (teacherUpdateRequest.getSchoolName() != null) currentUser.setSchoolName(teacherUpdateRequest.getSchoolName());
+        if (teacherUpdateRequest.getYear() != null) currentUser.setYear(teacherUpdateRequest.getYear());
+        if (teacherUpdateRequest.getClassId() != null) currentUser.setClassId(teacherUpdateRequest.getClassId());
+        if (teacherUpdateRequest.getSubject() != null) currentUser.setSubject(teacherUpdateRequest.getSubject());
+        if (teacherUpdateRequest.getGender() != null) currentUser.setGender(teacherUpdateRequest.getGender());
+        if (teacherUpdateRequest.getPhone() != null) currentUser.setPhone(teacherUpdateRequest.getPhone());
+        if (teacherUpdateRequest.getEmail() != null) currentUser.setEmail(teacherUpdateRequest.getEmail());
+        currentUser.setProfileImageUrl(imageUrl);
         // LoginUserDto를 Member 엔티티로 변환
-        Member memberEntity = memberMapper.toMember(loginUser);
+        Member memberEntity = memberMapper.toMember(currentUser);
         memberRepository.save(memberEntity);
         // 상세회원정보 캐시 무효화
-        evictMyDetailCache(loginUser.getId(), loginUser.getRole());
+        evictMyDetailCache(currentUser.getId(), currentUser.getRole());
     }
 
     // 회원탈퇴
     @Override
     @Transactional
-    public void deleteMember(LoginUserDto loginUser) {
+    public void deleteMember(CurrentUserDto currentUser) {
         // refreshToken 삭제
-        authService.logout(loginUser);
+        authService.logout(currentUser);
         // DB에서 회원 조회
-        Member memberEntity = memberRepository.findById(loginUser.getId())
+        Member memberEntity = memberRepository.findById(currentUser.getId())
                 .orElseThrow(() -> new ServiceException(ReturnCode.USER_NOT_FOUND));
         // ----- 연관된 데이터 삭제 -----
         memberRepository.delete(memberEntity);
         // 상세회원정보 캐시 무효화
-        evictMyDetailCache(loginUser.getId(), loginUser.getRole());
+        evictMyDetailCache(currentUser.getId(), currentUser.getRole());
     }
 
     // (학번/이름)으로 학생 검색하기 [학부모/선생님 권한]
     @Override
     @Transactional(readOnly = true)
-    public PageResponse<MemberResponse> searchMemberInfo(Pageable pageable, String keyword, LoginUserDto loginUser) {
+    public PageResponse<MemberResponse> searchMemberInfo(Pageable pageable, String keyword, CurrentUserDto currentUser) {
         // ROLE_PARENT이/ROLE_TEACHER 아닌 경우 예외 처리
-        roleValidator.validateParentOrTeacherRole(loginUser);
+        roleValidator.validateParentOrTeacherRole(currentUser);
         checkPageSize(pageable.getPageSize());
         Page<Member> members = memberRepository.findByKeywordAndRole(pageable, keyword, Member.MemberRole.ROLE_STUDENT);
         return PageResponse.of(members.map(memberMapper::toMemberResponse));
@@ -308,10 +308,10 @@ public class MemberServiceImpl implements MemberService {
     // 팔로우 요청하기 [학부모 권한]
     @Override
     @Transactional
-    public void followReq(FollowRequest followRequest, LoginUserDto loginUser){
+    public void followReq(FollowRequest followRequest, CurrentUserDto currentUser){
         // ROLE_PARENT 아닌 경우 예외 처리
-        roleValidator.validateParentRole(loginUser);
-        Member followReq = memberMapper.toMember(loginUser);
+        roleValidator.validateParentRole(currentUser);
+        Member followReq = memberMapper.toMember(currentUser);
         Member followRec = memberRepository.findByNameAndYearAndClassIdAndNumberAndBirthday(
                 followRequest.getName(),
                 followRequest.getYear(),
@@ -338,7 +338,7 @@ public class MemberServiceImpl implements MemberService {
         Notification notification = Notification.builder()
                 .receiverId(followRec.getId())
                 .objectId(memberFollowReq.getId())
-                .content(loginUser.getName() + " 학부모님이 팔로우를 요청하였습니다.")
+                .content(currentUser.getName() + " 학부모님이 팔로우를 요청하였습니다.")
                 .targetObject(Notification.TargetObject.Follow)
                 .build();
         try {
@@ -352,10 +352,10 @@ public class MemberServiceImpl implements MemberService {
     // 팔로우 요청 취소하기 [학부모 권한]
     @Override
     @Transactional
-    public void cancelFollowReq(Long memberId, LoginUserDto loginUser){
+    public void cancelFollowReq(Long memberId, CurrentUserDto currentUser){
         // ROLE_PARENT 아닌 경우 예외 처리
-        roleValidator.validateParentRole(loginUser);
-        Member followReq = memberMapper.toMember(loginUser);
+        roleValidator.validateParentRole(currentUser);
+        Member followReq = memberMapper.toMember(currentUser);
         Member followRec = memberRepository.findById(memberId)
                 .orElseThrow(() -> new ServiceException(ReturnCode.USER_NOT_FOUND));
         MemberFollowReq memberFollowReq = memberFollowReqRepository.findByFollowReqAndFollowRec(followReq, followRec)
@@ -366,12 +366,12 @@ public class MemberServiceImpl implements MemberService {
     // 팔로우 요청 수락하기 [학생 권한]
     @Override
     @Transactional
-    public void acceptFollowReq(Long memberId, LoginUserDto loginUser){
+    public void acceptFollowReq(Long memberId, CurrentUserDto currentUser){
         // ROLE_STUDENT 아닌 경우 예외 처리
-        roleValidator.validateStudentRole(loginUser);
+        roleValidator.validateStudentRole(currentUser);
         Member requester = memberRepository.findById(memberId)
                 .orElseThrow(() -> new ServiceException(ReturnCode.USER_NOT_FOUND));
-        Member receiver = memberMapper.toMember(loginUser);
+        Member receiver = memberMapper.toMember(currentUser);
         MemberFollowReq followReq = memberFollowReqRepository.findByFollowReqAndFollowRec(requester, receiver)
                 .orElseThrow(() -> new ServiceException(ReturnCode.REQUEST_NOT_FOUND));
         memberFollowReqRepository.delete(followReq);
@@ -384,7 +384,7 @@ public class MemberServiceImpl implements MemberService {
         Notification notification = Notification.builder()
                 .receiverId(memberId)
                 .objectId(memberFollow.getId())
-                .content(loginUser.getName() + " 학생이 팔로우 요청을 수락하였습니다.")
+                .content(currentUser.getName() + " 학생이 팔로우 요청을 수락하였습니다.")
                 .targetObject(Notification.TargetObject.Follow)
                 .build();
         try {
@@ -398,12 +398,12 @@ public class MemberServiceImpl implements MemberService {
     // 팔로우 요청 거절하기 [학생 권한]
     @Override
     @Transactional
-    public void refuseFollowReq(Long memberId, LoginUserDto loginUser){
+    public void refuseFollowReq(Long memberId, CurrentUserDto currentUser){
         // ROLE_STUDENT 아닌 경우 예외 처리
-        roleValidator.validateStudentRole(loginUser);
+        roleValidator.validateStudentRole(currentUser);
         Member requester = memberRepository.findById(memberId)
                 .orElseThrow(() -> new ServiceException(ReturnCode.USER_NOT_FOUND));
-        Member receiver = memberMapper.toMember(loginUser);
+        Member receiver = memberMapper.toMember(currentUser);
         MemberFollowReq memberFollowReq = memberFollowReqRepository.findByFollowReqAndFollowRec(requester, receiver)
                 .orElseThrow(() -> new ServiceException(ReturnCode.REQUEST_NOT_FOUND));
         memberFollowReqRepository.delete(memberFollowReq);
@@ -412,10 +412,10 @@ public class MemberServiceImpl implements MemberService {
     // 팔로우 취소하기 [학부모 권한]
     @Override
     @Transactional
-    public void cancelFollow(Long memberId, LoginUserDto loginUser){
+    public void cancelFollow(Long memberId, CurrentUserDto currentUser){
         // ROLE_PARENT 아닌 경우 예외 처리
-        roleValidator.validateParentRole(loginUser);
-        Member follow = memberMapper.toMember(loginUser);
+        roleValidator.validateParentRole(currentUser);
+        Member follow = memberMapper.toMember(currentUser);
         Member followed = memberRepository.findById(memberId)
                 .orElseThrow(() -> new ServiceException(ReturnCode.USER_NOT_FOUND));
         MemberFollow memberFollow = memberFollowRepository.findByFollowAndFollowed(follow, followed)

@@ -2,7 +2,7 @@ package com.iEdu.domain.studentRecord.specialty.serviceImpl;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.iEdu.domain.account.auth.loginUser.LoginUserDto;
+import com.iEdu.domain.account.auth.currentUser.CurrentUserDto;
 import com.iEdu.domain.account.member.entity.Member;
 import com.iEdu.domain.account.member.repository.MemberRepository;
 import com.iEdu.domain.account.member.service.MemberService;
@@ -21,7 +21,6 @@ import com.iEdu.global.exception.ServiceException;
 import com.iEdu.global.redis.helper.RedisCacheEvictHelper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.*;
 import org.springframework.kafka.core.KafkaTemplate;
@@ -45,10 +44,10 @@ public class SpecialtyServiceImpl implements SpecialtyService {
     // 학생의 모든 특기사항 조회 [학부모/선생님 권한]
     @Override
     @Transactional(readOnly = true)
-    public PageResponse<SpecialtyResponse> getAllSpecialty(Long studentId, Pageable pageable, LoginUserDto loginUser) {
+    public PageResponse<SpecialtyResponse> getAllSpecialty(Long studentId, Pageable pageable, CurrentUserDto currentUser) {
         checkPageSize(pageable.getPageSize());
         // ROLE_PARENT/ROLE_TEACHER 아닌 경우 예외 처리
-        roleValidator.validateAccessToStudent(loginUser, studentId);
+        roleValidator.validateAccessToStudent(currentUser, studentId);
         Pageable sortedPageable = PageRequest.of(
                 pageable.getPageNumber(),
                 pageable.getPageSize(),
@@ -63,11 +62,11 @@ public class SpecialtyServiceImpl implements SpecialtyService {
     @Transactional(readOnly = true)
     @Cacheable(
             value = "specialty",
-            key = "'student:' + #studentId + ':' + #year + ':' + #semester + ':' + #loginUser.role.name() + ':' + #pageable.pageNumber + ':' + #pageable.pageSize"
+            key = "'student:' + #studentId + ':' + #year + ':' + #semester + ':' + #currentUser.role.name() + ':' + #pageable.pageNumber + ':' + #pageable.pageSize"
     )
-    public PageResponse<SpecialtyResponse> getFilterSpecialty(Long studentId, Integer year, Semester semester, Pageable pageable, LoginUserDto loginUser) {
+    public PageResponse<SpecialtyResponse> getFilterSpecialty(Long studentId, Integer year, Semester semester, Pageable pageable, CurrentUserDto currentUser) {
         checkPageSize(pageable.getPageSize());
-        roleValidator.validateAccessToStudent(loginUser, studentId);
+        roleValidator.validateAccessToStudent(currentUser, studentId);
         Pageable sortedPageable = PageRequest.of(
                 pageable.getPageNumber(),
                 pageable.getPageSize(),
@@ -82,14 +81,14 @@ public class SpecialtyServiceImpl implements SpecialtyService {
     // 학생 특기사항 생성 [선생님 권한]
     @Override
     @Transactional
-    public void createSpecialty(Long studentId, SpecialtyRequest specialtyRequest, LoginUserDto loginUser) {
+    public void createSpecialty(Long studentId, SpecialtyRequest specialtyRequest, CurrentUserDto currentUser) {
         // ROLE_TEACHER 아닌 경우 예외 처리
-        roleValidator.validateTeacherRole(loginUser);
+        roleValidator.validateTeacherRole(currentUser);
         Member student = memberRepository.findById(studentId)
                 .orElseThrow(() -> new ServiceException(ReturnCode.USER_NOT_FOUND));
         Specialty specialty = Specialty.builder()
                 .member(student)
-                .teacherName(loginUser.getName())
+                .teacherName(currentUser.getName())
                 .year(specialtyRequest.getYear())
                 .semester(specialtyRequest.getSemester())
                 .date(specialtyRequest.getDate())
@@ -104,9 +103,9 @@ public class SpecialtyServiceImpl implements SpecialtyService {
     // 학생 특기사항 수정 [선생님 권한]
     @Override
     @Transactional
-    public void updateSpecialty(Long specialtyId, SpecialtyRequest specialtyRequest, LoginUserDto loginUser) {
+    public void updateSpecialty(Long specialtyId, SpecialtyRequest specialtyRequest, CurrentUserDto currentUser) {
         // ROLE_TEACHER 아닌 경우 예외 처리
-        roleValidator.validateTeacherRole(loginUser);
+        roleValidator.validateTeacherRole(currentUser);
         Specialty specialty = specialtyRepository.findById(specialtyId)
                 .orElseThrow(() -> new ServiceException(ReturnCode.SPECIALTY_NOT_FOUND));
         if (specialtyRequest.getYear() != null) specialty.setYear(specialtyRequest.getYear());
@@ -123,9 +122,9 @@ public class SpecialtyServiceImpl implements SpecialtyService {
     // 학생 특기사항 삭제 [선생님 권한]
     @Override
     @Transactional
-    public void deleteSpecialty(Long specialtyId, LoginUserDto loginUser) {
+    public void deleteSpecialty(Long specialtyId, CurrentUserDto currentUser) {
         // ROLE_TEACHER 아닌 경우 예외 처리
-        roleValidator.validateTeacherRole(loginUser);
+        roleValidator.validateTeacherRole(currentUser);
         Specialty specialty = specialtyRepository.findById(specialtyId)
                 .orElseThrow(() -> new ServiceException(ReturnCode.SPECIALTY_NOT_FOUND));
         specialtyRepository.delete(specialty);
