@@ -1,6 +1,6 @@
 package com.iEdu.domain.studentRecord.report.serviceImpl;
 
-import com.iEdu.domain.account.auth.loginUser.LoginUserDto;
+import com.iEdu.domain.account.auth.currentUser.CurrentUserDto;
 import com.iEdu.domain.account.member.entity.Member;
 import com.iEdu.domain.account.member.repository.MemberRepository;
 import com.iEdu.domain.studentRecord.report.dto.req.ReportRequest;
@@ -31,8 +31,8 @@ public class ReportServiceImpl implements ReportService {
     // 학생 보고서 생성 및 다운로드 [선생님 권한]
     @Override
     @Transactional
-    public ReportResponse generateReport(ReportRequest form, LoginUserDto loginUser) {
-        roleValidator.validateTeacherRole(loginUser);
+    public ReportResponse generateReport(ReportRequest form, CurrentUserDto currentUser) {
+        roleValidator.validateTeacherRole(currentUser);
         List<Member> students = memberRepository.findAllById(form.getStudentIdList());
         Map<String, String> reportUrls = new LinkedHashMap<>(); // 유지 순서 보장
 

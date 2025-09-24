@@ -1,7 +1,7 @@
 package com.iEdu.domain.notification.controller;
 
-import com.iEdu.domain.account.auth.loginUser.LoginUser;
-import com.iEdu.domain.account.auth.loginUser.LoginUserDto;
+import com.iEdu.domain.account.auth.currentUser.CurrentUser;
+import com.iEdu.domain.account.auth.currentUser.CurrentUserDto;
 import com.iEdu.domain.notification.dto.req.NotificationRequest;
 import com.iEdu.domain.notification.dto.res.NotificationResponse;
 import com.iEdu.domain.notification.entity.NotificationPage;
@@ -27,17 +27,17 @@ public class ApiV1NotificationController {
     // 알림 목록 조회 [학부모/학생 권한]
     @Operation(summary = "알림 목록 조회 [학부모/학생 권한]")
     @GetMapping
-    public ApiResponse<List<NotificationResponse>> getNotifications(@ModelAttribute NotificationPage request, @LoginUser LoginUserDto loginUser) {
+    public ApiResponse<List<NotificationResponse>> getNotifications(@ModelAttribute NotificationPage request, @CurrentUser CurrentUserDto currentUser) {
         Pageable pageable = PageRequest.of(request.getPage(), request.getSize());
-        return ApiResponse.success(notificationService.getNotifications(pageable, loginUser));
+        return ApiResponse.success(notificationService.getNotifications(pageable, currentUser));
     }
 
     // 알림 읽음 처리 [학부모/학생 권한]
     @Operation(summary = "알림 읽음 처리 [학부모/학생 권한]")
     @PatchMapping
     public ApiResponse<Void> markAsRead(@RequestBody @Valid NotificationRequest notificationRequest,
-                                          @LoginUser LoginUserDto loginUser) {
-        notificationService.markAsRead(notificationRequest, loginUser);
+                                          @CurrentUser CurrentUserDto currentUser) {
+        notificationService.markAsRead(notificationRequest, currentUser);
         return ApiResponse.success();
     }
 }

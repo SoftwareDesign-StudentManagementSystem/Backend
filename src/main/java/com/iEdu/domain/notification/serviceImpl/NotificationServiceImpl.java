@@ -1,6 +1,6 @@
 package com.iEdu.domain.notification.serviceImpl;
 
-import com.iEdu.domain.account.auth.loginUser.LoginUserDto;
+import com.iEdu.domain.account.auth.currentUser.CurrentUserDto;
 import com.iEdu.domain.account.member.entity.MemberPage;
 import com.iEdu.domain.notification.dto.req.NotificationRequest;
 import com.iEdu.domain.notification.dto.res.NotificationResponse;
@@ -37,25 +37,25 @@ public class NotificationServiceImpl implements NotificationService {
     // 알림 목록 조회 [학부모/학생 권한]
     @Override
     @Transactional
-    public PageResponse<NotificationResponse> getNotifications(Pageable pageable, LoginUserDto loginUser) {
+    public PageResponse<NotificationResponse> getNotifications(Pageable pageable, CurrentUserDto currentUser) {
         checkPageSize(pageable.getPageSize());
         // ROLE_STUDENT, ROLE_PARENT가 아닌 경우 예외 처리
-        roleValidator.validateStudentOrParentRole(loginUser);
+        roleValidator.validateStudentOrParentRole(currentUser);
         // DB에서 조회
         Page<Notification> notificationPage = notificationRepository
-                .findByReceiverIdOrderByCreatedAtDesc(loginUser.getId(), pageable);
+                .findByReceiverIdOrderByCreatedAtDesc(currentUser.getId(), pageable);
         return PageResponse.of(notificationPage.map(this::convertToNotificationDto));
     }
 
     // 알림 읽음 처리 [학부모/학생 권한]
     @Override
     @Transactional
-    public void markAsRead(NotificationRequest notificationRequest, LoginUserDto loginUser) {
+    public void markAsRead(NotificationRequest notificationRequest, CurrentUserDto currentUser) {
         // ROLE_STUDENT, ROLE_PARENT가 아닌 경우 예외 처리
-        roleValidator.validateStudentOrParentRole(loginUser);
+        roleValidator.validateStudentOrParentRole(currentUser);
         // 본인 알림인지 확인
         List<Long> ids = notificationRequest.getNotificationIdList();
-        List<Notification> notifications = notificationRepository.findAllByIdInAndReceiverId(ids, loginUser.getId());
+        List<Notification> notifications = notificationRepository.findAllByIdInAndReceiverId(ids, currentUser.getId());
         if (notifications.size() != ids.size()) {
             throw new ServiceException(ReturnCode.NOTIFICATION_NOT_FOUND);
         }

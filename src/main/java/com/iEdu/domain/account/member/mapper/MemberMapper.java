@@ -1,6 +1,6 @@
 package com.iEdu.domain.account.member.mapper;
 
-import com.iEdu.domain.account.auth.loginUser.LoginUserDto;
+import com.iEdu.domain.account.auth.currentUser.CurrentUserDto;
 import com.iEdu.domain.account.member.dto.res.DetailMemberResponse;
 import com.iEdu.domain.account.member.dto.res.MemberResponse;
 import com.iEdu.domain.account.member.dto.res.SimpleMemberDto;
@@ -16,7 +16,7 @@ import java.util.stream.Collectors;
 public interface MemberMapper {
     // ---------- Member / LoginUserDto -> MemberResponse ----------
     MemberResponse toMemberResponse(Member source);
-    MemberResponse toMemberResponse(LoginUserDto source);
+    MemberResponse toMemberResponse(CurrentUserDto source);
 
     // ---------- Member -> DetailMemberResponse ----------
     @Mappings({
@@ -35,7 +35,7 @@ public interface MemberMapper {
             @Mapping(target = "followReqList", ignore = true),
             @Mapping(target = "followRecList", ignore = true)
     })
-    Member toMember(LoginUserDto source);
+    Member toMember(CurrentUserDto source);
 
     // 관계 필드나 콜렉션은 무시 (지연 로딩 유발/불필요한 merge 방지)
     @Mappings({
@@ -44,7 +44,7 @@ public interface MemberMapper {
             @Mapping(target = "followReqList", ignore = true),
             @Mapping(target = "followRecList", ignore = true)
     })
-    LoginUserDto toLoginUserDto(Member source);
+    CurrentUserDto toLoginUserDto(Member source);
 
     // ---------- List 단위 매핑(팔로우/요청) ----------
     @Named("toFollowingMembers")

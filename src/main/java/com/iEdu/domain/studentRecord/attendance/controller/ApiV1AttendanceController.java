@@ -1,7 +1,7 @@
 package com.iEdu.domain.studentRecord.attendance.controller;
 
-import com.iEdu.domain.account.auth.loginUser.LoginUser;
-import com.iEdu.domain.account.auth.loginUser.LoginUserDto;
+import com.iEdu.domain.account.auth.currentUser.CurrentUser;
+import com.iEdu.domain.account.auth.currentUser.CurrentUserDto;
 import com.iEdu.domain.studentRecord.attendance.dto.req.AttendanceRequest;
 import com.iEdu.domain.studentRecord.attendance.dto.req.AttendanceUpdateRequest;
 import com.iEdu.domain.studentRecord.attendance.dto.res.AttendanceResponse;
@@ -29,9 +29,9 @@ public class ApiV1AttendanceController {
     // 본인의 모든 출결 조회 [학생 권한]
     @Operation(summary = "본인의 모든 출결 조회 [학생 권한]")
     @GetMapping
-    public ApiResponse<List<AttendanceResponse>> getMyAllAttendance(@ModelAttribute AttendancePage request, @LoginUser LoginUserDto loginUser){
+    public ApiResponse<List<AttendanceResponse>> getMyAllAttendance(@ModelAttribute AttendancePage request, @CurrentUser CurrentUserDto currentUser){
         Pageable pageable = PageRequest.of(request.getPage(), request.getSize());
-        return ApiResponse.success(attendanceService.getMyAllAttendance(pageable, loginUser));
+        return ApiResponse.success(attendanceService.getMyAllAttendance(pageable, currentUser));
     }
 
     // 학생의 모든 출결 조회 [학부모/선생님 권한]
@@ -39,9 +39,9 @@ public class ApiV1AttendanceController {
     @GetMapping("/{studentId}")
     public ApiResponse<List<AttendanceResponse>> getAllAttendance(@ModelAttribute AttendancePage request,
                                                                   @PathVariable("studentId") Long studentId,
-                                                                  @LoginUser LoginUserDto loginUser){
+                                                                  @CurrentUser CurrentUserDto currentUser){
         Pageable pageable = PageRequest.of(request.getPage(), request.getSize());
-        return ApiResponse.success(attendanceService.getAllAttendance(studentId, pageable, loginUser));
+        return ApiResponse.success(attendanceService.getAllAttendance(studentId, pageable, currentUser));
     }
 
     // (학년/학기/월)로 본인 출결 조회 [학생 권한]
@@ -51,9 +51,9 @@ public class ApiV1AttendanceController {
                                                                        @RequestParam(value = "year") Integer year,
                                                                        @RequestParam(value = "semester") Semester semester,
                                                                        @RequestParam(value = "month", required = false) Integer month,
-                                                                       @LoginUser LoginUserDto loginUser){
+                                                                       @CurrentUser CurrentUserDto currentUser){
         Pageable pageable = PageRequest.of(request.getPage(), request.getSize());
-        return ApiResponse.success(attendanceService.getMyFilterAttendance(year, semester, month, pageable, loginUser).getContent());
+        return ApiResponse.success(attendanceService.getMyFilterAttendance(year, semester, month, pageable, currentUser).getContent());
     }
 
     // (학년/학기/월)로 학생 출결 조회 [학부모/선생님 권한]
@@ -64,9 +64,9 @@ public class ApiV1AttendanceController {
                                                                      @RequestParam(value = "year") Integer year,
                                                                      @RequestParam(value = "semester") Semester semester,
                                                                      @RequestParam(value = "month", required = false) Integer month,
-                                                                     @LoginUser LoginUserDto loginUser){
+                                                                     @CurrentUser CurrentUserDto currentUser){
         Pageable pageable = PageRequest.of(request.getPage(), request.getSize());
-        return ApiResponse.success(attendanceService.getFilterAttendance(studentId, year, semester, month, pageable, loginUser).getContent());
+        return ApiResponse.success(attendanceService.getFilterAttendance(studentId, year, semester, month, pageable, currentUser).getContent());
     }
 
     // 학생 출결 생성 [선생님 권한]
@@ -74,8 +74,8 @@ public class ApiV1AttendanceController {
     @PostMapping("/{studentId}")
     public ApiResponse<Void> createAttendance(@PathVariable("studentId") Long studentId,
                                                 @RequestBody @Valid AttendanceRequest attendanceRequest,
-                                                @LoginUser LoginUserDto loginUser){
-        attendanceService.createAttendance(studentId, attendanceRequest, loginUser);
+                                                @CurrentUser CurrentUserDto currentUser){
+        attendanceService.createAttendance(studentId, attendanceRequest, currentUser);
         return ApiResponse.success();
     }
 
@@ -84,16 +84,16 @@ public class ApiV1AttendanceController {
     @PatchMapping("/{attendanceId}")
     public ApiResponse<Void> updateAttendance(@PathVariable("attendanceId") Long attendanceId,
                                                 @RequestBody @Valid AttendanceUpdateRequest attendanceUpdateRequest,
-                                                @LoginUser LoginUserDto loginUser){
-        attendanceService.updateAttendance(attendanceId, attendanceUpdateRequest, loginUser);
+                                                @CurrentUser CurrentUserDto currentUser){
+        attendanceService.updateAttendance(attendanceId, attendanceUpdateRequest, currentUser);
         return ApiResponse.success();
     }
 
     // 학생 출결 삭제 [선생님 권힌]
     @Operation(summary = "학생 출결 삭제 [선생님 권힌]")
     @DeleteMapping("/{attendanceId}")
-    public ApiResponse<Void> deleteAttendance(@PathVariable("attendanceId") Long attendanceId, @LoginUser LoginUserDto loginUser){
-        attendanceService.deleteAttendance(attendanceId, loginUser);
+    public ApiResponse<Void> deleteAttendance(@PathVariable("attendanceId") Long attendanceId, @CurrentUser CurrentUserDto currentUser){
+        attendanceService.deleteAttendance(attendanceId, currentUser);
         return ApiResponse.success();
     }
 }

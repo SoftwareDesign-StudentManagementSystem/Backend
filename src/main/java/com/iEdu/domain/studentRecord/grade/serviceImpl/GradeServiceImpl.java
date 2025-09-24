@@ -2,7 +2,7 @@ package com.iEdu.domain.studentRecord.grade.serviceImpl;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.iEdu.domain.account.auth.loginUser.LoginUserDto;
+import com.iEdu.domain.account.auth.currentUser.CurrentUserDto;
 import com.iEdu.domain.account.member.entity.Member;
 import com.iEdu.domain.account.member.repository.MemberRepository;
 import com.iEdu.domain.account.member.service.MemberService;
@@ -52,7 +52,7 @@ public class GradeServiceImpl implements GradeService {
     // 본인의 모든 성적 조회 [학생 권한]
     @Override
     @Transactional(readOnly = true)
-    public PageResponse<GradeResponse> getMyAllGrade(Pageable pageable, LoginUserDto loginUser){
+    public PageResponse<GradeResponse> getMyAllGrade(Pageable pageable, CurrentUserDto currentUser){
         checkPageSize(pageable.getPageSize());
         // 정렬 조건 추가: year(내림차순), semester(SECOND_SEMESTER 우선)
         Pageable sortedPageable = PageRequest.of(
@@ -61,12 +61,12 @@ public class GradeServiceImpl implements GradeService {
                 Sort.by(Sort.Order.desc("year"), Sort.Order.desc("semester"))
         );
         // ROLE_STUDENT 아닌 경우 예외 처리
-        roleValidator.validateStudentRole(loginUser);
-        Page<Grade> gradePage = gradeRepository.findAllByMemberId(loginUser.getId(), sortedPageable);
+        roleValidator.validateStudentRole(currentUser);
+        Page<Grade> gradePage = gradeRepository.findAllByMemberId(currentUser.getId(), sortedPageable);
         // 각 성적의 year/semester 조합별로 성적 리스트 미리 조회
         Map<String, List<Grade>> gradeMap = preloadAllGrades(gradePage.getContent());
         return PageResponse.of(gradePage.map(grade ->
-                convertToGradeDto(grade, loginUser.getAccountId(),
+                convertToGradeDto(grade, currentUser.getAccountId(),
                         gradeMap.get(grade.getYear() + ":" + grade.getSemester()))
         ));
     }
@@ -74,7 +74,7 @@ public class GradeServiceImpl implements GradeService {
     // 학생의 모든 성적 조회 [학부모/선생님 권한]
     @Override
     @Transactional(readOnly = true)
-    public PageResponse<GradeResponse> getAllGrade(Long studentId, Pageable pageable, LoginUserDto loginUser){
+    public PageResponse<GradeResponse> getAllGrade(Long studentId, Pageable pageable, CurrentUserDto currentUser){
         checkPageSize(pageable.getPageSize());
         // 정렬 조건 추가: year(내림차순), semester(SECOND_SEMESTER 우선)
         Pageable sortedPageable = PageRequest.of(
@@ -84,7 +84,7 @@ public class GradeServiceImpl implements GradeService {
         );
         Member student = memberRepository.getById(studentId);
         // ROLE_PARENT/ROLE_TEACHER 아닌 경우 예외 처리
-        roleValidator.validateAccessToStudent(loginUser, studentId);
+        roleValidator.validateAccessToStudent(currentUser, studentId);
         Page<Grade> gradePage = gradeRepository.findAllByMemberId(studentId, sortedPageable);
         // 각 성적의 year/semester 조합별로 성적 리스트 미리 조회
         Map<String, List<Grade>> gradeMap = preloadAllGrades(gradePage.getContent());
@@ -97,22 +97,22 @@ public class GradeServiceImpl implements GradeService {
     // (학년/학기)로 본인 성적 조회 [학생 권한]
     @Override
     @Transactional(readOnly = true)
-    @Cacheable(value = "grade", key = "#loginUser.id + ':' + #year + ':' + #semester")
-    public GradeResponse getMyFilterGrade(Integer year, Semester semester, LoginUserDto loginUser){
-        roleValidator.validateStudentRole(loginUser);
+    @Cacheable(value = "grade", key = "#currentUser.id + ':' + #year + ':' + #semester")
+    public GradeResponse getMyFilterGrade(Integer year, Semester semester, CurrentUserDto currentUser){
+        roleValidator.validateStudentRole(currentUser);
         Grade grade = gradeRepository
-                .findByMemberIdAndYearAndSemester(loginUser.getId(), year, semester)
+                .findByMemberIdAndYearAndSemester(currentUser.getId(), year, semester)
                 .orElseThrow(() -> new ServiceException(ReturnCode.GRADE_NOT_FOUND));
         List<Grade> allGrades = gradeRepository.findAllByYearAndSemesterWithMember(year, semester);
-        return convertToGradeDto(grade, loginUser.getAccountId(), allGrades);
+        return convertToGradeDto(grade, currentUser.getAccountId(), allGrades);
     }
 
     // (학년/학기)로 학생 성적 조회 [학부모/선생님 권한]
     @Override
     @Transactional(readOnly = true)
     @Cacheable(value = "grade", key = "#studentId + ':' + #year + ':' + #semester")
-    public GradeResponse getFilterGrade(Long studentId, Integer year, Semester semester, LoginUserDto loginUser){
-        roleValidator.validateAccessToStudent(loginUser, studentId);
+    public GradeResponse getFilterGrade(Long studentId, Integer year, Semester semester, CurrentUserDto currentUser){
+        roleValidator.validateAccessToStudent(currentUser, studentId);
         Member student = memberRepository.getById(studentId);
         Grade grade = gradeRepository
                 .findByMemberIdAndYearAndSemester(studentId, year, semester)
@@ -124,9 +124,9 @@ public class GradeServiceImpl implements GradeService {
     // (학년/반/번호/학기)로 학생들 성적 조회 [선생님 권한]
     @Override
     @Transactional(readOnly = true)
-    public List<GradeResponse> getStudentsGrade(Integer year, Integer classId, Integer number, Semester semester, LoginUserDto loginUser){
+    public List<GradeResponse> getStudentsGrade(Integer year, Integer classId, Integer number, Semester semester, CurrentUserDto currentUser){
         // ROLE_TEACHER 아닌 경우 예외 처리
-        roleValidator.validateTeacherRole(loginUser);
+        roleValidator.validateTeacherRole(currentUser);
         List<Grade> grades = gradeQueryRepository.findAllByStudentInfoAndSemesterAndYearWithMember(
                 year, classId, number, semester
         );
@@ -142,13 +142,13 @@ public class GradeServiceImpl implements GradeService {
     // 학생 성적 생성 [선생님 권한]
     @Override
     @Transactional
-    public void createGrade(Long studentId, GradeRequest gradeRequest, LoginUserDto loginUser) {
+    public void createGrade(Long studentId, GradeRequest gradeRequest, CurrentUserDto currentUser) {
         // ROLE_TEACHER 아닌 경우 예외 처리
-        roleValidator.validateTeacherRole(loginUser);
+        roleValidator.validateTeacherRole(currentUser);
         Member student = memberRepository.findById(studentId)
                 .orElseThrow(() -> new ServiceException(ReturnCode.USER_NOT_FOUND));
         // 선생님 담당 과목 확인
-        Member.Subject subject = loginUser.getSubject();
+        Member.Subject subject = currentUser.getSubject();
         if (subject == null) throw new ServiceException(ReturnCode.INVALID_SUBJECT);
         Integer year = gradeRequest.getYear();
         Semester semester = gradeRequest.getSemester();
@@ -172,13 +172,13 @@ public class GradeServiceImpl implements GradeService {
     // 학생 성적 수정 [선생님 권한]
     @Override
     @Transactional
-    public void updateGrade(Long gradeId, GradeUpdateRequest gradeUpdateRequest, LoginUserDto loginUser){
+    public void updateGrade(Long gradeId, GradeUpdateRequest gradeUpdateRequest, CurrentUserDto currentUser){
         // ROLE_TEACHER 아닌 경우 예외 처리
-        roleValidator.validateTeacherRole(loginUser);
+        roleValidator.validateTeacherRole(currentUser);
         Grade grade = gradeRepository.findById(gradeId)
                 .orElseThrow(() -> new ServiceException(ReturnCode.GRADE_NOT_FOUND));
         // 선생님 담당 과목 확인
-        Member.Subject subject = loginUser.getSubject();
+        Member.Subject subject = currentUser.getSubject();
         if (subject == null) throw new ServiceException(ReturnCode.INVALID_SUBJECT);
 
         // 과목별 점수 입력
@@ -192,13 +192,13 @@ public class GradeServiceImpl implements GradeService {
     // 학생 성적 삭제 [선생님 권한]
     @Override
     @Transactional
-    public void deleteGrade(Long gradeId, LoginUserDto loginUser){
+    public void deleteGrade(Long gradeId, CurrentUserDto currentUser){
         // ROLE_TEACHER 아닌 경우 예외 처리
-        roleValidator.validateTeacherRole(loginUser);
+        roleValidator.validateTeacherRole(currentUser);
         Grade grade = gradeRepository.findById(gradeId)
                 .orElseThrow(() -> new ServiceException(ReturnCode.GRADE_NOT_FOUND));
         // 선생님 담당 과목 확인
-        Member.Subject subject = loginUser.getSubject();
+        Member.Subject subject = currentUser.getSubject();
         if (subject == null) throw new ServiceException(ReturnCode.INVALID_SUBJECT);
 
         // 담당 과목 점수만 null로 설정 (실제 "삭제" 대신)

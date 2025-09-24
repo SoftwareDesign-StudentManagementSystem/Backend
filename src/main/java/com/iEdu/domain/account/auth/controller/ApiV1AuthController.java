@@ -2,8 +2,8 @@ package com.iEdu.domain.account.auth.controller;
 
 import com.iEdu.domain.account.auth.dto.req.LoginRequest;
 import com.iEdu.domain.account.auth.dto.res.LoginResponse;
-import com.iEdu.domain.account.auth.loginUser.LoginUser;
-import com.iEdu.domain.account.auth.loginUser.LoginUserDto;
+import com.iEdu.domain.account.auth.currentUser.CurrentUser;
+import com.iEdu.domain.account.auth.currentUser.CurrentUserDto;
 import com.iEdu.domain.account.auth.service.AuthService;
 import com.iEdu.global.common.response.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -29,15 +29,15 @@ public class ApiV1AuthController {
     // 로그아웃
     @Operation(summary = "로그아웃", description = "현재 로그인된 사용자가 로그아웃합니다.")
     @PostMapping("/logout")
-    public ApiResponse<Void> logout(@LoginUser LoginUserDto loginUser) {
-        authService.logout(loginUser);
+    public ApiResponse<Void> logout(@CurrentUser CurrentUserDto currentUser) {
+        authService.logout(currentUser);
         return ApiResponse.success();
     }
 
     // accessToken 재발급
     @Operation(summary = "accessToken 재발급", description = "refresh 토큰을 사용하여 access 토큰을 재발급합니다.")
     @GetMapping("/refresh-token")
-    public ApiResponse<LoginResponse> refreshToken(@RequestHeader("Authorization") String refreshToken, @LoginUser LoginUserDto loginUser) {
-        return ApiResponse.success(authService.refreshToken(refreshToken, loginUser));
+    public ApiResponse<LoginResponse> refreshToken(@RequestHeader("Authorization") String refreshToken, @CurrentUser CurrentUserDto currentUser) {
+        return ApiResponse.success(authService.refreshToken(refreshToken, currentUser));
     }
 }
