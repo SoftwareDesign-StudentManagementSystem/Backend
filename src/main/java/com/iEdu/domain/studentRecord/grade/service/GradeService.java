@@ -25,7 +25,7 @@ public interface GradeService {
     GradeResponse getFilterGrade(Long studentId, Integer year, Semester semester, CurrentUserDto currentUser);
 
     // (학년/반/번호/학기)로 학생들 성적 조회 [선생님 권한]
-    List<GradeResponse> getStudentsGrade(Integer year, Integer classId, Integer number, Semester semester, CurrentUserDto currentUser);
+    PageResponse<GradeResponse> getStudentsGrade(Integer year, Integer classId, Integer number, Semester semester, CurrentUserDto currentUser);
 
     // 학생 성적 생성 [선생님 권한]
     void createGrade(Long studentId, GradeRequest gradeRequest, CurrentUserDto currentUser);
