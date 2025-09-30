@@ -124,7 +124,7 @@ public class GradeServiceImpl implements GradeService {
     // (학년/반/번호/학기)로 학생들 성적 조회 [선생님 권한]
     @Override
     @Transactional(readOnly = true)
-    public List<GradeResponse> getStudentsGrade(Integer year, Integer classId, Integer number, Semester semester, CurrentUserDto currentUser){
+    public PageResponse<GradeResponse> getStudentsGrade(Integer year, Integer classId, Integer number, Semester semester, CurrentUserDto currentUser){
         // ROLE_TEACHER 아닌 경우 예외 처리
         roleValidator.validateTeacherRole(currentUser);
         List<Grade> grades = gradeQueryRepository.findAllByStudentInfoAndSemesterAndYearWithMember(
@@ -133,10 +133,10 @@ public class GradeServiceImpl implements GradeService {
         // 학년/학기 전체 성적 미리 조회
         List<Grade> allGrades = gradeRepository.findAllByYearAndSemesterWithMember(year, semester);
         // 학급 전체 성적 데이터 기준으로 랭크 계산
-        return grades.stream()
+        return PageResponse.of(grades.stream()
                 .sorted(Comparator.comparing(g -> g.getMember().getId()))
                 .map(grade -> convertToGradeDto(grade, grade.getMember().getAccountId(), allGrades))
-                .toList();
+                .toList());
     }
 
     // 학생 성적 생성 [선생님 권한]
