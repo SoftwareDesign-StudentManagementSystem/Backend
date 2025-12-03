@@ -1,7 +1,7 @@
 package com.iEdu.domain.account.member.entity;
 
-import com.iEdu.global.common.utils.AesLocalDateAttributeConverter;
-import com.iEdu.global.common.utils.AesStringAttributeConverter;
+import com.iEdu.global.common.utils.Aes.AesLocalDateAttributeConverter;
+import com.iEdu.global.common.utils.Aes.AesStringAttributeConverter;
 import com.iEdu.global.jpa.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
@@ -26,25 +26,21 @@ public class Member extends BaseEntity {
     @Column(length = 1000, nullable = false)
     private String password;
 
-    @Column(length = 255, nullable = false)
+    @Column(nullable = false)
     @Convert(converter = AesStringAttributeConverter.class)
     private String name;
 
-    @Column(length = 255)
     @Convert(converter = AesStringAttributeConverter.class)
     private String phone;
 
-    @Column(length = 255)
     @Convert(converter = AesStringAttributeConverter.class)
     private String email;
 
-    @Column(length = 255)
     @Convert(converter = AesLocalDateAttributeConverter.class)
     private LocalDate birthday;
 
-    @Builder.Default
-    @Column(length = 300)
-    private String profileImageUrl = "";  // 프로필 사진 경로
+    @Convert(converter = AesStringAttributeConverter.class)
+    private String profileImageUrl;  // 프로필 사진 경로
 
     @Builder.Default
     private String schoolName = "송도고등학교";

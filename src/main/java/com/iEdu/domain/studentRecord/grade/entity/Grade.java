@@ -2,7 +2,7 @@ package com.iEdu.domain.studentRecord.grade.entity;
 
 import com.iEdu.domain.account.member.entity.Member;
 import com.iEdu.global.common.enums.Semester;
-import com.iEdu.global.common.utils.AesUtil;
+import com.iEdu.global.common.utils.Aes.AesUtil;
 import com.iEdu.global.jpa.BaseEntity;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
