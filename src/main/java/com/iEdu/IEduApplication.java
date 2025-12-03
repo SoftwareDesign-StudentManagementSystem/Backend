@@ -21,7 +21,10 @@ public class IEduApplication {
 		props.put("POSTGRES_HOST", dotenv.get("POSTGRES_HOST"));
 		props.put("POSTGRES_USERNAME", dotenv.get("POSTGRES_USERNAME"));
 		props.put("POSTGRES_PASSWORD", dotenv.get("POSTGRES_PASSWORD"));
-
+        String aesKey = dotenv.get("AES_KEY");
+        if (aesKey != null && !aesKey.isBlank()) {
+            System.setProperty("aes.key", aesKey);
+        }
 		SpringApplication app = new SpringApplication(IEduApplication.class);
 		app.setDefaultProperties(props);
 		app.run(args);

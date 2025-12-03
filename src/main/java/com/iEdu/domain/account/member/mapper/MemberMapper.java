@@ -20,8 +20,8 @@ public interface MemberMapper {
 
     // ---------- Member -> DetailMemberResponse ----------
     @Mappings({
-            @Mapping(target = "followList", source = "followList", qualifiedByName = "toFollowingMembers"),
-            @Mapping(target = "followedList",   source = "followedList", qualifiedByName = "toFollowerMembers"),
+            @Mapping(target = "childrenList", source = "followList", qualifiedByName = "toFollowingMembers"),
+            @Mapping(target = "parentList",   source = "followedList", qualifiedByName = "toFollowerMembers"),
             @Mapping(target = "followReqList", source = "followReqList", qualifiedByName = "toSimpleMembersFromFollowReqs"),
             @Mapping(target = "followRecList", source = "followRecList", qualifiedByName = "toSimpleMembersFromFollowRecs")
     })

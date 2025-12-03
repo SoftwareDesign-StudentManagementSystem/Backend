@@ -1,4 +1,4 @@
-package com.iEdu.global.common.utils;
+package com.iEdu.global.common.utils.Aes;
 
 import jakarta.persistence.AttributeConverter;
 import jakarta.persistence.Converter;

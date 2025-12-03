@@ -1,8 +1,7 @@
-package com.iEdu.global.common.utils;
+package com.iEdu.global.common.utils.Aes;
 
 import javax.crypto.Cipher;
 import javax.crypto.spec.GCMParameterSpec;
-import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
@@ -13,9 +12,38 @@ public class AesUtil {
     private static final String GCM_ALGORITHM = "AES/GCM/NoPadding";
     private static final int GCM_TAG_LENGTH = 128; // bits
     private static final int IV_LENGTH = 12;       // 12 bytes 권장 (96비트)
+    private static final byte[] KEY;               // 키는 반드시 16, 24, 32바이트 중 하나
 
-    // 키는 반드시 16, 24, 32바이트 중 하나
-    private static final byte[] KEY = "MySuperSecretKey".getBytes(StandardCharsets.UTF_8);
+    static {
+        // 1순위: 환경변수 AES_KEY (예: openssl rand -base64 32 결과)
+        String config = System.getenv("AES_KEY");
+        // 2순위: JVM 시스템 프로퍼티 (-Daes.key=...) 도 허용
+        if (config == null || config.isBlank()) {
+            config = System.getProperty("aes.key");
+        }
+        if (config == null || config.isBlank()) {
+            throw new IllegalStateException(
+                    "AES 키가 설정되지 않았습니다. 환경변수 AES_KEY 또는 시스템 프로퍼티 aes.key 를 설정하세요."
+            );
+        }
+        byte[] keyBytes;
+        try {
+            // 보통 Base64로 관리하니까 우선 Base64 디코딩 시도
+            keyBytes = Base64.getDecoder().decode(config);
+        } catch (IllegalArgumentException e) {
+            // Base64가 아니면 그냥 문자열 바이트 그대로 사용 (백업 플랜)
+            keyBytes = config.getBytes(StandardCharsets.UTF_8);
+        }
+        int len = keyBytes.length;
+        if (len != 16 && len != 24 && len != 32) {
+            throw new IllegalStateException(
+                    "AES 키 길이는 16/24/32바이트만 허용됩니다. (현재: " + len + "바이트)"
+            );
+        }
+        KEY = keyBytes;
+    }
+
+    private AesUtil() {}    // 유틸 클래스이므로 인스턴스화 방지
 
     public static String encrypt(String value) {
         try {
